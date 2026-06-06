@@ -176,6 +176,7 @@ func parsePorcelainV2FileLine(line string) (string, bool) {
 func runCommand(name string, args ...string) (string, error) {
 	fmt.Printf("Running command: %s %s\n", name, strings.Join(args, " "))
 	cmd := exec.Command(name, args...)
+	configureCommand(cmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
