@@ -3,6 +3,7 @@ import './app.css';
 
 import logo from './assets/images/logo-universal.png';
 import {Greet} from '../wailsjs/go/main/App';
+import { generateGitStatusHtml, GitStatusOutput} from './git';
 
 // Setup the greet function
 window.greet = function () {
@@ -36,20 +37,56 @@ window.pickFolder = async function () {
 };
 
 window.runGitStatus = async function () {
-	const output = await window.go.main.App.RunGitStatus(openedFolder);
-	document.getElementById("result")!.innerText = output;
+	const output = await window.go.main.App.RunGitStatus(openedFolder) as GitStatusOutput;
+	const resultHtml = generateGitStatusHtml(output);	
+	document.getElementById("result")!.innerHTML = resultHtml;
+}
+
+window.stageGitFile = async function (filePath: string) {
+	filePath = openedFolder ? `${openedFolder}/${filePath}` : filePath;
+	await window.go.main.App.StageGitFile(filePath);
+	await window.runGitStatus();
+}
+
+window.unstageGitFile = async function (filePath: string) {
+	filePath = openedFolder ? `${openedFolder}/${filePath}` : filePath;
+	console.log(`Unstaging file: ${filePath}`);
+	await window.go.main.App.UnstageGitFile(filePath);
+	await window.runGitStatus();
+}
+
+window.commitGitChanges = async function () {
+	const messageInput = document.getElementById("commit message") as HTMLInputElement;
+	const message = messageInput.value;
+	if (!message) {
+		alert("Please enter a commit message.");
+		return;
+	}
+	await window.go.main.App.CommitGitChanges(message);
+	messageInput.value = "";
+	await window.runGitStatus();
+}
+
+window.pushGitChanges = async function () {
+	await window.go.main.App.PushGitChanges();
+	await window.runGitStatus();
+}
+
+window.pullGitChanges = async function () {
+	await window.go.main.App.PullGitChanges();
+	await window.runGitStatus();
 }
 
 document.querySelector('#app')!.innerHTML = `
     <img id="logo" class="logo">
-      <div class="input-box" id="input">
-        <input class="input" id="name" type="text" autocomplete="off" />
-        <button class="btn" onclick="greet()">Greet</button>
-      </div>
 	  <div>
+		<input id="commit message" placeholder="Enter commit message">
+		<button id="Commit Changes" onclick="commitGitChanges()">Commit Changes</button>
+		<button id="Push Changes" onclick="pushGitChanges()">Push Changes</button>
+		<button id="Pull Changes" onclick="pullGitChanges()">Pull Changes</button>
 	    <button id="Pick Folder" onclick="pickFolder()">Pick Folder</button>
 		<button id="Run Git Status" onclick="runGitStatus()">Run Git Status</button>
-		<div class="result" id="result">Please enter your name below 👇</div>
+		<div class="result" id="result"></div>
 	  </div>
     </div>
 `;

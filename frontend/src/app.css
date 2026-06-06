@@ -52,3 +52,18 @@
     border: none;
     background-color: rgba(255, 255, 255, 1);
 }
+
+.staged {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 20px;
+}
+
+.unstaged {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 20px;
+	font-style: italic;
+}

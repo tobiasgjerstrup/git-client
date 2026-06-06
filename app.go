@@ -4,13 +4,20 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx      context.Context
+	repoPath string
+}
+
+type GitStatusResult struct {
+	Files      []string `json:"files"`
+	BranchName string   `json:"branchName"`
 }
 
 // NewApp creates a new App application struct
@@ -33,18 +40,145 @@ func (a *App) PickFolder() string {
 	folder, _ := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select a folder",
 	})
+	if folder != "" {
+		a.repoPath = folder
+	}
 	return folder
 }
 
-func (a *App) RunGitStatus(path string) (string, error) {
-	fmt.Println("Running git status in:", path)
-	cmd := exec.Command("git", "-C", path, "status");
-	out, err := cmd.CombinedOutput()
-	if (err != nil) {
-		fmt.Println("Error running git status:", err)
-		return string(out), err
+func (a *App) RunGitStatus(path string) (*GitStatusResult, error) {
+	if path != "" {
+		a.repoPath = path
 	}
 
-	fmt.Println("Git status output:", string(out))
-	return string(out), err
+	effectivePath := path
+	if effectivePath == "" {
+		effectivePath = a.repoPath
+	}
+	out, err := runCommand("git", "-C", effectivePath, "status", "--porcelain=v2", "--branch")
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(out), "\n")
+	files := []string{}
+	branchName := ""
+
+	for _, line := range lines {
+		line = strings.TrimSuffix(line, "\r")
+		if line == "" {
+			continue
+		}
+
+		if strings.HasPrefix(line, "# branch.head ") {
+			branchName = strings.TrimPrefix(line, "# branch.head ")
+			continue
+		}
+
+		fileLine, ok := parsePorcelainV2FileLine(line)
+		if !ok {
+			continue
+		}
+		files = append(files, fileLine)
+	}
+
+	return &GitStatusResult{
+		Files:      files,
+		BranchName: branchName,
+	}, nil
+}
+
+func (a *App) StageGitFile(filePath string) error {
+	return a.runGitForRepo("add", "--", filePath)
+}
+
+func (a *App) CommitGitChanges(message string) error {
+	commandArgs := []string{"commit", "-m", message}
+	_, err := runCommand("git", append([]string{"-C", a.repoPath}, commandArgs...)...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *App) PushGitChanges() error {
+	commandArgs := []string{"push"}
+	_, err := runCommand("git", append([]string{"-C", a.repoPath}, commandArgs...)...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *App) PullGitChanges() error {
+	commandArgs := []string{"pull"}
+	_, err := runCommand("git", append([]string{"-C", a.repoPath}, commandArgs...)...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *App) UnstageGitFile(filePath string) error {
+	return a.runGitForRepo("restore", "--staged", "--", filePath)
+}
+
+func (a *App) runGitForRepo(args ...string) error {
+	if a.repoPath == "" {
+		return fmt.Errorf("no repository selected")
+	}
+
+	commandArgs := append([]string{"-C", a.repoPath}, args...)
+	_, err := runCommand("git", commandArgs...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func parsePorcelainV2FileLine(line string) (string, bool) {
+	switch {
+	case strings.HasPrefix(line, "1 "):
+		// 1 <xy> <sub> <mH> <mI> <mW> <hH> <hI> <path>
+		parts := strings.SplitN(strings.TrimPrefix(line, "1 "), " ", 8)
+		if len(parts) < 8 {
+			return "", false
+		}
+		return fmt.Sprintf("%s %s", parts[0], parts[7]), true
+	case strings.HasPrefix(line, "2 "):
+		// 2 <xy> <sub> <mH> <mI> <mW> <hH> <hI> <X><score> <path>\t<origPath>
+		parts := strings.SplitN(strings.TrimPrefix(line, "2 "), " ", 9)
+		if len(parts) < 9 {
+			return "", false
+		}
+		path := parts[8]
+		if tabIdx := strings.Index(path, "\t"); tabIdx >= 0 {
+			path = path[:tabIdx]
+		}
+		return fmt.Sprintf("%s %s", parts[0], path), true
+	case strings.HasPrefix(line, "u "):
+		// u <xy> <sub> <m1> <m2> <m3> <mW> <h1> <h2> <h3> <path>
+		parts := strings.SplitN(strings.TrimPrefix(line, "u "), " ", 10)
+		if len(parts) < 10 {
+			return "", false
+		}
+		return fmt.Sprintf("%s %s", parts[0], parts[9]), true
+	case strings.HasPrefix(line, "? "):
+		return "?? " + strings.TrimPrefix(line, "? "), true
+	case strings.HasPrefix(line, "! "):
+		return "!! " + strings.TrimPrefix(line, "! "), true
+	default:
+		return "", false
+	}
+}
+
+func runCommand(name string, args ...string) (string, error) {
+	fmt.Printf("Running command: %s %s\n", name, strings.Join(args, " "))
+	cmd := exec.Command(name, args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return string(out), nil
 }
