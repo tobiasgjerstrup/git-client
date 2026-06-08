@@ -30,6 +30,10 @@ export function StageGitFile(arg1) {
   return window['go']['main']['App']['StageGitFile'](arg1);
 }
 
+export function SwitchGitBranch(arg1) {
+  return window['go']['main']['App']['SwitchGitBranch'](arg1);
+}
+
 export function UnstageGitFile(arg1) {
   return window['go']['main']['App']['UnstageGitFile'](arg1);
 }

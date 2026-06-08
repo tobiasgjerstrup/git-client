@@ -16,4 +16,6 @@ export function RunGitStatus(arg1:string):Promise<main.GitStatusResult>;
 
 export function StageGitFile(arg1:string):Promise<void>;
 
+export function SwitchGitBranch(arg1:string):Promise<void>;
+
 export function UnstageGitFile(arg1:string):Promise<void>;
