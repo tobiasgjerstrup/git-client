@@ -122,11 +122,21 @@ func (a *App) SwitchGitBranch(branchName string) error {
 func (a *App) PushGitChanges() error {
 	commandArgs := []string{"push"}
 	_, err := runCommand("git", append([]string{"-C", a.repoPath}, commandArgs...)...)
-	if err != nil {
-		fmt.Printf("Error pushing changes: %v\n", err)
-		return err
+	if err == nil {
+		return nil
 	}
-	return nil
+
+	if strings.Contains(err.Error(), "has no upstream branch.") {
+		commandArgs = []string{"push", "--set-upstream", "origin", "HEAD"}
+		_, err = runCommand("git", append([]string{"-C", a.repoPath}, commandArgs...)...)
+		if err != nil {
+			fmt.Printf("Error pushing with upstream: %v\n", err)
+			return err
+		}
+		return nil
+	}
+	fmt.Printf("Error pushing changes: %v\n", err)
+	return err
 }
 
 func (a *App) PullGitChanges() error {
