@@ -77,6 +77,18 @@ window.pullGitChanges = async function () {
 	await window.runGitStatus();
 }
 
+window.switchGitBranch = async function () {
+	const branchInput = document.getElementById("branch name") as HTMLInputElement;
+	const branchName = branchInput.value;
+	if (!branchName) {
+		alert("Please enter a branch name");
+		return;
+	}
+	await window.go.main.App.SwitchGitBranch(branchName);
+	branchInput.value = "";
+	await window.runGitStatus();
+}
+
 document.querySelector('#app')!.innerHTML = `
     <img id="logo" class="logo">
 	  <div>
@@ -86,6 +98,8 @@ document.querySelector('#app')!.innerHTML = `
 		<button id="Pull Changes" onclick="pullGitChanges()">Pull Changes</button>
 	    <button id="Pick Folder" onclick="pickFolder()">Pick Folder</button>
 		<button id="Run Git Status" onclick="runGitStatus()">Run Git Status</button>
+		<input id="branch name" placeholder="Enter branch name">
+		<button id="Switch Branch" onclick="switchGitBranch()">Switch Branch</button>
 		<div class="result" id="result"></div>
 	  </div>
     </div>

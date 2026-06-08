@@ -101,10 +101,29 @@ func (a *App) CommitGitChanges(message string) error {
 	return nil
 }
 
+func (a *App) SwitchGitBranch(branchName string) error {
+	commandArgs := []string{"-C", a.repoPath, "switch", branchName}
+
+	// Attempt to switch to branch
+	_, err := runCommand("git", commandArgs...)
+	if err == nil {
+		return nil
+	}
+
+	commandArgs = []string{"-C", a.repoPath, "switch", "-c", branchName}
+	_, err = runCommand("git", append([]string{"-C", a.repoPath}, commandArgs ...) ...)
+	if err != nil {
+		fmt.Printf("Error switching/creating branch: %v\n", err)
+		return err
+	}
+	return nil
+}
+
 func (a *App) PushGitChanges() error {
 	commandArgs := []string{"push"}
 	_, err := runCommand("git", append([]string{"-C", a.repoPath}, commandArgs...)...)
 	if err != nil {
+		fmt.Printf("Error pushing changes: %v\n", err)
 		return err
 	}
 	return nil
