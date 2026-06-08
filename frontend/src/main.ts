@@ -40,6 +40,8 @@ window.runGitStatus = async function () {
 	const output = await window.go.main.App.RunGitStatus(openedFolder) as GitStatusOutput;
 	const resultHtml = generateGitStatusHtml(output);	
 	document.getElementById("result")!.innerHTML = resultHtml;
+	document.getElementById("branchName")!.innerText = `Current Branch: ${output.branchName}`;
+	console.log("Git status output:", output);
 }
 
 window.stageGitFile = async function (filePath: string) {
@@ -100,6 +102,7 @@ document.querySelector('#app')!.innerHTML = `
 		<button id="Run Git Status" onclick="runGitStatus()">Run Git Status</button>
 		<input id="branch name" placeholder="Enter branch name">
 		<button id="Switch Branch" onclick="switchGitBranch()">Switch Branch</button>
+		<div id="branchName"></div>
 		<div class="result" id="result"></div>
 	  </div>
     </div>
