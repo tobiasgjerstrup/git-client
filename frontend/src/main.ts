@@ -42,6 +42,7 @@ window.runGitStatus = async function () {
 	document.getElementById("result")!.innerHTML = resultHtml;
 	document.getElementById("branchName")!.innerText = `Current Branch: ${output.branchName}`;
 	console.log("Git status output:", output);
+	document.getElementById("gitCommits")!.innerHTML = output.commits.map(commit => `<p>${commit.date} - ${commit.author} - ${commit.message}</p>`).join("");
 }
 
 window.stageGitFile = async function (filePath: string) {
@@ -103,7 +104,8 @@ document.querySelector('#app')!.innerHTML = `
 		<input id="branch name" placeholder="Enter branch name">
 		<button id="Switch Branch" onclick="switchGitBranch()">Switch Branch</button>
 		<div id="branchName"></div>
-		<div class="result" id="result"></div>
+		<div id="result"></div>
+		<div id="gitCommits"></div>
 	  </div>
     </div>
 `;

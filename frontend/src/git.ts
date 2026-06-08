@@ -28,6 +28,12 @@ const gitPorcelain: Record<GitPorcelainV2Key, { description: string }> = {
 export interface GitStatusOutput {
 	files: string[];
 	branchName: string;
+	commits: {
+	hash: string;
+	author: string;
+	message: string;
+	date: string;
+	}[];
 }
 
 function escapeHtml(value: string): string {
