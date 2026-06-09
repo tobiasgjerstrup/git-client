@@ -101,7 +101,6 @@ window.gitDiff = async function () {
 
 document.querySelector('#app')!.innerHTML = `
     <div>
-	  <img id="logo" class="logo">
 	  <div>
 		<button id="Run Git Diff" onclick="gitDiff()">Run Git Diff</button>
 	    <div id="changes"></div>
