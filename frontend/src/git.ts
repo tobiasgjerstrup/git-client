@@ -28,15 +28,25 @@ const gitPorcelain: Record<GitPorcelainV2Key, { description: string }> = {
 export interface GitStatusOutput {
 	files: string[];
 	branchName: string;
-	commits: {
+}
+
+export interface GitCommit {
 	hash: string;
 	author: string;
 	message: string;
 	date: string;
+}
+
+export interface GitDiffOutput {
+	files: {
+		path: string;
+		diff: string;
+		linesAdded: number;
+		linesRemoved: number;
 	}[];
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, "&amp;")
 		.replace(/</g, "&lt;")

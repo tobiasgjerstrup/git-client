@@ -2,31 +2,7 @@ import './style.css';
 import './app.css';
 
 import logo from './assets/images/logo-universal.png';
-import {Greet} from '../wailsjs/go/main/App';
-import { generateGitStatusHtml, GitStatusOutput} from './git';
-
-// Setup the greet function
-window.greet = function () {
-    // Get name
-    let name = nameElement!.value;
-
-    // Check if the input is empty
-    if (name === "") return;
-
-    // Call App.Greet(name)
-    try {
-        Greet(name)
-            .then((result) => {
-                // Update result with data back from App.Greet()
-                resultElement!.innerText = result;
-            })
-            .catch((err) => {
-                console.error(err);
-            });
-    } catch (err: unknown) {
-        console.error(err);
-    }
-};
+import { escapeHtml, generateGitStatusHtml, GitCommit, GitDiffOutput, GitStatusOutput} from './git';
 
 let openedFolder: string | null = null;
 
@@ -41,8 +17,6 @@ window.runGitStatus = async function () {
 	const resultHtml = generateGitStatusHtml(output);	
 	document.getElementById("result")!.innerHTML = resultHtml;
 	document.getElementById("branchName")!.innerText = `Current Branch: ${output.branchName}`;
-	console.log("Git status output:", output);
-	document.getElementById("gitCommits")!.innerHTML = output.commits.map(commit => `<p>${commit.date} - ${commit.author} - ${commit.message}</p>`).join("");
 }
 
 window.stageGitFile = async function (filePath: string) {
@@ -92,9 +66,40 @@ window.switchGitBranch = async function () {
 	await window.runGitStatus();
 }
 
+window.gitDiff = async function () {
+	const output = await window.go.main.App.GitDiff() as GitDiffOutput;
+
+	for (const file of output.files) {
+		const newDiff: string[] = [];
+		for (let line of file.diff.split("\n")) {
+			if (line.startsWith("+") && !line.startsWith("+++ b/" + file.path)) {
+				newDiff.push(`<span class="addedLine">${escapeHtml(line)}</span>`);
+			} else if (line.startsWith("-") && !line.startsWith("--- a/" + file.path)) {
+				newDiff.push(`<span class="removedLine">${escapeHtml(line)}</span>`);
+			} else {
+				newDiff.push(`<span class="unchangedLine">${escapeHtml(line)}</span>`);
+			}
+		}
+		file.diff = newDiff.join("\n");
+	}
+
+	const changes = output.files.map(file => `<h3>${escapeHtml(file.path)}</h3><pre class="changedLinesContainer">${file.diff}</pre><p>Lines Added: ${file.linesAdded}, Lines Removed: ${file.linesRemoved}</p>`).join("");
+	document.getElementById("changes")!.innerHTML = changes;
+	console.log("Git diff output:", output);
+}
+
+window.getCommitHistory = async function () {
+	const output = await window.go.main.App.GetCommitHistory() as GitCommit[];
+	const commitsHtml = output.map(commit => `<p>${commit.date} - ${escapeHtml(commit.author)} - ${escapeHtml(commit.message)}</p>`).join("");
+	document.getElementById("gitCommits")!.innerHTML = commitsHtml;
+}
+
 document.querySelector('#app')!.innerHTML = `
-    <img id="logo" class="logo">
+    <div>
 	  <div>
+		<div id="changes"></div>
+		<button id="Get Commit History" onclick="getCommitHistory()">Get Commit History</button>
+		<button id="Run Git Diff" onclick="gitDiff()">Run Git Diff</button>
 		<input id="commit message" placeholder="Enter commit message">
 		<button id="Commit Changes" onclick="commitGitChanges()">Commit Changes</button>
 		<button id="Push Changes" onclick="pushGitChanges()">Push Changes</button>
@@ -109,11 +114,11 @@ document.querySelector('#app')!.innerHTML = `
 	  </div>
     </div>
 `;
+
 (document.getElementById('logo') as HTMLImageElement).src = logo;
 
 let nameElement = (document.getElementById("name") as HTMLInputElement);
 nameElement.focus();
-let resultElement = document.getElementById("result");
 
 
 declare global {
