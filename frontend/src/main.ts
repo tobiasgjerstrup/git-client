@@ -17,8 +17,6 @@ window.runGitStatus = async function () {
 	const resultHtml = generateGitStatusHtml(output);	
 	document.getElementById("result")!.innerHTML = resultHtml;
 	document.getElementById("branchName")!.innerText = `Current Branch: ${output.branchName}`;
-	console.log("Git status output:", output);
-	document.getElementById("gitCommits")!.innerHTML = output.commits.map(commit => `<p>${commit.date} - ${commit.author} - ${commit.message}</p>`).join("");
 }
 
 window.stageGitFile = async function (filePath: string) {
@@ -70,7 +68,7 @@ window.switchGitBranch = async function () {
 
 window.gitDiff = async function () {
 	const output = await window.go.main.App.GitDiff() as GitDiffOutput;
-	const changes = output.files.map(file => `<h3>${escapeHtml(file.path)}</h3><pre>${escapeHtml(file.diff)}</pre><p>Lines Added: ${file.linesAdded}, Lines Removed: ${file.linesRemoved}</p>`).join("");
+	const changes = output.files.map(file => `<h3>${escapeHtml(file.path)}</h3><pre class="changedLinesContainer">${escapeHtml(file.diff)}</pre><p>Lines Added: ${file.linesAdded}, Lines Removed: ${file.linesRemoved}</p>`).join("");
 	document.getElementById("changes")!.innerHTML = changes;
 	console.log("Git diff output:", output);
 }
