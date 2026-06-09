@@ -23,7 +23,6 @@ type Commit struct {
 }
 
 type GitStatusResult struct {
-	Commits	[]Commit `json:"commits"`
 	Files      []string `json:"files"`
 	BranchName string   `json:"branchName"`
 }
@@ -100,31 +99,9 @@ func (a *App) RunGitStatus(path string) (*GitStatusResult, error) {
 		files = append(files, fileLine)
 	}
 
-	out, err = runCommand("git", "-C", effectivePath, "log", "--pretty=format:%H|%an|%ad|%s", "--date=iso");
-
-	if err != nil {
-		fmt.Printf("Error getting git log: %v\n", err)
-		return nil, err
-	}
-	commitLines := strings.Split(string(out), "\n")
-	commits := []Commit{}
-	for _, commit := range commitLines {
-		parts := strings.SplitN(commit, "|", 4)
-		if len(parts) < 4 {
-			continue
-		}
-		commits = append(commits, Commit{
-			Hash:    parts[0],
-			Author:  parts[1],
-			Date:    parts[2],
-			Message: parts[3],
-		})
-	}
-
 	return &GitStatusResult{
 		Files:      files,
 		BranchName: branchName,
-		Commits:    commits,
 	}, nil
 }
 
@@ -174,7 +151,31 @@ func (a *App) GitDiff() (*GitDiffResult, error) {
 	return &GitDiffResult{
 		Files: files,
 	}, nil
+}
 
+func (a *App) GetCommitHistory() (*[]Commit, error) {
+	out, err := runCommand("git", "-C", a.repoPath, "log", "--pretty=format:%H|%an|%ad|%s", "--date=iso");
+	if err != nil {
+		fmt.Printf("Error getting git log: %v\n", err)
+		return nil, err
+	}
+
+	commitLines := strings.Split(string(out), "\n")
+	commits := []Commit{}
+	for _, commit := range commitLines {
+		parts := strings.SplitN(commit, "|", 4)
+		if len(parts) < 4 {
+			continue
+		}
+		commits = append(commits, Commit{
+			Hash:    parts[0],
+			Author:  parts[1],
+			Date:    parts[2],
+			Message: parts[3],
+		})
+	}
+
+	return &commits, nil
 }
 
 func (a *App) StageGitFile(filePath string) error {

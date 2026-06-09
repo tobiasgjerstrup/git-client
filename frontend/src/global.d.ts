@@ -12,5 +12,6 @@ declare global {
 		commitGitChanges: (message: string) => Promise<void>;
 		switchGitBranch: (branchName: string) => Promise<void>;
 		gitDiff: () => Promise<void>;
+		getCommitHistory: () => Promise<void>;
 	}
 }

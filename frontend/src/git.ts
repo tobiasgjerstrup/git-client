@@ -28,12 +28,13 @@ const gitPorcelain: Record<GitPorcelainV2Key, { description: string }> = {
 export interface GitStatusOutput {
 	files: string[];
 	branchName: string;
-	commits: {
+}
+
+export interface GitCommit {
 	hash: string;
 	author: string;
 	message: string;
 	date: string;
-	}[];
 }
 
 export interface GitDiffOutput {

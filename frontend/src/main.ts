@@ -2,31 +2,7 @@ import './style.css';
 import './app.css';
 
 import logo from './assets/images/logo-universal.png';
-import {Greet} from '../wailsjs/go/main/App';
-import { escapeHtml, generateGitStatusHtml, GitDiffOutput, GitStatusOutput} from './git';
-
-// Setup the greet function
-window.greet = function () {
-    // Get name
-    let name = nameElement!.value;
-
-    // Check if the input is empty
-    if (name === "") return;
-
-    // Call App.Greet(name)
-    try {
-        Greet(name)
-            .then((result) => {
-                // Update result with data back from App.Greet()
-                resultElement!.innerText = result;
-            })
-            .catch((err) => {
-                console.error(err);
-            });
-    } catch (err: unknown) {
-        console.error(err);
-    }
-};
+import { escapeHtml, generateGitStatusHtml, GitCommit, GitDiffOutput, GitStatusOutput} from './git';
 
 let openedFolder: string | null = null;
 
@@ -99,11 +75,18 @@ window.gitDiff = async function () {
 	console.log("Git diff output:", output);
 }
 
+window.getCommitHistory = async function () {
+	const output = await window.go.main.App.GetCommitHistory() as GitCommit[];
+	const commitsHtml = output.map(commit => `<p>${commit.date} - ${escapeHtml(commit.author)} - ${escapeHtml(commit.message)}</p>`).join("");
+	document.getElementById("gitCommits")!.innerHTML = commitsHtml;
+}
+
 document.querySelector('#app')!.innerHTML = `
     <div>
 	  <div>
+		<div id="changes"></div>
+		<button id="Get Commit History" onclick="getCommitHistory()">Get Commit History</button>
 		<button id="Run Git Diff" onclick="gitDiff()">Run Git Diff</button>
-	    <div id="changes"></div>
 		<input id="commit message" placeholder="Enter commit message">
 		<button id="Commit Changes" onclick="commitGitChanges()">Commit Changes</button>
 		<button id="Push Changes" onclick="pushGitChanges()">Push Changes</button>
@@ -123,7 +106,6 @@ document.querySelector('#app')!.innerHTML = `
 
 let nameElement = (document.getElementById("name") as HTMLInputElement);
 nameElement.focus();
-let resultElement = document.getElementById("result");
 
 
 declare global {
