@@ -125,11 +125,12 @@ func (a *App) GitDiff() (*GitDiffResult, error) {
 				files = append(files, file)
 				file = GitDiffFile{}
 			}
-			parts := strings.SplitN(line, " ", 4)
-			if len(parts) < 4 {
-				continue
-			}
-			file.Path = parts[3][2:] // remove the "b/" prefix
+
+			// extract file path from line like: diff --git a/file.txt b/file.txt
+			rest := strings.TrimPrefix(line, "diff --git ")
+			idx := strings.LastIndex(rest, " b/")
+			file.Path = rest[idx+3:]
+			file.Path = strings.Trim(file.Path, "\"")
 			continue
 		}
 		if file.Path != "" {
