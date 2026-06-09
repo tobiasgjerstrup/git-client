@@ -1,4 +1,4 @@
-module myproject
+module tobiasgitclient
 
 go 1.23.0
 

@@ -1,7 +1,6 @@
 import './style.css';
 import './app.css';
 
-import logo from './assets/images/logo-universal.png';
 import { escapeHtml, generateGitStatusHtml, GitCommit, GitDiffOutput, GitStatusOutput} from './git';
 
 let openedFolder: string | null = null;
@@ -94,32 +93,8 @@ window.getCommitHistory = async function () {
 	document.getElementById("gitCommits")!.innerHTML = commitsHtml;
 }
 
-document.querySelector('#app')!.innerHTML = `
-    <div>
-	  <div>
-		<div id="changes"></div>
-		<button id="Get Commit History" onclick="getCommitHistory()">Get Commit History</button>
-		<button id="Run Git Diff" onclick="gitDiff()">Run Git Diff</button>
-		<input id="commit message" placeholder="Enter commit message">
-		<button id="Commit Changes" onclick="commitGitChanges()">Commit Changes</button>
-		<button id="Push Changes" onclick="pushGitChanges()">Push Changes</button>
-		<button id="Pull Changes" onclick="pullGitChanges()">Pull Changes</button>
-	    <button id="Pick Folder" onclick="pickFolder()">Pick Folder</button>
-		<button id="Run Git Status" onclick="runGitStatus()">Run Git Status</button>
-		<input id="branch name" placeholder="Enter branch name">
-		<button id="Switch Branch" onclick="switchGitBranch()">Switch Branch</button>
-		<div id="branchName"></div>
-		<div id="result"></div>
-		<div id="gitCommits"></div>
-	  </div>
-    </div>
-`;
-
-(document.getElementById('logo') as HTMLImageElement).src = logo;
-
-let nameElement = (document.getElementById("name") as HTMLInputElement);
-nameElement.focus();
-
+import appHtml from './app.html?raw';
+document.querySelector('#app')!.innerHTML = appHtml;
 
 declare global {
     interface Window {
