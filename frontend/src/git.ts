@@ -36,7 +36,16 @@ export interface GitStatusOutput {
 	}[];
 }
 
-function escapeHtml(value: string): string {
+export interface GitDiffOutput {
+	files: {
+		path: string;
+		diff: string;
+		linesAdded: number;
+		linesRemoved: number;
+	}[];
+}
+
+export function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, "&amp;")
 		.replace(/</g, "&lt;")

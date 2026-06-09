@@ -3,7 +3,7 @@ import './app.css';
 
 import logo from './assets/images/logo-universal.png';
 import {Greet} from '../wailsjs/go/main/App';
-import { generateGitStatusHtml, GitStatusOutput} from './git';
+import { escapeHtml, generateGitStatusHtml, GitDiffOutput, GitStatusOutput} from './git';
 
 // Setup the greet function
 window.greet = function () {
@@ -92,9 +92,19 @@ window.switchGitBranch = async function () {
 	await window.runGitStatus();
 }
 
+window.gitDiff = async function () {
+	const output = await window.go.main.App.GitDiff() as GitDiffOutput;
+	const changes = output.files.map(file => `<h3>${escapeHtml(file.path)}</h3><pre>${escapeHtml(file.diff)}</pre><p>Lines Added: ${file.linesAdded}, Lines Removed: ${file.linesRemoved}</p>`).join("");
+	document.getElementById("changes")!.innerHTML = changes;
+	console.log("Git diff output:", output);
+}
+
 document.querySelector('#app')!.innerHTML = `
-    <img id="logo" class="logo">
+    <div>
+	  <img id="logo" class="logo">
 	  <div>
+		<button id="Run Git Diff" onclick="gitDiff()">Run Git Diff</button>
+	    <div id="changes"></div>
 		<input id="commit message" placeholder="Enter commit message">
 		<button id="Commit Changes" onclick="commitGitChanges()">Commit Changes</button>
 		<button id="Push Changes" onclick="pushGitChanges()">Push Changes</button>
@@ -109,6 +119,7 @@ document.querySelector('#app')!.innerHTML = `
 	  </div>
     </div>
 `;
+
 (document.getElementById('logo') as HTMLImageElement).src = logo;
 
 let nameElement = (document.getElementById("name") as HTMLInputElement);

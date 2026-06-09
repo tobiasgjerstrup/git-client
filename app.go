@@ -28,11 +28,21 @@ type GitStatusResult struct {
 	BranchName string   `json:"branchName"`
 }
 
+type GitDiffFile struct {
+	Path    string `json:"path"`
+	Diff	string `json:"diff"`
+	LinesAdded int    `json:"linesAdded"`
+	LinesRemoved int    `json:"linesRemoved"`
+}
+
+type GitDiffResult struct {
+	Files []GitDiffFile `json:"files"`
+}
+
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{}
 }
-
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
@@ -116,6 +126,55 @@ func (a *App) RunGitStatus(path string) (*GitStatusResult, error) {
 		BranchName: branchName,
 		Commits:    commits,
 	}, nil
+}
+
+func (a *App) GitDiff() (*GitDiffResult, error) {
+	out, err := runCommand("git", "-C", a.repoPath, "--no-pager", "diff")
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(out), "\n")
+	files := []GitDiffFile{}
+	file := GitDiffFile{}
+	for _, line := range lines {
+		line = strings.TrimSuffix(line, "\r")
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "diff --git ") {
+			// push the previous file if exists
+			if (file.Path != "") {
+				files = append(files, file)
+				file = GitDiffFile{}
+			}
+			parts := strings.SplitN(line, " ", 4)
+			if len(parts) < 4 {
+				continue
+			}
+			file.Path = parts[3][2:] // remove the "b/" prefix
+			continue
+		}
+		if file.Path != "" {
+			file.Diff += line + "\n"
+			if strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
+				file.LinesAdded++
+				continue
+			} else if strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---") {
+				file.LinesRemoved++
+				continue
+			}
+		}
+	}
+	// push the last file if exists
+	if (file.Path != "") {
+		files = append(files, file)
+	}
+
+	return &GitDiffResult{
+		Files: files,
+	}, nil
+
 }
 
 func (a *App) StageGitFile(filePath string) error {
