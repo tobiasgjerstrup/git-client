@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -28,9 +32,9 @@ type GitStatusResult struct {
 }
 
 type GitDiffFile struct {
-	Path    string `json:"path"`
-	Diff	string `json:"diff"`
-	LinesAdded int    `json:"linesAdded"`
+	Path         string `json:"path"`
+	Diff         string `json:"diff"`
+	LinesAdded   int    `json:"linesAdded"`
 	LinesRemoved int    `json:"linesRemoved"`
 }
 
@@ -42,6 +46,7 @@ type GitDiffResult struct {
 func NewApp() *App {
 	return &App{}
 }
+
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
@@ -121,7 +126,7 @@ func (a *App) GitDiff() (*GitDiffResult, error) {
 		}
 		if strings.HasPrefix(line, "diff --git ") {
 			// push the previous file if exists
-			if (file.Path != "") {
+			if file.Path != "" {
 				files = append(files, file)
 				file = GitDiffFile{}
 			}
@@ -145,8 +150,49 @@ func (a *App) GitDiff() (*GitDiffResult, error) {
 		}
 	}
 	// push the last file if exists
-	if (file.Path != "") {
+	if file.Path != "" {
 		files = append(files, file)
+	}
+
+	// Git diffs do not include completely new files. So we add them here.
+	out, err = runCommand("git", "-C", a.repoPath, "ls-files", "--others", "--exclude-standard")
+	if err != nil {
+		return nil, err
+	}
+
+	lines = strings.Split(string(out), "\n")
+	for _, line := range lines {
+		line = strings.TrimSuffix(line, "\r")
+		if line == "" {
+			continue
+		}
+
+		abs := filepath.Join(a.repoPath, line)
+		data, err := os.ReadFile(abs)
+		if err != nil {
+			continue
+		}
+
+		// Build a synthetic diff for new files
+		diff := fmt.Sprintf(
+			"diff --git a/%s b/%s\nnew file mode 100644\n--- /dev/null\n+++ b/%s\n",
+			line, line, line,
+		)
+
+		// Count lines + build diff body
+		added := 0
+		scanner := bufio.NewScanner(bytes.NewReader(data))
+		for scanner.Scan() {
+			diff += "+" + scanner.Text() + "\n"
+			added++
+		}
+
+		files = append(files, GitDiffFile{
+			Path:         line,
+			Diff:         diff,
+			LinesAdded:   added,
+			LinesRemoved: 0,
+		})
 	}
 
 	return &GitDiffResult{
@@ -155,7 +201,7 @@ func (a *App) GitDiff() (*GitDiffResult, error) {
 }
 
 func (a *App) GetCommitHistory() (*[]Commit, error) {
-	out, err := runCommand("git", "-C", a.repoPath, "log", "--pretty=format:%H|%an|%ad|%s", "--date=iso");
+	out, err := runCommand("git", "-C", a.repoPath, "log", "--pretty=format:%H|%an|%ad|%s", "--date=iso")
 	if err != nil {
 		fmt.Printf("Error getting git log: %v\n", err)
 		return nil, err
@@ -202,7 +248,7 @@ func (a *App) SwitchGitBranch(branchName string) error {
 	}
 
 	commandArgs = []string{"-C", a.repoPath, "switch", "-c", branchName}
-	_, err = runCommand("git", append([]string{"-C", a.repoPath}, commandArgs ...) ...)
+	_, err = runCommand("git", append([]string{"-C", a.repoPath}, commandArgs...)...)
 	if err != nil {
 		fmt.Printf("Error switching/creating branch: %v\n", err)
 		return err
