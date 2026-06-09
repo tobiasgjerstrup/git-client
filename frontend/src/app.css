@@ -1,3 +1,5 @@
+/* test */
+
 #logo {
     display: block;
     width: 50%;
@@ -65,4 +67,16 @@
 .changedLinesContainer {
 	background-color: #111111;
 	text-align: left;
+}
+
+.addedLine {
+	color: #00ff00;
+}
+
+.removedLine {
+	color: #ff0000;
+}
+
+.unchangedLine {
+	color: #ffffff;
 }

@@ -68,7 +68,22 @@ window.switchGitBranch = async function () {
 
 window.gitDiff = async function () {
 	const output = await window.go.main.App.GitDiff() as GitDiffOutput;
-	const changes = output.files.map(file => `<h3>${escapeHtml(file.path)}</h3><pre class="changedLinesContainer">${escapeHtml(file.diff)}</pre><p>Lines Added: ${file.linesAdded}, Lines Removed: ${file.linesRemoved}</p>`).join("");
+
+	for (const file of output.files) {
+		const newDiff: string[] = [];
+		for (let line of file.diff.split("\n")) {
+			if (line.startsWith("+") && !line.startsWith("+++ b/" + file.path)) {
+				newDiff.push(`<span class="addedLine">${escapeHtml(line)}</span>`);
+			} else if (line.startsWith("-") && !line.startsWith("--- a/" + file.path)) {
+				newDiff.push(`<span class="removedLine">${escapeHtml(line)}</span>`);
+			} else {
+				newDiff.push(`<span class="unchangedLine">${escapeHtml(line)}</span>`);
+			}
+		}
+		file.diff = newDiff.join("\n");
+	}
+
+	const changes = output.files.map(file => `<h3>${escapeHtml(file.path)}</h3><pre class="changedLinesContainer">${file.diff}</pre><p>Lines Added: ${file.linesAdded}, Lines Removed: ${file.linesRemoved}</p>`).join("");
 	document.getElementById("changes")!.innerHTML = changes;
 	console.log("Git diff output:", output);
 }
