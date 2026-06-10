@@ -221,6 +221,15 @@ func (a *App) GetCommitHistory() (*[]Commit, error) {
 }
 
 func (a *App) DiscardGitFile(filePath string) error {
+	// If a file is new (?? in git status), we need to remove it instead of restoring it
+	fileStatus, err := runCommand("git", "-C", a.repoPath, "status", "--porcelain", "--", filePath)
+	if err != nil {
+		return err
+	}
+
+	if (strings.HasPrefix(fileStatus, "??")) {
+		return os.Remove(filePath)
+	}
 	return a.runGitForRepo("restore", "--", filePath)
 }
 
