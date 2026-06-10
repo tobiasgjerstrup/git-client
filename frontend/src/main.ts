@@ -106,7 +106,12 @@ window.getGitBranches = async function () {
 }
 
 import appHtml from './app.html?raw';
+import branchPanelHtml from './panels/branchPanel.html?raw';
+import commitPanelHtml from './panels/commitPanel.html?raw';
+
 document.querySelector('#app')!.innerHTML = appHtml;
+document.getElementById('branchPanel')!.innerHTML = branchPanelHtml;
+document.getElementById('commitPanel')!.innerHTML = commitPanelHtml;
 
 declare global {
     interface Window {

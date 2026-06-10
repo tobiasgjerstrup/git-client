@@ -1,5 +1,7 @@
 <div>
-	<div>
+	<div id="branchPanel" class="panel right"></div>
+	<div id="commitPanel" class="panel left"></div>
+	<div class="center-panel">
 		<div id="changes"></div>
 		<button id="Get Commit History" onclick="getCommitHistory()">Get Commit History</button>
 		<button id="Run Git Diff" onclick="gitDiff()">Run Git Diff</button>
@@ -11,10 +13,7 @@
 		<button id="Run Git Status" onclick="runGitStatus()">Run Git Status</button>
 		<input id="branch name" placeholder="Enter branch name">
 		<button id="Switch Branch" onclick="switchGitBranch()">Switch Branch</button>
-		<button id="getBranches" onclick="getGitBranches()">Get Branches</button>
-		<div id="gitBranches"></div>
-		<div id="branchName"></div>
+		<button id="getBranches" onclick="getGitBranches()">Get Branches</button>	
 		<div id="result"></div>
-		<div id="gitCommits"></div>
 	</div>
 </div>
