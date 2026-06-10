@@ -46,6 +46,12 @@ export interface GitDiffOutput {
 	}[];
 }
 
+export interface GitBranch {
+	name: string;
+	remote: boolean;
+	commitId: string;
+}
+
 export function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, "&amp;")

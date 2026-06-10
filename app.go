@@ -42,6 +42,12 @@ type GitDiffResult struct {
 	Files []GitDiffFile `json:"files"`
 }
 
+type GitBranch struct {
+	Remote bool   `json:"remote"`
+	Name   string `json:"name"`
+	CommitId string `json:"commitId"`
+}
+
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{}
@@ -295,6 +301,36 @@ func (a *App) PullGitChanges() error {
 
 func (a *App) UnstageGitFile(filePath string) error {
 	return a.runGitForRepo("restore", "--staged", "--", filePath)
+}
+
+func (a *App) GetGitBranches() (*[]GitBranch, error) {
+	out, err := runCommand("git", "-C", a.repoPath, "for-each-ref", "--format=%(refname)|%(objectname)", "refs/heads", "refs/remotes")
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(out), "\n")
+	branches := []GitBranch{}
+	for _, line := range lines {
+		line = strings.TrimSuffix(line, "\r")
+		if line == "" {
+			continue
+		}
+
+		remote := false
+		if (strings.HasPrefix(line, "refs/remotes/")) {
+			remote = true
+		}
+		nameAndHash := strings.Split(strings.TrimPrefix(line, "refs/heads/"), "|")
+		branches = append(branches, GitBranch{
+			Remote: remote,
+			Name:   nameAndHash[0],
+			CommitId: nameAndHash[1],
+		})
+	}
+
+	return &branches, nil
+
 }
 
 func (a *App) runGitForRepo(args ...string) error {
