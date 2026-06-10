@@ -93,6 +93,12 @@ window.getCommitHistory = async function () {
 	document.getElementById("gitCommits")!.innerHTML = commitsHtml;
 }
 
+window.discardGitFile = async function (filePath: string) {
+	filePath = openedFolder ? `${openedFolder}/${filePath}` : filePath;
+	await window.go.main.App.DiscardGitFile(filePath);
+	await window.runGitStatus();
+}
+
 import appHtml from './app.html?raw';
 document.querySelector('#app')!.innerHTML = appHtml;
 

@@ -130,6 +130,7 @@ export function generateGitStatusHtml(output: GitStatusOutput): string {
 		} else {
 			resultHtml += `<span class="unstaged">${escapeHtml(parsedLine.text)}</span>`;
 			resultHtml += `<button onclick='stageGitFile(${JSON.stringify(parsedLine.path)})'>Stage</button>`;
+			resultHtml += `<button onclick='discardGitFile(${JSON.stringify(parsedLine.path)})'>Discard</button>`;
 		}
 	}
 	return resultHtml;

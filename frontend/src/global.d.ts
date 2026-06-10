@@ -13,5 +13,6 @@ declare global {
 		switchGitBranch: (branchName: string) => Promise<void>;
 		gitDiff: () => Promise<void>;
 		getCommitHistory: () => Promise<void>;
+		discardGitFile: (filePath: string) => Promise<void>;
 	}
 }

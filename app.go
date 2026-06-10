@@ -53,11 +53,6 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-// Greet returns a greeting for the given name
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
-}
-
 func (a *App) PickFolder() string {
 	folder, _ := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select a folder",
@@ -223,6 +218,10 @@ func (a *App) GetCommitHistory() (*[]Commit, error) {
 	}
 
 	return &commits, nil
+}
+
+func (a *App) DiscardGitFile(filePath string) error {
+	return a.runGitForRepo("restore", "--", filePath)
 }
 
 func (a *App) StageGitFile(filePath string) error {
