@@ -1,7 +1,7 @@
 import './style.css';
 import './app.css';
 
-import { escapeHtml, generateGitStatusHtml, GitCommit, GitDiffOutput, GitStatusOutput} from './git';
+import { escapeHtml, generateGitStatusHtml, GitBranch, GitCommit, GitDiffOutput, GitStatusOutput} from './git';
 
 let openedFolder: string | null = null;
 
@@ -97,6 +97,12 @@ window.discardGitFile = async function (filePath: string) {
 	filePath = openedFolder ? `${openedFolder}/${filePath}` : filePath;
 	await window.go.main.App.DiscardGitFile(filePath);
 	await window.runGitStatus();
+}
+
+window.getGitBranches = async function () {
+	const branches = await window.go.main.App.GetGitBranches() as GitBranch[];
+	const branchesHtml = branches.map(branch => `<p>${branch.remote ? "Remote" : "Local"} Branch: ${escapeHtml(branch.name)} (Commit ID: ${escapeHtml(branch.commitId)})</p>`).join("");
+	document.getElementById("gitBranches")!.innerHTML = branchesHtml;
 }
 
 import appHtml from './app.html?raw';

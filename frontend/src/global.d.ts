@@ -14,5 +14,6 @@ declare global {
 		gitDiff: () => Promise<void>;
 		getCommitHistory: () => Promise<void>;
 		discardGitFile: (filePath: string) => Promise<void>;
+		getGitBranches: () => Promise<void>;
 	}
 }
