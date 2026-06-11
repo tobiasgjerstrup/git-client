@@ -1,5 +1,6 @@
 import './style.css';
 import './app.css';
+import './defaults.css';
 
 import { getGitBranches, getGitCommits, gitDiff, gitStatus} from './git';
 
