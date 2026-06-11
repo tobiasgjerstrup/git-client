@@ -65,6 +65,11 @@ window.discardGitFile = async function (filePath: string) {
 	gitStatus();
 }
 
+window.pushGitChanges = async function () {
+	await window.go.main.App.PushGitChanges();
+	getGitBranches();
+}
+
 import appHtml from './app.html?raw';
 import branchPanelHtml from './panels/branchPanel.html?raw';
 import commitPanelHtml from './panels/commitPanel.html?raw';
