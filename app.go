@@ -318,10 +318,13 @@ func (a *App) GetGitBranches() (*[]GitBranch, error) {
 		}
 
 		remote := false
-		if (strings.HasPrefix(line, "refs/remotes/")) {
+		nameAndHash := []string{}
+		if (strings.HasPrefix(line, "refs/remotes/origin/")) {
 			remote = true
+			nameAndHash = strings.Split(strings.TrimPrefix(line, "refs/remotes/origin/"), "|")
+		} else {
+			nameAndHash = strings.Split(strings.TrimPrefix(line, "refs/heads/"), "|")
 		}
-		nameAndHash := strings.Split(strings.TrimPrefix(line, "refs/heads/"), "|")
 		branches = append(branches, GitBranch{
 			Remote: remote,
 			Name:   nameAndHash[0],

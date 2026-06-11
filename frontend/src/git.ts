@@ -153,13 +153,19 @@ export async function gitStatus() {
 
 export async function getGitCommits() {
 	const output = await window.go.main.App.GetCommitHistory() as GitCommit[];
-	const commitsHtml = output.map(commit => `<p>${commit.date} - ${escapeHtml(commit.author)} - ${escapeHtml(commit.message)}</p>`).join("");
+	let commitsHtml = "";
+	for (const commit of output) {
+		commitsHtml += `<div class="commit">`
+		commitsHtml += `<span>${commit.date.substring(0, 16)} <strong>${escapeHtml(commit.author)}</strong></span><br>`;
+		commitsHtml += `<span>${escapeHtml(commit.message)}</span><br>`;
+		commitsHtml += `<hr></div>`;
+	}
 	document.getElementById("gitCommits")!.innerHTML = commitsHtml;
 }
 
 export async function getGitBranches() {
 	const branches = await window.go.main.App.GetGitBranches() as GitBranch[];
-	const branchesHtml = branches.map(branch => `<p>${branch.remote ? "Remote" : "Local"} Branch: ${escapeHtml(branch.name)} (Commit ID: ${escapeHtml(branch.commitId)})</p>`).join("");
+	const branchesHtml = branches.map(branch => `<p>${branch.remote ? "☁️" : "🗃️"}${escapeHtml(branch.name)}`)/*(Commit ID: ${escapeHtml(branch.commitId)})</p>`)*/.join("");
 	document.getElementById("gitBranches")!.innerHTML = branchesHtml;
 }
 
