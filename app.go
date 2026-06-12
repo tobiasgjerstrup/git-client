@@ -331,7 +331,7 @@ func (a *App) GetGitBranches() (*[]GitBranch, error) {
 			fmt.Printf("Error getting default branch: %v\n", err)
 			return nil, err
 		}
-		out, err = runCommand("git", "-C", a.repoPath,"rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", strings.Split(strings.TrimPrefix(line, "refs/remotes/origin/"), "|")[0], defaultBranch))
+		out, err = runCommand("git", "-C", a.repoPath,"rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", strings.Split(line, "|")[0], defaultBranch))
 		parts := strings.Split(strings.TrimSpace(out), "\t")
 		fmt.Printf("Rev-list output: %q\n", out)
 		fmt.Printf("Rev-list parts: %#v\n", parts)
