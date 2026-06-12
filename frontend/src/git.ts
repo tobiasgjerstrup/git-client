@@ -52,6 +52,8 @@ export interface GitBranch {
 	name: string;
 	remote: boolean;
 	commitId: string;
+	commitsAhead: number;
+	commitsBehind: number;
 }
 
 export function escapeHtml(value: string): string {
@@ -165,8 +167,9 @@ export async function getGitCommits() {
 
 export async function getGitBranches() {
 	const branches = await window.go.main.App.GetGitBranches() as GitBranch[];
-	const branchesHtml = branches.map(branch => `<p>${branch.remote ? "☁️" : "🗃️"}${escapeHtml(branch.name)}`)/*(Commit ID: ${escapeHtml(branch.commitId)})</p>`)*/.join("");
+	const branchesHtml = branches.map(branch => `<p>${branch.remote ? "☁️" : "🗃️"}${escapeHtml(branch.name)} ${branch.commitsAhead}/${branch.commitsBehind}</p>`)/*(Commit ID: ${escapeHtml(branch.commitId)})</p>`)*/.join("");
 	document.getElementById("gitBranches")!.innerHTML = branchesHtml;
+	console.log(branches);
 }
 
 export async function gitDiff() {
