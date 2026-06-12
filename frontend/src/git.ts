@@ -139,8 +139,8 @@ export function generateGitStatusHtml(output: GitStatusOutput): string {
 			resultHtml += `<button onclick='unstageGitFile(${JSON.stringify(parsedLine.path)})'>Unstage</button>`;
 		} else {
 			resultHtml += `<span class="unstaged">${escapeHtml(parsedLine.text)}</span>`;
-			resultHtml += `<button onclick='stageGitFile(${JSON.stringify(parsedLine.path)})'>Stage</button>`;
-			resultHtml += `<button onclick='discardGitFile(${JSON.stringify(parsedLine.path)})'>Discard</button>`;
+			resultHtml += `<button onclick='stageGitFile(${escapeHtml(JSON.stringify(parsedLine.path))})'>Stage</button>`;
+			resultHtml += `<button onclick='discardGitFile(${escapeHtml(JSON.stringify(parsedLine.path))})'>Discard</button>`;
 		}
 	}
 	return resultHtml;
