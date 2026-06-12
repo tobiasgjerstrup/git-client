@@ -313,6 +313,11 @@ func (a *App) GetGitBranches() (*[]GitBranch, error) {
 	}
 
 	defaultBranch, err := getDefaultBranch(a.repoPath)
+	if err != nil {
+		fmt.Printf("Error getting default branch: %v\n", err)
+		return nil, err
+	}
+	defaultBranch = "origin/" + defaultBranch
 	lines := strings.Split(string(out), "\n")
 	branches := []GitBranch{}
 	for _, line := range lines {
