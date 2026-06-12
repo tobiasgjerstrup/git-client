@@ -1,3 +1,5 @@
+import { openedFolder } from "./main";
+
 type GitPorcelainV2Key = "1" | "2" | "u" | "?" | "!";
 
 type GitStatusLine = {
@@ -50,6 +52,8 @@ export interface GitBranch {
 	name: string;
 	remote: boolean;
 	commitId: string;
+	commitsAhead: number;
+	commitsBehind: number;
 }
 
 export function escapeHtml(value: string): string {
@@ -140,4 +144,52 @@ export function generateGitStatusHtml(output: GitStatusOutput): string {
 		}
 	}
 	return resultHtml;
+}
+
+export async function gitStatus() {
+	const output = await window.go.main.App.RunGitStatus(openedFolder) as GitStatusOutput;
+	const resultHtml = generateGitStatusHtml(output);	
+	document.getElementById("result")!.innerHTML = resultHtml;
+	document.getElementById("branchName")!.innerText = `Current Branch: ${output.branchName}`;
+}
+
+export async function getGitCommits() {
+	const output = await window.go.main.App.GetCommitHistory() as GitCommit[];
+	let commitsHtml = "";
+	for (const commit of output) {
+		commitsHtml += `<div class="commit">`
+		commitsHtml += `<span>${commit.date.substring(0, 16)} <strong>${escapeHtml(commit.author)}</strong></span><br>`;
+		commitsHtml += `<span>${escapeHtml(commit.message)}</span><br>`;
+		commitsHtml += `<hr></div>`;
+	}
+	document.getElementById("gitCommits")!.innerHTML = commitsHtml;
+}
+
+export async function getGitBranches() {
+	const branches = await window.go.main.App.GetGitBranches() as GitBranch[];
+	const branchesHtml = branches.map(branch => `<p>${branch.remote ? "☁️" : "🗃️"}${escapeHtml(branch.name)} ${branch.commitsAhead}/${branch.commitsBehind}</p>`)/*(Commit ID: ${escapeHtml(branch.commitId)})</p>`)*/.join("");
+	document.getElementById("gitBranches")!.innerHTML = branchesHtml;
+	console.log(branches);
+}
+
+export async function gitDiff() {
+	const output = await window.go.main.App.GitDiff() as GitDiffOutput;
+
+	for (const file of output.files) {
+		const newDiff: string[] = [];
+		for (let line of file.diff.split("\n")) {
+			if (line.startsWith("+") && !line.startsWith("+++ b/" + file.path)) {
+				newDiff.push(`<span class="addedLine">${escapeHtml(line)}</span>`);
+			} else if (line.startsWith("-") && !line.startsWith("--- a/" + file.path)) {
+				newDiff.push(`<span class="removedLine">${escapeHtml(line)}</span>`);
+			} else {
+				newDiff.push(`<span class="unchangedLine">${escapeHtml(line)}</span>`);
+			}
+		}
+		file.diff = newDiff.join("\n");
+	}
+
+	const changes = output.files.map(file => `<h3>${escapeHtml(file.path)}</h3><pre class="changedLinesContainer">${file.diff}</pre><p>Lines Added: ${file.linesAdded}, Lines Removed: ${file.linesRemoved}</p>`).join("");
+	document.getElementById("changes")!.innerHTML = changes;
+	console.log("Git diff output:", output);
 }

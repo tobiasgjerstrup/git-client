@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -43,9 +44,11 @@ type GitDiffResult struct {
 }
 
 type GitBranch struct {
-	Remote bool   `json:"remote"`
-	Name   string `json:"name"`
-	CommitId string `json:"commitId"`
+	Remote        bool   `json:"remote"`
+	Name          string `json:"name"`
+	CommitId      string `json:"commitId"`
+	CommitsBehind int    `json:"commitsBehind"`
+	CommitsAhead  int    `json:"commitsAhead"`
 }
 
 // NewApp creates a new App application struct
@@ -233,7 +236,7 @@ func (a *App) DiscardGitFile(filePath string) error {
 		return err
 	}
 
-	if (strings.HasPrefix(fileStatus, "??")) {
+	if strings.HasPrefix(fileStatus, "??") {
 		return os.Remove(filePath)
 	}
 	return a.runGitForRepo("restore", "--", filePath)
@@ -309,6 +312,12 @@ func (a *App) GetGitBranches() (*[]GitBranch, error) {
 		return nil, err
 	}
 
+	defaultBranch, err := getDefaultBranch(a.repoPath)
+	if err != nil {
+		fmt.Printf("Error getting default branch: %v\n", err)
+		return nil, err
+	}
+	defaultBranch = "origin/" + defaultBranch
 	lines := strings.Split(string(out), "\n")
 	branches := []GitBranch{}
 	for _, line := range lines {
@@ -318,14 +327,45 @@ func (a *App) GetGitBranches() (*[]GitBranch, error) {
 		}
 
 		remote := false
-		if (strings.HasPrefix(line, "refs/remotes/")) {
-			remote = true
+		nameAndHash := []string{}
+		commitsBehind := 0
+		commitsAhead := 0
+		// Compare branches to the current HEAD.
+		//out, err = runCommand("git", "-C", a.repoPath, "rev-list", "--left-right", "--count", fmt.Sprintf("%s...HEAD", strings.Split(strings.TrimPrefix(line, "refs/remotes/origin/"), "|")[0]))
+		if (err != nil) {
+			fmt.Printf("Error getting default branch: %v\n", err)
+			return nil, err
 		}
-		nameAndHash := strings.Split(strings.TrimPrefix(line, "refs/heads/"), "|")
+		out, err = runCommand("git", "-C", a.repoPath,"rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", strings.Split(line, "|")[0], defaultBranch))
+		parts := strings.Split(strings.TrimSpace(out), "\t")
+		fmt.Printf("Rev-list output: %q\n", out)
+		fmt.Printf("Rev-list parts: %#v\n", parts)
+
+		if len(parts) >= 2 {
+			ahead, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
+			behind, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
+
+			if err1 == nil && err2 == nil {
+				commitsAhead = ahead
+				commitsBehind = behind
+			} else {
+				fmt.Println("Parse error:", err1, err2)
+			}
+		}
+
+		if strings.HasPrefix(line, "refs/remotes/origin/") {
+			remote = true
+			nameAndHash = strings.Split(strings.TrimPrefix(line, "refs/remotes/origin/"), "|")
+		} else {
+			nameAndHash = strings.Split(strings.TrimPrefix(line, "refs/heads/"), "|")
+		}
+		fmt.Printf("Branch: %s, Remote: %v, Commits Behind: %d, Commits Ahead: %d\n", nameAndHash[0], remote, commitsBehind, commitsAhead)
 		branches = append(branches, GitBranch{
-			Remote: remote,
-			Name:   nameAndHash[0],
-			CommitId: nameAndHash[1],
+			Remote:        remote,
+			Name:          nameAndHash[0],
+			CommitId:      nameAndHash[1],
+			CommitsBehind: commitsBehind,
+			CommitsAhead:  commitsAhead,
 		})
 	}
 
@@ -393,3 +433,21 @@ func runCommand(name string, args ...string) (string, error) {
 	}
 	return string(out), nil
 }
+
+func getDefaultBranch(repoPath string) (string, error) {
+    out, err := runCommand("git", "-C", repoPath, "remote", "show", "origin")
+    if err != nil {
+        return "", err
+    }
+
+    lines := strings.Split(out, "\n")
+    for _, line := range lines {
+        line = strings.TrimSpace(line)
+        if strings.HasPrefix(line, "HEAD branch:") {
+            return strings.TrimSpace(strings.TrimPrefix(line, "HEAD branch:")), nil
+        }
+    }
+
+    return "", fmt.Errorf("default branch not found")
+}
+

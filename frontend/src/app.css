@@ -66,3 +66,25 @@
 .unchangedLine {
 	color: #ffffff;
 }
+
+.panel {
+	border: 3px solid #ccc2;
+	border-radius: 5px;
+	width: 20%;
+	height: 99vh;
+	overflow: auto;
+	&.right {
+		float: right;
+	}
+
+	&.left {
+		float: left;
+	}
+}
+
+.center-panel {
+	border: 3px solid #ccc2;
+	border-radius: 5px;
+	width: 58%;
+	margin: 0 auto;
+}
