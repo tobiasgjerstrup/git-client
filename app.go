@@ -311,12 +311,12 @@ func (a *App) GetGitBranches() (*[]GitBranch, error) {
 	//out, err := runCommand("git", "-C", a.repoPath, "for-each-ref", "--format=%(refname)|%(objectname)", "refs/heads", "refs/remotes")
 
 	// only local branches:
-    out, err := runCommand("git", "-C", a.repoPath, "for-each-ref", "--format=%(refname)|%(objectname)", "refs/heads")
+	out, err := runCommand("git", "-C", a.repoPath, "for-each-ref", "--format=%(refname)|%(objectname)", "refs/heads")
 	if err != nil {
 		return nil, err
 	}
 
-	cloudBranches, err := runCommand("git", "-C", a.repoPath, "for-each-ref", "--sort=-committerdate", "--count=20", "--format=%(refname)|%(objectname)", "refs/remotes")
+	cloudBranches, err := runCommand("git", "-C", a.repoPath, "for-each-ref", "--sort=-committerdate", "--count=20", "--format=%(refname)|%(objectname)", "refs/remotes/origin")
 	if err != nil {
 		return nil, err
 	}
@@ -342,11 +342,11 @@ func (a *App) GetGitBranches() (*[]GitBranch, error) {
 		commitsAhead := 0
 		// Compare branches to the current HEAD.
 		//out, err = runCommand("git", "-C", a.repoPath, "rev-list", "--left-right", "--count", fmt.Sprintf("%s...HEAD", strings.Split(strings.TrimPrefix(line, "refs/remotes/origin/"), "|")[0]))
-		if (err != nil) {
+		if err != nil {
 			fmt.Printf("Error getting default branch: %v\n", err)
 			return nil, err
 		}
-		out, err = runCommand("git", "-C", a.repoPath,"rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", strings.Split(line, "|")[0], defaultBranch))
+		out, err = runCommand("git", "-C", a.repoPath, "rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", strings.Split(line, "|")[0], defaultBranch))
 		parts := strings.Split(strings.TrimSpace(out), "\t")
 		fmt.Printf("Rev-list output: %q\n", out)
 		fmt.Printf("Rev-list parts: %#v\n", parts)
@@ -362,12 +362,14 @@ func (a *App) GetGitBranches() (*[]GitBranch, error) {
 				fmt.Println("Parse error:", err1, err2)
 			}
 		}
-
+		if strings.HasPrefix(line, "refs/remotes/") && strings.Contains(line, "/HEAD|") {
+			continue
+		}
 		if strings.HasPrefix(line, "refs/remotes/origin/") {
 			remote = true
-			nameAndHash = strings.Split(strings.TrimPrefix(line, "refs/remotes/origin/"), "|")
+			nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/remotes/"), "|", 2)
 		} else {
-			nameAndHash = strings.Split(strings.TrimPrefix(line, "refs/heads/"), "|")
+			nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/heads/"), "|", 2)
 		}
 		fmt.Printf("Branch: %s, Remote: %v, Commits Behind: %d, Commits Ahead: %d\n", nameAndHash[0], remote, commitsBehind, commitsAhead)
 		branches = append(branches, GitBranch{
@@ -445,19 +447,18 @@ func runCommand(name string, args ...string) (string, error) {
 }
 
 func getDefaultBranch(repoPath string) (string, error) {
-    out, err := runCommand("git", "-C", repoPath, "remote", "show", "origin")
-    if err != nil {
-        return "", err
-    }
+	out, err := runCommand("git", "-C", repoPath, "remote", "show", "origin")
+	if err != nil {
+		return "", err
+	}
 
-    lines := strings.Split(out, "\n")
-    for _, line := range lines {
-        line = strings.TrimSpace(line)
-        if strings.HasPrefix(line, "HEAD branch:") {
-            return strings.TrimSpace(strings.TrimPrefix(line, "HEAD branch:")), nil
-        }
-    }
+	lines := strings.Split(out, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "HEAD branch:") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "HEAD branch:")), nil
+		}
+	}
 
-    return "", fmt.Errorf("default branch not found")
+	return "", fmt.Errorf("default branch not found")
 }
-
