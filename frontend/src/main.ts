@@ -22,42 +22,60 @@ window.stageGitFile = async function (filePath: string) {
 
 window.unstageGitFile = async function (filePath: string) {
 	filePath = openedFolder ? `${openedFolder}/${filePath}` : filePath;
-	console.log(`Unstaging file: ${filePath}`);
 	await window.go.main.App.UnstageGitFile(filePath);
 	gitDiff();
 	gitStatus();
 }
 
 window.commitGitChanges = async function () {
-	const messageInput = document.getElementById("commit message") as HTMLInputElement;
-	const message = messageInput.value;
-	if (!message) {
-		alert("Please enter a commit message.");
-		return;
+	try {
+		document.getElementById("CommitChanges")!.setAttribute("disabled", "");
+		const messageInput = document.getElementById("CommitMessage") as HTMLInputElement;
+		const message = messageInput.value;
+		if (!message) {
+			alert("Please enter a commit message.");
+			document.getElementById("CommitChanges")!.removeAttribute("disabled");
+			return;
+		}
+		await window.go.main.App.CommitGitChanges(message);
+		messageInput.value = "";
+	} finally {
+		document.getElementById("CommitChanges")!.removeAttribute("disabled");
+		window.refresh();
 	}
-	await window.go.main.App.CommitGitChanges(message);
-	messageInput.value = "";
-	window.refresh();
 }
 
 window.switchGitBranch = async function () {
-	const branchInput = document.getElementById("branch name") as HTMLInputElement;
-	const branchName = branchInput.value;
-	if (!branchName) {
-		alert("Please enter a branch name");
-		return;
+	try {
+		document.getElementById("SwitchBranch")!.setAttribute("disabled", "");
+		const branchInput = document.getElementById("BranchNameInput") as HTMLInputElement;
+		const branchName = branchInput.value;
+		if (!branchName) {
+			alert("Please enter a branch name");
+			document.getElementById("SwitchBranch")!.removeAttribute("disabled");
+			return;
+		}
+		await window.go.main.App.SwitchGitBranch(branchName);
+		branchInput.value = "";
+		window.refresh();
+	} finally {
+		document.getElementById("SwitchBranch")!.removeAttribute("disabled");
 	}
-	await window.go.main.App.SwitchGitBranch(branchName);
-	branchInput.value = "";
-	window.refresh();
 }
 
 window.refresh = async function () {
-	await gitFetch();
-	gitStatus();
-	getGitCommits();
-	getGitBranches();
-	gitDiff();
+	try {
+		document.getElementById("Refresh")!.setAttribute("disabled", "");
+		await gitFetch();
+		await Promise.allSettled([
+			gitStatus(),
+			getGitCommits(),
+			getGitBranches(),
+			gitDiff(),
+		]);
+	} finally {
+		document.getElementById("Refresh")!.removeAttribute("disabled");
+	}
 }
 
 window.discardGitFile = async function (filePath: string) {
@@ -68,13 +86,23 @@ window.discardGitFile = async function (filePath: string) {
 }
 
 window.pushGitChanges = async function () {
-	await window.go.main.App.PushGitChanges();
-	getGitBranches();
+	try {
+		document.getElementById("PushButton")!.setAttribute("disabled", "");
+		await window.go.main.App.PushGitChanges();
+		getGitBranches();
+	} finally {
+		document.getElementById("PushButton")!.removeAttribute("disabled");
+	}
 }
 
 window.pullGitChanges = async function () {
-	await window.go.main.App.PullGitChanges();
-	window.refresh();
+	try {
+		document.getElementById("PullChanges")!.setAttribute("disabled", "");
+		await window.go.main.App.PullGitChanges();
+		window.refresh();
+	} finally {
+		document.getElementById("PullChanges")!.removeAttribute("disabled");
+	}
 }
 
 import appHtml from './app.html?raw';
@@ -83,8 +111,8 @@ import commitPanelHtml from './panels/commitPanel.html?raw';
 
 function loadHtml() {
 	document.querySelector('#app')!.innerHTML = appHtml;
-	document.getElementById('branchPanel')!.innerHTML = branchPanelHtml;
-	document.getElementById('commitPanel')!.innerHTML = commitPanelHtml;
+	document.getElementById('BranchPanel')!.innerHTML = branchPanelHtml;
+	document.getElementById('CommitPanel')!.innerHTML = commitPanelHtml;
 	window.refresh();
 }
 
