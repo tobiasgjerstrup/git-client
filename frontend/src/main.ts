@@ -2,7 +2,7 @@ import './style.css';
 import './app.css';
 import './defaults.css';
 
-import { getGitBranches, getGitCommits, gitDiff, gitStatus} from './git';
+import { getGitBranches, getGitCommits, gitDiff, gitFetch, gitStatus} from './git';
 
 export let openedFolder: string | null = null;
 
@@ -53,6 +53,7 @@ window.switchGitBranch = async function () {
 }
 
 window.refresh = async function () {
+	await gitFetch();
 	gitStatus();
 	getGitCommits();
 	getGitBranches();
@@ -69,6 +70,11 @@ window.discardGitFile = async function (filePath: string) {
 window.pushGitChanges = async function () {
 	await window.go.main.App.PushGitChanges();
 	getGitBranches();
+}
+
+window.pullGitChanges = async function () {
+	await window.go.main.App.PullGitChanges();
+	window.refresh();
 }
 
 import appHtml from './app.html?raw';

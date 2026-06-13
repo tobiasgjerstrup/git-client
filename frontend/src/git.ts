@@ -193,3 +193,7 @@ export async function gitDiff() {
 	document.getElementById("changes")!.innerHTML = changes;
 	console.log("Git diff output:", output);
 }
+
+export async function gitFetch() {
+	await window.go.main.App.GitFetch();
+}

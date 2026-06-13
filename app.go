@@ -114,6 +114,10 @@ func (a *App) RunGitStatus(path string) (*GitStatusResult, error) {
 	}, nil
 }
 
+func (a *App) GitFetch() error {
+	return a.runGitForRepo("fetch")
+}
+
 func (a *App) GitDiff() (*GitDiffResult, error) {
 	out, err := runCommand("git", "-C", a.repoPath, "--no-pager", "diff")
 	if err != nil {
