@@ -154,8 +154,8 @@ export async function gitStatus() {
 	const output = await window.go.main.App.RunGitStatus(openedFolder) as GitStatusOutput;
 	const resultHtml = generateGitStatusHtml(output);
 	currentBranchName = output.branchName;
-	document.getElementById("result")!.innerHTML = resultHtml;
-	document.getElementById("branchName")!.innerText = `Current Branch: ${currentBranchName}`;
+	document.getElementById("Result")!.innerHTML = resultHtml;
+	document.getElementById("BranchName")!.innerText = `Current Branch: ${currentBranchName}`;
 }
 
 export async function getGitCommits() {
@@ -167,13 +167,13 @@ export async function getGitCommits() {
 		commitsHtml += `<span>${escapeHtml(commit.message)}</span><br>`;
 		commitsHtml += `<hr></div>`;
 	}
-	document.getElementById("gitCommits")!.innerHTML = commitsHtml;
+	document.getElementById("GitCommits")!.innerHTML = commitsHtml;
 }
 
 export async function getGitBranches() {
 	branches = await window.go.main.App.GetGitBranches() as GitBranch[];
 	const branchesHtml = branches.map(branch => `<p>${branch.remote ? "☁️" : "🗃️"}${escapeHtml(branch.name)} ${branch.commitsAhead}/${branch.commitsBehind}</p>`)/*(Commit ID: ${escapeHtml(branch.commitId)})</p>`)*/.join("");
-	document.getElementById("gitBranches")!.innerHTML = branchesHtml;
+	document.getElementById("GitBranches")!.innerHTML = branchesHtml;
 
 	// if local branch is ahead, highlight push button
 	if (currentBranchName) {
@@ -209,7 +209,7 @@ export async function gitDiff() {
 	}
 
 	const changes = output.files.map(file => `<h3>${escapeHtml(file.path)}</h3><pre class="changedLinesContainer">${file.diff}</pre><p>Lines Added: ${file.linesAdded}, Lines Removed: ${file.linesRemoved}</p>`).join("");
-	document.getElementById("changes")!.innerHTML = changes;
+	document.getElementById("Changes")!.innerHTML = changes;
 }
 
 export async function gitFetch() {

@@ -28,7 +28,7 @@ window.unstageGitFile = async function (filePath: string) {
 }
 
 window.commitGitChanges = async function () {
-	const messageInput = document.getElementById("commit message") as HTMLInputElement;
+	const messageInput = document.getElementById("CommitMessage") as HTMLInputElement;
 	const message = messageInput.value;
 	if (!message) {
 		alert("Please enter a commit message.");
@@ -40,7 +40,7 @@ window.commitGitChanges = async function () {
 }
 
 window.switchGitBranch = async function () {
-	const branchInput = document.getElementById("branch name") as HTMLInputElement;
+	const branchInput = document.getElementById("BranchName") as HTMLInputElement;
 	const branchName = branchInput.value;
 	if (!branchName) {
 		alert("Please enter a branch name");
@@ -82,8 +82,8 @@ import commitPanelHtml from './panels/commitPanel.html?raw';
 
 function loadHtml() {
 	document.querySelector('#app')!.innerHTML = appHtml;
-	document.getElementById('branchPanel')!.innerHTML = branchPanelHtml;
-	document.getElementById('commitPanel')!.innerHTML = commitPanelHtml;
+	document.getElementById('BranchPanel')!.innerHTML = branchPanelHtml;
+	document.getElementById('CommitPanel')!.innerHTML = commitPanelHtml;
 	window.refresh();
 }
 
