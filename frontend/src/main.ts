@@ -28,35 +28,45 @@ window.unstageGitFile = async function (filePath: string) {
 }
 
 window.commitGitChanges = async function () {
+	document.getElementById("CommitChanges")!.setAttribute("disabled", "");
 	const messageInput = document.getElementById("CommitMessage") as HTMLInputElement;
 	const message = messageInput.value;
 	if (!message) {
 		alert("Please enter a commit message.");
+		document.getElementById("CommitChanges")!.removeAttribute("disabled");
 		return;
 	}
 	await window.go.main.App.CommitGitChanges(message);
 	messageInput.value = "";
+	document.getElementById("CommitChanges")!.removeAttribute("disabled");
 	window.refresh();
 }
 
 window.switchGitBranch = async function () {
+	document.getElementById("SwitchBranch")!.setAttribute("disabled", "");
 	const branchInput = document.getElementById("BranchName") as HTMLInputElement;
 	const branchName = branchInput.value;
 	if (!branchName) {
 		alert("Please enter a branch name");
+		document.getElementById("SwitchBranch")!.removeAttribute("disabled");
 		return;
 	}
 	await window.go.main.App.SwitchGitBranch(branchName);
 	branchInput.value = "";
 	window.refresh();
+	document.getElementById("SwitchBranch")!.removeAttribute("disabled");
 }
 
 window.refresh = async function () {
+	document.getElementById("Refresh")!.setAttribute("disabled", "");
 	await gitFetch();
-	gitStatus();
-	getGitCommits();
-	getGitBranches();
-	gitDiff();
+	await Promise.allSettled([
+		gitStatus(),
+		getGitCommits(),
+		getGitBranches(),
+		gitDiff(),
+	]);
+	document.getElementById("Refresh")!.removeAttribute("disabled");
 }
 
 window.discardGitFile = async function (filePath: string) {
@@ -67,13 +77,17 @@ window.discardGitFile = async function (filePath: string) {
 }
 
 window.pushGitChanges = async function () {
+	document.getElementById("PushButton")!.setAttribute("disabled", "");
 	await window.go.main.App.PushGitChanges();
 	getGitBranches();
+	document.getElementById("PushButton")!.removeAttribute("disabled");
 }
 
 window.pullGitChanges = async function () {
+	document.getElementById("PullChanges")!.setAttribute("disabled", "");
 	await window.go.main.App.PullGitChanges();
 	window.refresh();
+	document.getElementById("PullChanges")!.removeAttribute("disabled");
 }
 
 import appHtml from './app.html?raw';

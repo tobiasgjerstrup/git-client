@@ -180,12 +180,12 @@ export async function getGitBranches() {
 		const currentBranch = branches.find(branch => branch.name === currentBranchName && !branch.remote);
 		const remoteBranch = branches.find(branch => branch.name === "origin/"+currentBranchName && branch.remote);
 		if (!remoteBranch) {
-			document.getElementById("PushButton")!.classList.add("button-highlight");
+			document.getElementById("PushButton")!.classList.add("highlight");
 		} else {
 			if (remoteBranch && currentBranch && currentBranch.commitsAhead > remoteBranch.commitsAhead) {
-				document.getElementById("PushButton")!.classList.add("button-highlight");
+				document.getElementById("PushButton")!.classList.add("highlight");
 			} else {
-				document.getElementById("PushButton")!.classList.remove("button-highlight");
+				document.getElementById("PushButton")!.classList.remove("highlight");
 			}
 		}
 	}

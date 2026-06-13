@@ -9,6 +9,18 @@ button {
 	&:hover {
 		background-color: #333;
 	}
+	&.highlight {
+		background-color: #007bff;
+		color: white;
+		&:hover {
+			background-color: #0056b3;
+		}
+	}
+	&:disabled {
+		background-color: #555;
+		color: #aaa;
+		cursor: not-allowed;
+	}
 }
 
 input {
