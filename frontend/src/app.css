@@ -92,4 +92,7 @@
 .button-highlight {
 	background-color: #007bff;
 	color: white;
+	&:hover {
+		background-color: #0056b3;
+	}
 }
