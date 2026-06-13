@@ -58,7 +58,7 @@ export interface GitBranch {
 
 let commits: GitCommit[] = [];
 let branches: GitBranch[] = [];
-let currentBranch: string = "";
+let currentBranchName: string = "";
 
 export function escapeHtml(value: string): string {
 	return value
@@ -153,9 +153,9 @@ export function generateGitStatusHtml(output: GitStatusOutput): string {
 export async function gitStatus() {
 	const output = await window.go.main.App.RunGitStatus(openedFolder) as GitStatusOutput;
 	const resultHtml = generateGitStatusHtml(output);
-	currentBranch = output.branchName;
+	currentBranchName = output.branchName;
 	document.getElementById("result")!.innerHTML = resultHtml;
-	document.getElementById("branchName")!.innerText = `Current Branch: ${currentBranch}`;
+	document.getElementById("branchName")!.innerText = `Current Branch: ${currentBranchName}`;
 }
 
 export async function getGitCommits() {
@@ -174,14 +174,19 @@ export async function getGitBranches() {
 	branches = await window.go.main.App.GetGitBranches() as GitBranch[];
 	const branchesHtml = branches.map(branch => `<p>${branch.remote ? "☁️" : "🗃️"}${escapeHtml(branch.name)} ${branch.commitsAhead}/${branch.commitsBehind}</p>`)/*(Commit ID: ${escapeHtml(branch.commitId)})</p>`)*/.join("");
 	document.getElementById("gitBranches")!.innerHTML = branchesHtml;
-	
+
 	// if local branch is ahead, highlight push button
-	if (currentBranch) {
-		const remoteBranch = branches.find(branch => branch.name === "origin/"+currentBranch && branch.remote);
+	if (currentBranchName) {
+		const currentBranch = branches.find(branch => branch.name === currentBranchName && !branch.remote);
+		const remoteBranch = branches.find(branch => branch.name === "origin/"+currentBranchName && branch.remote);
 		if (!remoteBranch) {
 			document.getElementById("PushButton")!.classList.add("button-highlight");
 		} else {
-			document.getElementById("PushButton")!.classList.remove("button-highlight");
+			if (remoteBranch && currentBranch && currentBranch.commitsAhead > remoteBranch.commitsAhead) {
+				document.getElementById("PushButton")!.classList.add("button-highlight");
+			} else {
+				document.getElementById("PushButton")!.classList.remove("button-highlight");
+			}
 		}
 	}
 }
