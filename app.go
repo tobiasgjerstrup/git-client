@@ -205,7 +205,7 @@ func (a *App) GitDiff() (*GitDiffResult, error) {
 }
 
 func (a *App) GetCommitHistory() (*[]Commit, error) {
-	out, err := runCommand("git", "-C", a.repoPath, "log", "--pretty=format:%H|%an|%ad|%s", "--date=iso")
+	out, err := runCommand("git", "-C", a.repoPath, "log", "--max-count=100", "--pretty=format:%H|%an|%ad|%s", "--date=iso")
 	if err != nil {
 		fmt.Printf("Error getting git log: %v\n", err)
 		return nil, err
@@ -307,10 +307,20 @@ func (a *App) UnstageGitFile(filePath string) error {
 }
 
 func (a *App) GetGitBranches() (*[]GitBranch, error) {
-	out, err := runCommand("git", "-C", a.repoPath, "for-each-ref", "--format=%(refname)|%(objectname)", "refs/heads", "refs/remotes")
+	// all branches:
+	//out, err := runCommand("git", "-C", a.repoPath, "for-each-ref", "--format=%(refname)|%(objectname)", "refs/heads", "refs/remotes")
+
+	// only local branches:
+    out, err := runCommand("git", "-C", a.repoPath, "for-each-ref", "--format=%(refname)|%(objectname)", "refs/heads")
 	if err != nil {
 		return nil, err
 	}
+
+	cloudBranches, err := runCommand("git", "-C", a.repoPath, "for-each-ref", "--sort=-committerdate", "--count=20", "--format=%(refname)|%(objectname)", "refs/remotes")
+	if err != nil {
+		return nil, err
+	}
+	out += "\n" + cloudBranches
 
 	defaultBranch, err := getDefaultBranch(a.repoPath)
 	if err != nil {
