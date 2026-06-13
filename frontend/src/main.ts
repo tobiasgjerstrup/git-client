@@ -22,7 +22,6 @@ window.stageGitFile = async function (filePath: string) {
 
 window.unstageGitFile = async function (filePath: string) {
 	filePath = openedFolder ? `${openedFolder}/${filePath}` : filePath;
-	console.log(`Unstaging file: ${filePath}`);
 	await window.go.main.App.UnstageGitFile(filePath);
 	gitDiff();
 	gitStatus();

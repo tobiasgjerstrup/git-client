@@ -56,6 +56,10 @@ export interface GitBranch {
 	commitsBehind: number;
 }
 
+let commits: GitCommit[] = [];
+let branches: GitBranch[] = [];
+let currentBranch: string = "";
+
 export function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, "&amp;")
@@ -148,15 +152,16 @@ export function generateGitStatusHtml(output: GitStatusOutput): string {
 
 export async function gitStatus() {
 	const output = await window.go.main.App.RunGitStatus(openedFolder) as GitStatusOutput;
-	const resultHtml = generateGitStatusHtml(output);	
+	const resultHtml = generateGitStatusHtml(output);
+	currentBranch = output.branchName;
 	document.getElementById("result")!.innerHTML = resultHtml;
-	document.getElementById("branchName")!.innerText = `Current Branch: ${output.branchName}`;
+	document.getElementById("branchName")!.innerText = `Current Branch: ${currentBranch}`;
 }
 
 export async function getGitCommits() {
-	const output = await window.go.main.App.GetCommitHistory() as GitCommit[];
+	commits = await window.go.main.App.GetCommitHistory() as GitCommit[];
 	let commitsHtml = "";
-	for (const commit of output) {
+	for (const commit of commits) {
 		commitsHtml += `<div class="commit">`
 		commitsHtml += `<span>${commit.date.substring(0, 16)} <strong>${escapeHtml(commit.author)}</strong></span><br>`;
 		commitsHtml += `<span>${escapeHtml(commit.message)}</span><br>`;
@@ -166,10 +171,19 @@ export async function getGitCommits() {
 }
 
 export async function getGitBranches() {
-	const branches = await window.go.main.App.GetGitBranches() as GitBranch[];
+	branches = await window.go.main.App.GetGitBranches() as GitBranch[];
 	const branchesHtml = branches.map(branch => `<p>${branch.remote ? "☁️" : "🗃️"}${escapeHtml(branch.name)} ${branch.commitsAhead}/${branch.commitsBehind}</p>`)/*(Commit ID: ${escapeHtml(branch.commitId)})</p>`)*/.join("");
 	document.getElementById("gitBranches")!.innerHTML = branchesHtml;
-	console.log(branches);
+	
+	// if local branch is ahead, highlight push button
+	if (currentBranch) {
+		const remoteBranch = branches.find(branch => branch.name === "origin/"+currentBranch && branch.remote);
+		if (!remoteBranch) {
+			document.getElementById("PushButton")!.classList.add("button-highlight");
+		} else {
+			document.getElementById("PushButton")!.classList.remove("button-highlight");
+		}
+	}
 }
 
 export async function gitDiff() {
@@ -191,7 +205,6 @@ export async function gitDiff() {
 
 	const changes = output.files.map(file => `<h3>${escapeHtml(file.path)}</h3><pre class="changedLinesContainer">${file.diff}</pre><p>Lines Added: ${file.linesAdded}, Lines Removed: ${file.linesRemoved}</p>`).join("");
 	document.getElementById("changes")!.innerHTML = changes;
-	console.log("Git diff output:", output);
 }
 
 export async function gitFetch() {
