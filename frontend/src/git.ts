@@ -1,5 +1,3 @@
-import { openedFolder } from "./main";
-
 type GitPorcelainV2Key = "1" | "2" | "u" | "?" | "!";
 
 type GitStatusLine = {
@@ -151,7 +149,7 @@ export function generateGitStatusHtml(output: GitStatusOutput): string {
 }
 
 export async function gitStatus() {
-	const output = await window.go.main.App.RunGitStatus(openedFolder) as GitStatusOutput;
+	const output = await window.go.main.App.RunGitStatus() as GitStatusOutput;
 	const resultHtml = generateGitStatusHtml(output);
 	currentBranchName = output.branchName;
 	document.getElementById("Result")!.innerHTML = resultHtml;

@@ -1,54 +1,21 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"tobiasgitclient/internal/git"
 )
 
 // App struct
 type App struct {
 	ctx      context.Context
 	repoPath string
-}
-
-type Commit struct {
-	Hash    string `json:"hash"`
-	Author  string `json:"author"`
-	Date    string `json:"date"`
-	Message string `json:"message"`
-}
-
-type GitStatusResult struct {
-	Files      []string `json:"files"`
-	BranchName string   `json:"branchName"`
-}
-
-type GitDiffFile struct {
-	Path         string `json:"path"`
-	Diff         string `json:"diff"`
-	LinesAdded   int    `json:"linesAdded"`
-	LinesRemoved int    `json:"linesRemoved"`
-}
-
-type GitDiffResult struct {
-	Files []GitDiffFile `json:"files"`
-}
-
-type GitBranch struct {
-	Remote        bool   `json:"remote"`
-	Name          string `json:"name"`
-	CommitId      string `json:"commitId"`
-	CommitsBehind int    `json:"commitsBehind"`
-	CommitsAhead  int    `json:"commitsAhead"`
 }
 
 // NewApp creates a new App application struct
@@ -72,143 +39,19 @@ func (a *App) PickFolder() string {
 	return folder
 }
 
-func (a *App) RunGitStatus(path string) (*GitStatusResult, error) {
-	if path != "" {
-		a.repoPath = path
-	}
-
-	effectivePath := path
-	if effectivePath == "" {
-		effectivePath = a.repoPath
-	}
-	out, err := runCommand("git", "-C", effectivePath, "status", "--porcelain=v2", "--branch")
-	if err != nil {
-		return nil, err
-	}
-
-	lines := strings.Split(string(out), "\n")
-	files := []string{}
-	branchName := ""
-
-	for _, line := range lines {
-		line = strings.TrimSuffix(line, "\r")
-		if line == "" {
-			continue
-		}
-
-		if strings.HasPrefix(line, "# branch.head ") {
-			branchName = strings.TrimPrefix(line, "# branch.head ")
-			continue
-		}
-
-		fileLine, ok := parsePorcelainV2FileLine(line)
-		if !ok {
-			continue
-		}
-		files = append(files, fileLine)
-	}
-
-	return &GitStatusResult{
-		Files:      files,
-		BranchName: branchName,
-	}, nil
+func (a *App) RunGitStatus() (*git.GitStatusResult, error) {
+	return git.GitStatus(a.repoPath)	
 }
 
-func (a *App) GitFetch() error {
+func (a *App) GitFetch() (string, error) {
 	return a.runGitForRepo("fetch")
 }
 
-func (a *App) GitDiff() (*GitDiffResult, error) {
-	out, err := runCommand("git", "-C", a.repoPath, "--no-pager", "diff")
-	if err != nil {
-		return nil, err
-	}
-
-	lines := strings.Split(string(out), "\n")
-	files := []GitDiffFile{}
-	file := GitDiffFile{}
-	for _, line := range lines {
-		line = strings.TrimSuffix(line, "\r")
-		if line == "" {
-			continue
-		}
-		if strings.HasPrefix(line, "diff --git ") {
-			// push the previous file if exists
-			if file.Path != "" {
-				files = append(files, file)
-				file = GitDiffFile{}
-			}
-
-			// extract file path from line like: diff --git a/file.txt b/file.txt
-			rest := strings.TrimPrefix(line, "diff --git ")
-			idx := strings.LastIndex(rest, " b/")
-			file.Path = rest[idx+3:]
-			file.Path = strings.Trim(file.Path, "\"")
-			continue
-		}
-		if file.Path != "" {
-			file.Diff += line + "\n"
-			if strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
-				file.LinesAdded++
-				continue
-			} else if strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---") {
-				file.LinesRemoved++
-				continue
-			}
-		}
-	}
-	// push the last file if exists
-	if file.Path != "" {
-		files = append(files, file)
-	}
-
-	// Git diffs do not include completely new files. So we add them here.
-	out, err = runCommand("git", "-C", a.repoPath, "ls-files", "--others", "--exclude-standard")
-	if err != nil {
-		return nil, err
-	}
-
-	lines = strings.Split(string(out), "\n")
-	for _, line := range lines {
-		line = strings.TrimSuffix(line, "\r")
-		if line == "" {
-			continue
-		}
-
-		abs := filepath.Join(a.repoPath, line)
-		data, err := os.ReadFile(abs)
-		if err != nil {
-			continue
-		}
-
-		// Build a synthetic diff for new files
-		diff := fmt.Sprintf(
-			"diff --git a/%s b/%s\nnew file mode 100644\n--- /dev/null\n+++ b/%s\n",
-			line, line, line,
-		)
-
-		// Count lines + build diff body
-		added := 0
-		scanner := bufio.NewScanner(bytes.NewReader(data))
-		for scanner.Scan() {
-			diff += "+" + scanner.Text() + "\n"
-			added++
-		}
-
-		files = append(files, GitDiffFile{
-			Path:         line,
-			Diff:         diff,
-			LinesAdded:   added,
-			LinesRemoved: 0,
-		})
-	}
-
-	return &GitDiffResult{
-		Files: files,
-	}, nil
+func (a *App) GitDiff() (*git.GitDiffResult, error) {
+	return git.GitDiff(a.repoPath)	
 }
 
-func (a *App) GetCommitHistory() (*[]Commit, error) {
+func (a *App) GetCommitHistory() (*[]git.Commit, error) {
 	out, err := runCommand("git", "-C", a.repoPath, "log", "--max-count=100", "--pretty=format:%H|%an|%ad|%s", "--date=iso")
 	if err != nil {
 		fmt.Printf("Error getting git log: %v\n", err)
@@ -216,13 +59,13 @@ func (a *App) GetCommitHistory() (*[]Commit, error) {
 	}
 
 	commitLines := strings.Split(string(out), "\n")
-	commits := []Commit{}
+	commits := []git.Commit{}
 	for _, commit := range commitLines {
 		parts := strings.SplitN(commit, "|", 4)
 		if len(parts) < 4 {
 			continue
 		}
-		commits = append(commits, Commit{
+		commits = append(commits, git.Commit{
 			Hash:    parts[0],
 			Author:  parts[1],
 			Date:    parts[2],
@@ -233,20 +76,20 @@ func (a *App) GetCommitHistory() (*[]Commit, error) {
 	return &commits, nil
 }
 
-func (a *App) DiscardGitFile(filePath string) error {
+func (a *App) DiscardGitFile(filePath string) (string, error) {
 	// If a file is new (?? in git status), we need to remove it instead of restoring it
 	fileStatus, err := runCommand("git", "-C", a.repoPath, "status", "--porcelain", "--", filePath)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if strings.HasPrefix(fileStatus, "??") {
-		return os.Remove(filePath)
+		return "", os.Remove(filePath)
 	}
 	return a.runGitForRepo("restore", "--", filePath)
 }
 
-func (a *App) StageGitFile(filePath string) error {
+func (a *App) StageGitFile(filePath string) (string, error) {
 	return a.runGitForRepo("add", "--", filePath)
 }
 
@@ -306,11 +149,11 @@ func (a *App) PullGitChanges() error {
 	return nil
 }
 
-func (a *App) UnstageGitFile(filePath string) error {
+func (a *App) UnstageGitFile(filePath string) (string, error) {
 	return a.runGitForRepo("restore", "--staged", "--", filePath)
 }
 
-func (a *App) GetGitBranches() (*[]GitBranch, error) {
+func (a *App) GetGitBranches() (*[]git.GitBranch, error) {
 	// all branches:
 	//out, err := runCommand("git", "-C", a.repoPath, "for-each-ref", "--format=%(refname)|%(objectname)", "refs/heads", "refs/remotes")
 
@@ -333,7 +176,7 @@ func (a *App) GetGitBranches() (*[]GitBranch, error) {
 	}
 	defaultBranch = "origin/" + defaultBranch
 	lines := strings.Split(string(out), "\n")
-	branches := []GitBranch{}
+	branches := []git.GitBranch{}
 	for _, line := range lines {
 		line = strings.TrimSuffix(line, "\r")
 		if line == "" {
@@ -376,7 +219,7 @@ func (a *App) GetGitBranches() (*[]GitBranch, error) {
 			nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/heads/"), "|", 2)
 		}
 		fmt.Printf("Branch: %s, Remote: %v, Commits Behind: %d, Commits Ahead: %d\n", nameAndHash[0], remote, commitsBehind, commitsAhead)
-		branches = append(branches, GitBranch{
+		branches = append(branches, git.GitBranch{
 			Remote:        remote,
 			Name:          nameAndHash[0],
 			CommitId:      nameAndHash[1],
@@ -389,54 +232,18 @@ func (a *App) GetGitBranches() (*[]GitBranch, error) {
 
 }
 
-func (a *App) runGitForRepo(args ...string) error {
+func (a *App) runGitForRepo(args ...string) (string, error) {
 	if a.repoPath == "" {
-		return fmt.Errorf("no repository selected")
+		return "", fmt.Errorf("no repository selected")
 	}
 
 	commandArgs := append([]string{"-C", a.repoPath}, args...)
-	_, err := runCommand("git", commandArgs...)
+	out, err := runCommand("git", commandArgs...)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
-}
-
-func parsePorcelainV2FileLine(line string) (string, bool) {
-	switch {
-	case strings.HasPrefix(line, "1 "):
-		// 1 <xy> <sub> <mH> <mI> <mW> <hH> <hI> <path>
-		parts := strings.SplitN(strings.TrimPrefix(line, "1 "), " ", 8)
-		if len(parts) < 8 {
-			return "", false
-		}
-		return fmt.Sprintf("%s %s", parts[0], parts[7]), true
-	case strings.HasPrefix(line, "2 "):
-		// 2 <xy> <sub> <mH> <mI> <mW> <hH> <hI> <X><score> <path>\t<origPath>
-		parts := strings.SplitN(strings.TrimPrefix(line, "2 "), " ", 9)
-		if len(parts) < 9 {
-			return "", false
-		}
-		path := parts[8]
-		if tabIdx := strings.Index(path, "\t"); tabIdx >= 0 {
-			path = path[:tabIdx]
-		}
-		return fmt.Sprintf("%s %s", parts[0], path), true
-	case strings.HasPrefix(line, "u "):
-		// u <xy> <sub> <m1> <m2> <m3> <mW> <h1> <h2> <h3> <path>
-		parts := strings.SplitN(strings.TrimPrefix(line, "u "), " ", 10)
-		if len(parts) < 10 {
-			return "", false
-		}
-		return fmt.Sprintf("%s %s", parts[0], parts[9]), true
-	case strings.HasPrefix(line, "? "):
-		return "?? " + strings.TrimPrefix(line, "? "), true
-	case strings.HasPrefix(line, "! "):
-		return "!! " + strings.TrimPrefix(line, "! "), true
-	default:
-		return "", false
-	}
+	return out, nil
 }
 
 func runCommand(name string, args ...string) (string, error) {
