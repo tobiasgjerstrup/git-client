@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -166,6 +167,174 @@ func GitDiff(repoPath string) (*GitDiffResult, error) {
 	}, nil
 }
 
+func GetCommitHistory(repoPath string) (*[]Commit, error) {
+	out, err := runGitForRepo(repoPath, "log", "--max-count=100", "--pretty=format:%H|%an|%ad|%s", "--date=iso")
+	if err != nil {
+		fmt.Printf("Error getting git log: %v\n", err)
+		return nil, err
+	}
+
+	commitLines := strings.Split(string(out), "\n")
+	commits := []Commit{}
+	for _, commit := range commitLines {
+		parts := strings.SplitN(commit, "|", 4)
+		if len(parts) < 4 {
+			continue
+		}
+		commits = append(commits, Commit{
+			Hash:    parts[0],
+			Author:  parts[1],
+			Date:    parts[2],
+			Message: parts[3],
+		})
+	}
+
+	return &commits, nil
+}
+
+func DiscardGitFile(repoPath string, filePath string) (string, error) {
+	// If a file is new (?? in git status), we need to remove it instead of restoring it
+	fileStatus, err := runGitForRepo(repoPath, "status", "--porcelain", "--", filePath)
+	if err != nil {
+		return "", err
+	}
+
+	if strings.HasPrefix(fileStatus, "??") {
+		return "", os.Remove(filePath)
+	}
+	return runGitForRepo(repoPath, "restore", "--", filePath)
+}
+
+func StageGitFile(repoPath string, filePath string) (string, error) {
+	return runGitForRepo(repoPath, "add", "--", filePath)
+}
+
+func CommitGitChanges(repoPath string, message string) error {
+	_, err := runGitForRepo(repoPath, "commit", "-m", message)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SwitchGitBranch(repoPath string, branchName string) error {
+	// Attempt to switch to branch
+	_, err := runGitForRepo(repoPath, "switch", branchName)
+	if err == nil {
+		return nil
+	}
+
+	_, err = runGitForRepo(repoPath, "switch", "-c", branchName)
+	if err != nil {
+		fmt.Printf("Error switching/creating branch: %v\n", err)
+		return err
+	}
+	return nil
+}
+
+func PushGitChanges(repoPath string) error {
+	_, err := runGitForRepo(repoPath, "push")
+	if err == nil {
+		return nil
+	}
+
+	if strings.Contains(err.Error(), "has no upstream branch.") {
+		_, err = runGitForRepo(repoPath, "push", "--set-upstream", "origin", "HEAD")
+		if err != nil {
+			fmt.Printf("Error pushing with upstream: %v\n", err)
+			return err
+		}
+		return nil
+	}
+	fmt.Printf("Error pushing changes: %v\n", err)
+	return err
+}
+
+func PullGitChanges(repoPath string) error {
+	_, err := runGitForRepo(repoPath, "pull")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func UnstageGitFile(repoPath string, filePath string) (string, error) {
+	return runGitForRepo(repoPath, "restore", "--staged", "--", filePath)
+}
+
+func GetGitBranches(repoPath string) (*[]GitBranch, error) {
+	// only local branches:
+	out, err := runGitForRepo(repoPath, "for-each-ref", "--format=%(refname)|%(objectname)", "refs/heads")
+	if err != nil {
+		return nil, err
+	}
+
+	cloudBranches, err := runGitForRepo(repoPath, "for-each-ref", "--sort=-committerdate", "--count=20", "--format=%(refname)|%(objectname)", "refs/remotes/origin")
+	if err != nil {
+		return nil, err
+	}
+	out += "\n" + cloudBranches
+
+	defaultBranch, err := getDefaultBranch(repoPath)
+	if err != nil {
+		fmt.Printf("Error getting default branch: %v\n", err)
+		return nil, err
+	}
+	defaultBranch = "origin/" + defaultBranch
+	lines := strings.Split(string(out), "\n")
+	branches := []GitBranch{}
+	for _, line := range lines {
+		line = strings.TrimSuffix(line, "\r")
+		if line == "" {
+			continue
+		}
+
+		remote := false
+		nameAndHash := []string{}
+		commitsBehind := 0
+		commitsAhead := 0
+		out, err = runGitForRepo(repoPath, "rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", strings.Split(line, "|")[0], defaultBranch))
+		parts := strings.Split(strings.TrimSpace(out), "\t")
+		fmt.Printf("Rev-list output: %q\n", out)
+		fmt.Printf("Rev-list parts: %#v\n", parts)
+
+		if len(parts) >= 2 {
+			ahead, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
+			behind, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
+
+			if err1 == nil && err2 == nil {
+				commitsAhead = ahead
+				commitsBehind = behind
+			} else {
+				fmt.Println("Parse error:", err1, err2)
+			}
+		}
+		if strings.HasPrefix(line, "refs/remotes/") && strings.Contains(line, "/HEAD|") {
+			continue
+		}
+		if strings.HasPrefix(line, "refs/remotes/origin/") {
+			remote = true
+			nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/remotes/"), "|", 2)
+		} else {
+			nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/heads/"), "|", 2)
+		}
+		fmt.Printf("Branch: %s, Remote: %v, Commits Behind: %d, Commits Ahead: %d\n", nameAndHash[0], remote, commitsBehind, commitsAhead)
+		branches = append(branches, GitBranch{
+			Remote:        remote,
+			Name:          nameAndHash[0],
+			CommitId:      nameAndHash[1],
+			CommitsBehind: commitsBehind,
+			CommitsAhead:  commitsAhead,
+		})
+	}
+
+	return &branches, nil
+}
+
+func GitFetch(repoPath string) (string, error) {
+	return runGitForRepo(repoPath, "fetch")
+}
+
 func parsePorcelainV2FileLine(line string) (string, bool) {
 	switch {
 	case strings.HasPrefix(line, "1 "):
@@ -226,3 +395,21 @@ func runGitForRepo(repoPath string, args ...string) (string, error) {
 
 	return out, nil
 }
+
+func getDefaultBranch(repoPath string) (string, error) {
+	out, err := runGitForRepo(repoPath, "remote", "show", "origin")
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(out, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "HEAD branch:") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "HEAD branch:")), nil
+		}
+	}
+
+	return "", fmt.Errorf("default branch not found")
+}
+
