@@ -95,6 +95,15 @@ window.pushGitChanges = async function () {
 	}
 }
 
+window.toggleDiff = function (headerEl: HTMLElement) {
+	const content = headerEl.nextElementSibling as HTMLElement;
+	if (content.style.display === "none") {
+		content.style.display = "";
+	} else {
+		content.style.display = "none";
+	}
+}
+
 window.pullGitChanges = async function () {
 	try {
 		document.getElementById("PullChanges")!.setAttribute("disabled", "");

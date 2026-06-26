@@ -55,6 +55,15 @@
 	text-align: left;
 }
 
+.diff-file-header {
+	cursor: pointer;
+	user-select: none;
+}
+
+.diff-file-header:hover {
+	text-decoration: underline;
+}
+
 .addedLine {
 	color: #00ff00;
 }

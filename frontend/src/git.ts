@@ -206,7 +206,7 @@ export async function gitDiff() {
 		file.diff = newDiff.join("\n");
 	}
 
-	const changes = output.files.map(file => `<h3>${escapeHtml(file.path)}</h3><pre class="changedLinesContainer">${file.diff}</pre><p>Lines Added: ${file.linesAdded}, Lines Removed: ${file.linesRemoved}</p>`).join("");
+	const changes = output.files.map(file => `<h3 class="diff-file-header" onclick="toggleDiff(this)">${escapeHtml(file.path)}</h3><div class="diff-content" style="display:none"><pre class="changedLinesContainer">${file.diff}</pre><p>Lines Added: ${file.linesAdded}, Lines Removed: ${file.linesRemoved}</p></div>`).join("");
 	document.getElementById("Changes")!.innerHTML = changes;
 }
 

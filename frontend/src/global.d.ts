@@ -12,5 +12,6 @@ declare global {
 		switchGitBranch: (branchName: string) => Promise<void>;
 		discardGitFile: (filePath: string) => Promise<void>;
 		refresh(): Promise<void>;
+		toggleDiff: (el: HTMLElement) => void;
 	}
 }
