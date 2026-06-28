@@ -83,6 +83,63 @@ func GitDiff(repoPath string) (*GitDiffResult, error) {
 		return nil, err
 	}
 
+	result, err := parseDiffOutput(out)
+	if err != nil {
+		return nil, err
+	}
+
+	// Git diffs do not include completely new files. So we add them here.
+	untrackedOut, err := runGitForRepo(repoPath, "ls-files", "--others", "--exclude-standard")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, line := range strings.Split(string(untrackedOut), "\n") {
+		line = strings.TrimSuffix(line, "\r")
+		if line == "" {
+			continue
+		}
+
+		abs := filepath.Join(repoPath, line)
+		data, err := os.ReadFile(abs)
+		if err != nil {
+			continue
+		}
+
+		diff := fmt.Sprintf(
+			"diff --git a/%s b/%s\nnew file mode 100644\n--- /dev/null\n+++ b/%s\n",
+			line, line, line,
+		)
+
+		added := 0
+		scanner := bufio.NewScanner(bytes.NewReader(data))
+		for scanner.Scan() {
+			diff += "+" + scanner.Text() + "\n"
+			added++
+		}
+
+		result.Files = append(result.Files, GitDiffFile{
+			Path:         line,
+			Diff:         diff,
+			LinesAdded:   added,
+			LinesRemoved: 0,
+		})
+	}
+
+	return result, nil
+}
+
+func GitDiffStaged(repoPath string) (*GitDiffResult, error) {
+	out, err := runGitForRepo(repoPath, "--no-pager", "diff", "--cached")
+	if err != nil {
+		return nil, err
+	}
+
+	return parseDiffOutput(out)
+}
+
+func parseDiffOutput(out string) (*GitDiffResult, error) {
+
 	lines := strings.Split(string(out), "\n")
 	files := []GitDiffFile{}
 	file := GitDiffFile{}
@@ -119,47 +176,6 @@ func GitDiff(repoPath string) (*GitDiffResult, error) {
 	// push the last file if exists
 	if file.Path != "" {
 		files = append(files, file)
-	}
-
-	// Git diffs do not include completely new files. So we add them here.
-	out, err = runGitForRepo(repoPath, "ls-files", "--others", "--exclude-standard")
-	if err != nil {
-		return nil, err
-	}
-
-	lines = strings.Split(string(out), "\n")
-	for _, line := range lines {
-		line = strings.TrimSuffix(line, "\r")
-		if line == "" {
-			continue
-		}
-
-		abs := filepath.Join(repoPath, line)
-		data, err := os.ReadFile(abs)
-		if err != nil {
-			continue
-		}
-
-		// Build a synthetic diff for new files
-		diff := fmt.Sprintf(
-			"diff --git a/%s b/%s\nnew file mode 100644\n--- /dev/null\n+++ b/%s\n",
-			line, line, line,
-		)
-
-		// Count lines + build diff body
-		added := 0
-		scanner := bufio.NewScanner(bytes.NewReader(data))
-		for scanner.Scan() {
-			diff += "+" + scanner.Text() + "\n"
-			added++
-		}
-
-		files = append(files, GitDiffFile{
-			Path:         line,
-			Diff:         diff,
-			LinesAdded:   added,
-			LinesRemoved: 0,
-		})
 	}
 
 	return &GitDiffResult{

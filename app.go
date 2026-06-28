@@ -46,6 +46,10 @@ func (a *App) GitDiff() (*git.GitDiffResult, error) {
 	return git.GitDiff(a.repoPath)
 }
 
+func (a *App) GitDiffStaged() (*git.GitDiffResult, error) {
+	return git.GitDiffStaged(a.repoPath)
+}
+
 func (a *App) GetCommitHistory() (*[]git.Commit, error) {
 	return git.GetCommitHistory(a.repoPath)
 }
