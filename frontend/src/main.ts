@@ -2,7 +2,7 @@ import './style.css';
 import './app.css';
 import './defaults.css';
 
-import { getGitBranches, getGitCommits, gitDiff, gitFetch, gitStatus} from './git';
+import { getGitBranches, getGitCommits, gitDiff, gitFetch } from './git';
 
 export let openedFolder: string | null = null;
 
@@ -17,14 +17,12 @@ window.stageGitFile = async function (filePath: string) {
 	filePath = openedFolder ? `${openedFolder}/${filePath}` : filePath;
 	await window.go.main.App.StageGitFile(filePath);
 	gitDiff();
-	gitStatus();
 }
 
 window.unstageGitFile = async function (filePath: string) {
 	filePath = openedFolder ? `${openedFolder}/${filePath}` : filePath;
 	await window.go.main.App.UnstageGitFile(filePath);
 	gitDiff();
-	gitStatus();
 }
 
 window.commitGitChanges = async function () {
@@ -68,7 +66,6 @@ window.refresh = async function () {
 		document.getElementById("Refresh")!.setAttribute("disabled", "");
 		await gitFetch();
 		await Promise.allSettled([
-			gitStatus(),
 			getGitCommits(),
 			getGitBranches(),
 			gitDiff(),
@@ -82,7 +79,6 @@ window.discardGitFile = async function (filePath: string) {
 	filePath = openedFolder ? `${openedFolder}/${filePath}` : filePath;
 	await window.go.main.App.DiscardGitFile(filePath);
 	gitDiff();
-	gitStatus();
 }
 
 window.pushGitChanges = async function () {
@@ -92,6 +88,16 @@ window.pushGitChanges = async function () {
 		getGitBranches();
 	} finally {
 		document.getElementById("PushButton")!.removeAttribute("disabled");
+	}
+}
+
+window.toggleDiff = function (headerEl: HTMLElement) {
+	const entry = headerEl.closest('.diff-file-entry') as HTMLElement;
+	const content = entry.querySelector('.diff-content') as HTMLElement;
+	if (content.style.display === "none") {
+		content.style.display = "";
+	} else {
+		content.style.display = "none";
 	}
 }
 

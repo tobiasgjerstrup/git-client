@@ -1,58 +1,69 @@
-.input-box .btn {
-    width: 60px;
-    height: 30px;
-    line-height: 30px;
-    border-radius: 3px;
-    border: none;
-    margin: 0 0 0 20px;
-    padding: 0 8px;
-    cursor: pointer;
+.input-box {
+	&.btn {
+		width: 60px;
+		height: 30px;
+		line-height: 30px;
+		border-radius: 3px;
+		border: none;
+		margin: 0 0 0 20px;
+		padding: 0 8px;
+		cursor: pointer;
+		&:hover {
+			background-image: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%);
+			color: #333333;
+		}
+	}
+	&.input {
+		border: none;
+		border-radius: 3px;
+		outline: none;
+		height: 30px;
+		line-height: 30px;
+		padding: 0 10px;
+		background-color: rgba(240, 240, 240, 1);
+		-webkit-font-smoothing: antialiased;
+		&:hover {
+			border: none;
+			background-color: rgba(255, 255, 255, 1);
+		}
+		&:focus {
+			border: none;
+			background-color: rgba(255, 255, 255, 1);
+		}
+	}
 }
 
-.input-box .btn:hover {
-    background-image: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%);
-    color: #333333;
+.diff-file-status {
+	&.unstaged {
+		font-style: italic;
+	}
 }
 
-.input-box .input {
-    border: none;
-    border-radius: 3px;
-    outline: none;
-    height: 30px;
-    line-height: 30px;
-    padding: 0 10px;
-    background-color: rgba(240, 240, 240, 1);
-    -webkit-font-smoothing: antialiased;
+.diff-file-entry {
+	margin-bottom: 10px;
+	border: 1px solid #333;
+	border-radius: 4px;
+	padding: 8px;
 }
 
-.input-box .input:hover {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
-}
-
-.input-box .input:focus {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
-}
-
-.staged {
+.diff-file-header-row {
 	display: flex;
+	align-items: center;
+	gap: 8px;
 	flex-wrap: wrap;
-	justify-content: center;
-	gap: 20px;
-}
-
-.unstaged {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	gap: 20px;
-	font-style: italic;
 }
 
 .changedLinesContainer {
 	background-color: #111111;
 	text-align: left;
+}
+
+.diff-file-header {
+	cursor: pointer;
+	user-select: none;
+	&:hover {
+		text-decoration: underline;
+	}
 }
 
 .addedLine {

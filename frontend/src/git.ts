@@ -1,5 +1,3 @@
-import { openedFolder } from "./main";
-
 type GitPorcelainV2Key = "1" | "2" | "u" | "?" | "!";
 
 type GitStatusLine = {
@@ -8,24 +6,6 @@ type GitStatusLine = {
 	path: string;
 	text: string;
 };
-
-const gitPorcelain: Record<GitPorcelainV2Key, { description: string }> = {
-	"1": {
-		description: "Changed",
-	},
-	"2": {
-		description: "Renamed/Copied",
-	},
-	"u": {
-		description: "Unmerged",
-	},
-	"?": {
-		description: "Untracked",
-	},
-	"!": {
-		description: "Ignored",
-	},
-} as const;
 
 export interface GitStatusOutput {
 	files: string[];
@@ -124,37 +104,9 @@ function isStagedFromXYStatus(xy: string): boolean {
 	return xy[0] !== "." && xy[0] !== " " && xy[0] !== "?" && xy[0] !== "!";
 }
 
-export function generateGitStatusHtml(output: GitStatusOutput): string {
-	let resultHtml = "";
-
-	for (const file of output.files) {
-		const parsedLine = parseGitStatusLine(file);
-		if (!parsedLine) {
-			continue;
-		}
-
-		const porcelainMeta = gitPorcelain[parsedLine.key];
-		if (!porcelainMeta) {
-			resultHtml += `<p class="unknown">${escapeHtml(file)}</p>`;
-			continue;
-		}
-		if (isStagedFromXYStatus(parsedLine.xy)) {
-			resultHtml += `<span class="staged">${escapeHtml(parsedLine.text)}</span>`;
-			resultHtml += `<button onclick='unstageGitFile(${JSON.stringify(parsedLine.path)})'>Unstage</button>`;
-		} else {
-			resultHtml += `<span class="unstaged">${escapeHtml(parsedLine.text)}</span>`;
-			resultHtml += `<button onclick='stageGitFile(${escapeHtml(JSON.stringify(parsedLine.path))})'>Stage</button>`;
-			resultHtml += `<button onclick='discardGitFile(${escapeHtml(JSON.stringify(parsedLine.path))})'>Discard</button>`;
-		}
-	}
-	return resultHtml;
-}
-
 export async function gitStatus() {
-	const output = await window.go.main.App.RunGitStatus(openedFolder) as GitStatusOutput;
-	const resultHtml = generateGitStatusHtml(output);
+	const output = await window.go.main.App.RunGitStatus() as GitStatusOutput;
 	currentBranchName = output.branchName;
-	document.getElementById("Result")!.innerHTML = resultHtml;
 	document.getElementById("BranchName")!.innerText = `Current Branch: ${currentBranchName}`;
 }
 
@@ -192,24 +144,111 @@ export async function getGitBranches() {
 }
 
 export async function gitDiff() {
-	const output = await window.go.main.App.GitDiff() as GitDiffOutput;
+	const [diffOutput, diffStagedOutput, statusOutput] = await Promise.all([
+		window.go.main.App.GitDiff() as Promise<GitDiffOutput>,
+		window.go.main.App.GitDiffStaged() as Promise<GitDiffOutput>,
+		window.go.main.App.RunGitStatus() as Promise<GitStatusOutput>,
+	]);
 
-	for (const file of output.files) {
-		const newDiff: string[] = [];
-		for (let line of file.diff.split("\n")) {
-			if (line.startsWith("+") && !line.startsWith("+++ b/" + file.path)) {
-				newDiff.push(`<span class="addedLine">${escapeHtml(line)}</span>`);
-			} else if (line.startsWith("-") && !line.startsWith("--- a/" + file.path)) {
-				newDiff.push(`<span class="removedLine">${escapeHtml(line)}</span>`);
-			} else {
-				newDiff.push(`<span class="unchangedLine">${escapeHtml(line)}</span>`);
-			}
-		}
-		file.diff = newDiff.join("\n");
+	const stagedDiffMap = new Map<string, GitDiffOutput["files"][0]>();
+	for (const file of diffStagedOutput.files) {
+		stagedDiffMap.set(file.path, file);
 	}
 
-	const changes = output.files.map(file => `<h3>${escapeHtml(file.path)}</h3><pre class="changedLinesContainer">${file.diff}</pre><p>Lines Added: ${file.linesAdded}, Lines Removed: ${file.linesRemoved}</p>`).join("");
-	document.getElementById("Changes")!.innerHTML = changes;
+	const unstagedDiffMap = new Map<string, GitDiffOutput["files"][0]>();
+	for (const file of diffOutput.files) {
+		unstagedDiffMap.set(file.path, file);
+	}
+
+	const seenPaths = new Set<string>();
+
+	for (const map of [stagedDiffMap, unstagedDiffMap]) {
+		for (const file of map.values()) {
+			const newDiff: string[] = [];
+			for (let line of file.diff.split("\n")) {
+				if (line.startsWith("+") && !line.startsWith("+++ b/" + file.path)) {
+					newDiff.push(`<span class="addedLine">${escapeHtml(line)}</span>`);
+				} else if (line.startsWith("-") && !line.startsWith("--- a/" + file.path)) {
+					newDiff.push(`<span class="removedLine">${escapeHtml(line)}</span>`);
+				} else {
+					newDiff.push(`<span class="unchangedLine">${escapeHtml(line)}</span>`);
+				}
+			}
+			file.diff = newDiff.join("\n");
+		}
+	}
+
+	let changesHtml = "";
+
+	for (const file of statusOutput.files) {
+		const parsedLine = parseGitStatusLine(file);
+		if (!parsedLine) continue;
+
+		const isStaged = isStagedFromXYStatus(parsedLine.xy);
+		seenPaths.add(parsedLine.path);
+
+		const diffFile = isStaged
+			? stagedDiffMap.get(parsedLine.path)
+			: unstagedDiffMap.get(parsedLine.path);
+
+		let buttonsHtml = "";
+		let statusClass = "";
+		if (isStaged) {
+			statusClass = "staged";
+			buttonsHtml = `<button onclick='unstageGitFile(${escapeHtml(JSON.stringify(parsedLine.path))})'>Unstage</button>`;
+		} else {
+			statusClass = "unstaged";
+			buttonsHtml = `<button onclick='stageGitFile(${escapeHtml(JSON.stringify(parsedLine.path))})'>Stage</button>`;
+			buttonsHtml += `<button onclick='discardGitFile(${escapeHtml(JSON.stringify(parsedLine.path))})'>Discard</button>`;
+		}
+
+		const diffContent = diffFile
+			? `<div class="diff-content" style="display:none"><pre class="changedLinesContainer">${diffFile.diff}</pre><p>Lines Added: ${diffFile.linesAdded}, Lines Removed: ${diffFile.linesRemoved}</p></div>`
+			: "";
+
+		changesHtml += `<div class="diff-file-entry">
+			<div class="diff-file-header-row">
+				${buttonsHtml}
+				<span class="diff-file-status ${statusClass}">${escapeHtml(parsedLine.text)}</span>
+				<h3 class="diff-file-header" onclick="toggleDiff(this)">${escapeHtml(parsedLine.path)}</h3>
+			</div>
+			${diffContent}
+		</div>`;
+	}
+
+	// Include any diff files not covered by status (edge case)
+	for (const [path, diffFile] of unstagedDiffMap) {
+		if (seenPaths.has(path)) continue;
+		seenPaths.add(path);
+
+		const buttonsHtml = `<button onclick='stageGitFile(${escapeHtml(JSON.stringify(path))})'>Stage</button><button onclick='discardGitFile(${escapeHtml(JSON.stringify(path))})'>Discard</button>`;
+
+		changesHtml += `<div class="diff-file-entry">
+			<div class="diff-file-header-row">
+				${buttonsHtml}
+				<span class="diff-file-status unstaged"></span>
+				<h3 class="diff-file-header" onclick="toggleDiff(this)">${escapeHtml(path)}</h3>
+			</div>
+			<div class="diff-content" style="display:none"><pre class="changedLinesContainer">${diffFile.diff}</pre><p>Lines Added: ${diffFile.linesAdded}, Lines Removed: ${diffFile.linesRemoved}</p></div>
+		</div>`;
+	}
+
+	for (const [path, diffFile] of stagedDiffMap) {
+		if (seenPaths.has(path)) continue;
+
+		changesHtml += `<div class="diff-file-entry">
+			<div class="diff-file-header-row">
+				<button onclick='unstageGitFile(${escapeHtml(JSON.stringify(path))})'>Unstage</button>
+				<span class="diff-file-status staged"></span>
+				<h3 class="diff-file-header" onclick="toggleDiff(this)">${escapeHtml(path)}</h3>
+			</div>
+			<div class="diff-content" style="display:none"><pre class="changedLinesContainer">${diffFile.diff}</pre><p>Lines Added: ${diffFile.linesAdded}, Lines Removed: ${diffFile.linesRemoved}</p></div>
+		</div>`;
+	}
+
+	document.getElementById("Changes")!.innerHTML = changesHtml;
+	currentBranchName = statusOutput.branchName;
+	document.getElementById("BranchName")!.innerText = `Current Branch: ${currentBranchName}`;
 }
 
 export async function gitFetch() {
