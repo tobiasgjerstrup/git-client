@@ -337,9 +337,9 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 	
 	defaultBranch = "origin/" + defaultBranch
 	lines := strings.Split(string(out), "\n")
-	branches := []GitBranch{}
+	branches := make([]GitBranch, len(lines))
 
-	for _, line := range lines {
+	for i, line := range lines {
 		line = strings.TrimSuffix(line, "\r")
 		if line == "" {
 			continue
@@ -382,13 +382,13 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 				nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/heads/"), "|", 2)
 			}
 			// fmt.Printf("Branch: %s, Remote: %v, Commits Behind: %d, Commits Ahead: %d\n", nameAndHash[0], remote, commitsBehind, commitsAhead)
-			branches = append(branches, GitBranch{
+			branches[i] = GitBranch{
 				Remote:        remote,
 				Name:          nameAndHash[0],
 				CommitId:      nameAndHash[1],
 				CommitsBehind: commitsBehind,
 				CommitsAhead:  commitsAhead,
-			})
+			}
 		}(line)
 	}
 
