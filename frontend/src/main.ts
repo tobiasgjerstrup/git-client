@@ -61,6 +61,7 @@ window.switchGitBranch = async function () {
 	}
 }
 
+/*
 window.refresh = async function () {
 	try {
 		document.getElementById("Refresh")!.setAttribute("disabled", "");
@@ -70,6 +71,34 @@ window.refresh = async function () {
 			getGitBranches(),
 			gitDiff(),
 		]);
+	} finally {
+		document.getElementById("Refresh")!.removeAttribute("disabled");
+	}
+}
+*/
+
+async function timeIt(label: string, fn: () => Promise<any>) {
+    const start = performance.now();
+    try {
+        return await fn();
+    } finally {
+        const end = performance.now();
+        console.log(`${label} took ${(end - start).toFixed(2)} ms`);
+    }
+}
+
+window.refresh = async function () {
+	try {
+		document.getElementById("Refresh")!.setAttribute("disabled", "");
+
+		await timeIt("gitFetch", () => gitFetch());
+
+		await Promise.allSettled([
+			timeIt("getGitCommits", () => getGitCommits()),
+			timeIt("getGitBranches", () => getGitBranches()),
+			timeIt("gitDiff", () => gitDiff()),
+		]);
+
 	} finally {
 		document.getElementById("Refresh")!.removeAttribute("disabled");
 	}
