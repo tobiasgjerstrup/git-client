@@ -195,7 +195,7 @@ export async function gitDiff() {
 		let statusClass = "";
 		if (isStaged) {
 			statusClass = "staged";
-			buttonsHtml = `<button onclick='unstageGitFile(${JSON.stringify(parsedLine.path)})'>Unstage</button>`;
+			buttonsHtml = `<button onclick='unstageGitFile(${escapeHtml(JSON.stringify(parsedLine.path))})'>Unstage</button>`;
 		} else {
 			statusClass = "unstaged";
 			buttonsHtml = `<button onclick='stageGitFile(${escapeHtml(JSON.stringify(parsedLine.path))})'>Stage</button>`;
@@ -238,7 +238,7 @@ export async function gitDiff() {
 
 		changesHtml += `<div class="diff-file-entry">
 			<div class="diff-file-header-row">
-				<button onclick='unstageGitFile(${JSON.stringify(path)})'>Unstage</button>
+				<button onclick='unstageGitFile(${escapeHtml(JSON.stringify(path))})'>Unstage</button>
 				<span class="diff-file-status staged"></span>
 				<h3 class="diff-file-header" onclick="toggleDiff(this)">${escapeHtml(path)}</h3>
 			</div>

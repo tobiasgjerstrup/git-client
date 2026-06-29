@@ -310,6 +310,10 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 		commitsBehind := 0
 		commitsAhead := 0
 		out, err = runGitForRepo(repoPath, "rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", strings.Split(line, "|")[0], defaultBranch))
+		if err != nil {
+			fmt.Printf("Error getting rev-list: %v\n", err)
+			return nil, err
+		}
 		parts := strings.Split(strings.TrimSpace(out), "\t")
 		fmt.Printf("Rev-list output: %q\n", out)
 		fmt.Printf("Rev-list parts: %#v\n", parts)
