@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 )
 
@@ -299,54 +300,62 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 	defaultBranch = "origin/" + defaultBranch
 	lines := strings.Split(string(out), "\n")
 	branches := []GitBranch{}
+
+	var wg sync.WaitGroup
 	for _, line := range lines {
 		line = strings.TrimSuffix(line, "\r")
 		if line == "" {
 			continue
 		}
-
-		remote := false
-		nameAndHash := []string{}
-		commitsBehind := 0
-		commitsAhead := 0
-		out, err = runGitForRepo(repoPath, "rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", strings.Split(line, "|")[0], defaultBranch))
-		if err != nil {
-			fmt.Printf("Error getting rev-list: %v\n", err)
-			return nil, err
-		}
-		parts := strings.Split(strings.TrimSpace(out), "\t")
-		fmt.Printf("Rev-list output: %q\n", out)
-		fmt.Printf("Rev-list parts: %#v\n", parts)
-
-		if len(parts) >= 2 {
-			ahead, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
-			behind, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
-
-			if err1 == nil && err2 == nil {
-				commitsAhead = ahead
-				commitsBehind = behind
-			} else {
-				fmt.Println("Parse error:", err1, err2)
+		
+		wg.Add(1)
+		go func(line string) {
+			defer wg.Done()
+			remote := false
+			nameAndHash := []string{}
+			commitsBehind := 0
+			commitsAhead := 0
+			out, err = runGitForRepo(repoPath, "rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", strings.Split(line, "|")[0], defaultBranch))
+			if err != nil {
+				fmt.Printf("Error getting rev-list: %v\n", err)
+				return
 			}
-		}
-		if strings.HasPrefix(line, "refs/remotes/") && strings.Contains(line, "/HEAD|") {
-			continue
-		}
-		if strings.HasPrefix(line, "refs/remotes/origin/") {
-			remote = true
-			nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/remotes/"), "|", 2)
-		} else {
-			nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/heads/"), "|", 2)
-		}
-		fmt.Printf("Branch: %s, Remote: %v, Commits Behind: %d, Commits Ahead: %d\n", nameAndHash[0], remote, commitsBehind, commitsAhead)
-		branches = append(branches, GitBranch{
-			Remote:        remote,
-			Name:          nameAndHash[0],
-			CommitId:      nameAndHash[1],
-			CommitsBehind: commitsBehind,
-			CommitsAhead:  commitsAhead,
-		})
+			parts := strings.Split(strings.TrimSpace(out), "\t")
+			// fmt.Printf("Rev-list output: %q\n", out)
+			// fmt.Printf("Rev-list parts: %#v\n", parts)
+
+			if len(parts) >= 2 {
+				ahead, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
+				behind, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
+
+				if err1 == nil && err2 == nil {
+					commitsAhead = ahead
+					commitsBehind = behind
+				} else {
+					fmt.Println("Parse error:", err1, err2)
+				}
+			}
+			if strings.HasPrefix(line, "refs/remotes/") && strings.Contains(line, "/HEAD|") {
+				return
+			}
+			if strings.HasPrefix(line, "refs/remotes/origin/") {
+				remote = true
+				nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/remotes/"), "|", 2)
+			} else {
+				nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/heads/"), "|", 2)
+			}
+			// fmt.Printf("Branch: %s, Remote: %v, Commits Behind: %d, Commits Ahead: %d\n", nameAndHash[0], remote, commitsBehind, commitsAhead)
+			branches = append(branches, GitBranch{
+				Remote:        remote,
+				Name:          nameAndHash[0],
+				CommitId:      nameAndHash[1],
+				CommitsBehind: commitsBehind,
+				CommitsAhead:  commitsAhead,
+			})
+		}(line)
 	}
+
+	wg.Wait()
 
 	return &branches, nil
 }
