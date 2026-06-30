@@ -7,21 +7,26 @@ import (
 	"tobiasgitclient/internal/git"
 )
 
-// App struct
 type App struct {
-	ctx      context.Context
-	repoPath string
+	ctx        context.Context
+	repoPath   string
+	gitService git.GitService
 }
 
-// NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	return &App{
+		gitService: git.NewGitService(context.Background(), git.EngineOptions{
+			EnableBatchProcess: true,
+		}),
+	}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+}
+
+func (a *App) shutdown(ctx context.Context) {
+	a.gitService.Close()
 }
 
 func (a *App) PickFolder() string {
@@ -35,53 +40,53 @@ func (a *App) PickFolder() string {
 }
 
 func (a *App) RunGitStatus() (*git.GitStatusResult, error) {
-	return git.GitStatus(a.repoPath)
+	return a.gitService.GetStatus(a.repoPath)
 }
 
 func (a *App) GitFetch() (string, error) {
-	return git.GitFetch(a.repoPath)
+	return a.gitService.Fetch(a.repoPath)
 }
 
 func (a *App) GitDiff() (*git.GitDiffResult, error) {
-	return git.GitDiff(a.repoPath)
+	return a.gitService.GetDiff(a.repoPath)
 }
 
 func (a *App) GitDiffStaged() (*git.GitDiffResult, error) {
-	return git.GitDiffStaged(a.repoPath)
+	return a.gitService.GetDiffStaged(a.repoPath)
 }
 
 func (a *App) GetCommitHistory() (*[]git.Commit, error) {
-	return git.GetCommitHistory(a.repoPath)
+	return a.gitService.GetCommitHistory(a.repoPath)
 }
 
 func (a *App) DiscardGitFile(filePath string) (string, error) {
-	return git.DiscardGitFile(a.repoPath, filePath)
+	return a.gitService.DiscardFile(a.repoPath, filePath)
 }
 
 func (a *App) StageGitFile(filePath string) (string, error) {
-	return git.StageGitFile(a.repoPath, filePath)
+	return a.gitService.StageFile(a.repoPath, filePath)
 }
 
 func (a *App) CommitGitChanges(message string) error {
-	return git.CommitGitChanges(a.repoPath, message)
+	return a.gitService.Commit(a.repoPath, message)
 }
 
 func (a *App) SwitchGitBranch(branchName string) error {
-	return git.SwitchGitBranch(a.repoPath, branchName)
+	return a.gitService.SwitchBranch(a.repoPath, branchName)
 }
 
 func (a *App) PushGitChanges() error {
-	return git.PushGitChanges(a.repoPath)
+	return a.gitService.Push(a.repoPath)
 }
 
 func (a *App) PullGitChanges() error {
-	return git.PullGitChanges(a.repoPath)
+	return a.gitService.Pull(a.repoPath)
 }
 
 func (a *App) UnstageGitFile(filePath string) (string, error) {
-	return git.UnstageGitFile(a.repoPath, filePath)
+	return a.gitService.UnstageFile(a.repoPath, filePath)
 }
 
 func (a *App) GetGitBranches() (*[]git.GitBranch, error) {
-	return git.GetGitBranches(a.repoPath)
+	return a.gitService.GetBranches(a.repoPath)
 }
