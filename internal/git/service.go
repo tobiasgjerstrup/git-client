@@ -1,0 +1,37 @@
+package git
+
+import "context"
+
+type GitService interface {
+	GetStatus(repoPath string) (*GitStatusResult, error)
+	GetDiff(repoPath string) (*GitDiffResult, error)
+	GetDiffStaged(repoPath string) (*GitDiffResult, error)
+	GetCommitHistory(repoPath string) (*[]Commit, error)
+	GetBranches(repoPath string) (*[]GitBranch, error)
+
+	StageFile(repoPath, path string) (string, error)
+	UnstageFile(repoPath, path string) (string, error)
+	DiscardFile(repoPath, path string) (string, error)
+	Commit(repoPath, message string) error
+	SwitchBranch(repoPath, branch string) error
+	Push(repoPath string) error
+	Pull(repoPath string) error
+	Fetch(repoPath string) (string, error)
+
+	GetCommit(repoPath, hash string) (*CommitObject, error)
+	GetTree(repoPath, hash string) ([]TreeEntry, error)
+	GetFileContent(repoPath, path string) ([]byte, error)
+
+	Close() error
+}
+
+var _ GitService = (*GitEngine)(nil)
+var _ GitService = (*GitCLI)(nil)
+
+func NewGitService(ctx context.Context, opts EngineOptions) GitService {
+	return NewGitEngine(ctx, opts)
+}
+
+func NewGitServiceCLIOnly() GitService {
+	return &GitCLI{}
+}

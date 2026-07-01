@@ -9,7 +9,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
+	"time"
 )
 
 type GitStatusResult struct {
@@ -42,6 +44,8 @@ type GitBranch struct {
 	CommitsBehind int    `json:"commitsBehind"`
 	CommitsAhead  int    `json:"commitsAhead"`
 }
+
+var defaultBranchCache = make(map[string]string)
 
 func GitStatus(repoPath string) (*GitStatusResult, error) {
 	out, err := runGitForRepo(repoPath, "status", "--porcelain=v2", "--branch")
@@ -279,74 +283,116 @@ func UnstageGitFile(repoPath string, filePath string) (string, error) {
 }
 
 func GetGitBranches(repoPath string) (*[]GitBranch, error) {
-	// only local branches:
-	out, err := runGitForRepo(repoPath, "for-each-ref", "--format=%(refname)|%(objectname)", "refs/heads")
-	if err != nil {
-		return nil, err
+	var wg sync.WaitGroup
+	wg.Add(3)
+
+	var localOut string
+	var remoteOut string
+	var localErr error
+	var remoteErr error
+	var defaultBranch string
+	var defaultBranchErr error
+
+	go func() {
+		defer wg.Done()
+		localOut, localErr = runGitForRepo(
+			repoPath,
+			"for-each-ref",
+			"--format=%(refname)|%(objectname)",
+			"refs/heads",
+		)
+	}()
+
+	go func() {
+		defer wg.Done()
+		remoteOut, remoteErr = runGitForRepo(
+			repoPath,
+			"for-each-ref",
+			"--sort=-committerdate",
+			"--count=20",
+			"--format=%(refname)|%(objectname)",
+			"refs/remotes/origin",
+		)
+	}()
+
+	go func() {
+		defer wg.Done()
+		defaultBranch, defaultBranchErr = getDefaultBranch(repoPath)
+	}()
+
+	wg.Wait()
+
+	if localErr != nil {
+		return nil, localErr
+	}
+	if remoteErr != nil {
+		return nil, remoteErr
+	}
+	if defaultBranchErr != nil {
+		fmt.Printf("Error getting default branch: %v\n", defaultBranchErr)
+		return nil, defaultBranchErr
 	}
 
-	cloudBranches, err := runGitForRepo(repoPath, "for-each-ref", "--sort=-committerdate", "--count=20", "--format=%(refname)|%(objectname)", "refs/remotes/origin")
-	if err != nil {
-		return nil, err
-	}
-	out += "\n" + cloudBranches
-
-	defaultBranch, err := getDefaultBranch(repoPath)
-	if err != nil {
-		fmt.Printf("Error getting default branch: %v\n", err)
-		return nil, err
-	}
+	out := localOut + "\n" + remoteOut
+	
 	defaultBranch = "origin/" + defaultBranch
 	lines := strings.Split(string(out), "\n")
-	branches := []GitBranch{}
-	for _, line := range lines {
+	branches := make([]GitBranch, len(lines))
+
+	for i, line := range lines {
 		line = strings.TrimSuffix(line, "\r")
 		if line == "" {
 			continue
 		}
-
-		remote := false
-		nameAndHash := []string{}
-		commitsBehind := 0
-		commitsAhead := 0
-		out, err = runGitForRepo(repoPath, "rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", strings.Split(line, "|")[0], defaultBranch))
-		if err != nil {
-			fmt.Printf("Error getting rev-list: %v\n", err)
-			return nil, err
-		}
-		parts := strings.Split(strings.TrimSpace(out), "\t")
-		fmt.Printf("Rev-list output: %q\n", out)
-		fmt.Printf("Rev-list parts: %#v\n", parts)
-
-		if len(parts) >= 2 {
-			ahead, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
-			behind, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
-
-			if err1 == nil && err2 == nil {
-				commitsAhead = ahead
-				commitsBehind = behind
-			} else {
-				fmt.Println("Parse error:", err1, err2)
+		
+		wg.Add(1)
+		go func(line string) {
+			defer wg.Done()
+			remote := false
+			nameAndHash := []string{}
+			commitsBehind := 0
+			commitsAhead := 0
+			out, err := runGitForRepo(repoPath, "rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", strings.Split(line, "|")[0], defaultBranch))
+			if err != nil {
+				fmt.Printf("Error getting rev-list: %v\n", err)
+				return
 			}
-		}
-		if strings.HasPrefix(line, "refs/remotes/") && strings.Contains(line, "/HEAD|") {
-			continue
-		}
-		if strings.HasPrefix(line, "refs/remotes/origin/") {
-			remote = true
-			nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/remotes/"), "|", 2)
-		} else {
-			nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/heads/"), "|", 2)
-		}
-		fmt.Printf("Branch: %s, Remote: %v, Commits Behind: %d, Commits Ahead: %d\n", nameAndHash[0], remote, commitsBehind, commitsAhead)
-		branches = append(branches, GitBranch{
-			Remote:        remote,
-			Name:          nameAndHash[0],
-			CommitId:      nameAndHash[1],
-			CommitsBehind: commitsBehind,
-			CommitsAhead:  commitsAhead,
-		})
+			parts := strings.Split(strings.TrimSpace(out), "\t")
+			// fmt.Printf("Rev-list output: %q\n", out)
+			// fmt.Printf("Rev-list parts: %#v\n", parts)
+
+			if len(parts) >= 2 {
+				ahead, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
+				behind, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
+
+				if err1 == nil && err2 == nil {
+					commitsAhead = ahead
+					commitsBehind = behind
+				} else {
+					fmt.Println("Parse error:", err1, err2)
+				}
+			}
+			if strings.HasPrefix(line, "refs/remotes/") && strings.Contains(line, "/HEAD|") {
+				return
+			}
+			if strings.HasPrefix(line, "refs/remotes/origin/") {
+				remote = true
+				nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/remotes/"), "|", 2)
+			} else {
+				nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/heads/"), "|", 2)
+			}
+			// fmt.Printf("Branch: %s, Remote: %v, Commits Behind: %d, Commits Ahead: %d\n", nameAndHash[0], remote, commitsBehind, commitsAhead)
+			branches[i] = GitBranch{
+				Remote:        remote,
+				Name:          nameAndHash[0],
+				CommitId:      nameAndHash[1],
+				CommitsBehind: commitsBehind,
+				CommitsAhead:  commitsAhead,
+			}
+		}(line)
 	}
+
+	wg.Wait()
 
 	return &branches, nil
 }
@@ -392,15 +438,22 @@ func parsePorcelainV2FileLine(line string) (string, bool) {
 }
 
 func runCommand(name string, args ...string) (string, error) {
-	fmt.Printf("Running command: %s %s\n", name, strings.Join(args, " "))
-	cmd := exec.Command(name, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
-	}
-	return string(out), nil
+    start := time.Now()
+    defer func() {
+        fmt.Printf("Command finished in %v\n", time.Since(start))
+    }()
+
+    cmd := exec.Command(name, args...)
+    cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+
+    out, err := cmd.CombinedOutput()
+	fmt.Printf("Ran command: %s %s\n", name, strings.Join(args, " "))
+    if err != nil {
+        return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
+    }
+    return string(out), nil
 }
+
 
 func runGitForRepo(repoPath string, args ...string) (string, error) {
 	if repoPath == "" {
@@ -417,6 +470,33 @@ func runGitForRepo(repoPath string, args ...string) (string, error) {
 }
 
 func getDefaultBranch(repoPath string) (string, error) {
+	if branch, ok := defaultBranchCache[repoPath]; ok {
+		return branch, nil
+	}
+
+    out, err := runGitForRepo(repoPath,
+        "ls-remote", "--symref", "origin", "HEAD",
+    )
+    if err != nil {
+        return "", err
+    }
+
+    for _, line := range strings.Split(out, "\n") {
+        if strings.HasPrefix(line, "ref: ") {
+            parts := strings.Fields(line)
+            if len(parts) >= 2 {
+				defaultBranchCache[repoPath] = strings.TrimPrefix(parts[1], "refs/heads/")
+				return strings.TrimPrefix(parts[1], "refs/heads/"), nil
+            }
+        }
+    }
+
+    return "", fmt.Errorf("default branch not found")
+}
+
+
+/*
+func getDefaultBranch(repoPath string) (string, error) {
 	out, err := runGitForRepo(repoPath, "remote", "show", "origin")
 	if err != nil {
 		return "", err
@@ -432,4 +512,4 @@ func getDefaultBranch(repoPath string) (string, error) {
 
 	return "", fmt.Errorf("default branch not found")
 }
-
+*/
