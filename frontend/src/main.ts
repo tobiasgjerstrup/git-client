@@ -8,6 +8,16 @@ import { getGitSelectionTargets, handleGitSelectionClick, handleGitSelectionKeyd
 
 export let openedFolder: string | null = null;
 
+type ThemeName = "aurora" | "midnight";
+
+const themeOptions: Array<{ name: ThemeName; label: string }> = [
+	{ name: "aurora", label: "Aurora" },
+	{ name: "midnight", label: "Midnight" },
+];
+
+const themeStorageKey = "git-client-theme";
+let activeTheme: ThemeName = "aurora";
+
 type DiscardModalState = {
 	items: { filePath: string; description: string }[];
 } | null;
@@ -28,6 +38,8 @@ let branchSwitchModalState: BranchSwitchModalState = null;
 let branchDeleteModalState: BranchDeleteModalState = null;
 let gitSelectionKeyListenerBound = false;
 let modalKeyListenerBound = false;
+
+initializeTheme();
 
 window.pickFolder = async function () {
 	const folder = await window.go.main.App.PickFolder();
@@ -269,6 +281,12 @@ window.pullGitChanges = async function () {
 	}
 }
 
+window.cycleTheme = function () {
+	const currentIndex = themeOptions.findIndex((theme) => theme.name === activeTheme);
+	const nextTheme = themeOptions[(currentIndex + 1) % themeOptions.length];
+	applyTheme(nextTheme.name);
+}
+
 import appHtml from './app.html?raw';
 import branchPanelHtml from './panels/branchPanel.html?raw';
 import commitPanelHtml from './panels/commitPanel.html?raw';
@@ -281,7 +299,36 @@ function loadHtml() {
 	updateDiscardModal();
 	updateBranchSwitchModal();
 	updateBranchDeleteModal();
+	updateThemeToggle();
 	window.refresh();
+}
+
+function initializeTheme() {
+	const storedTheme = window.localStorage.getItem(themeStorageKey);
+	if (storedTheme === "midnight") {
+		applyTheme("midnight");
+		return;
+	}
+
+	applyTheme("aurora");
+}
+
+function applyTheme(themeName: ThemeName) {
+	activeTheme = themeName;
+	document.documentElement.dataset.theme = themeName;
+	window.localStorage.setItem(themeStorageKey, themeName);
+	updateThemeToggle();
+}
+
+function updateThemeToggle() {
+	const themeButton = document.getElementById("ThemeToggle") as HTMLButtonElement | null;
+	if (!themeButton) {
+		return;
+	}
+
+	const theme = themeOptions.find((entry) => entry.name === activeTheme) ?? themeOptions[0];
+	themeButton.textContent = `Theme: ${theme.label}`;
+	themeButton.setAttribute("aria-label", `Switch theme, current theme is ${theme.label}`);
 }
 
 function updateDiscardModal() {
@@ -656,5 +703,6 @@ declare global {
 		confirmDeleteBranch: () => Promise<void>;
 		cancelDeleteBranch: () => void;
 		selectGitChange: (event: MouseEvent, key: string) => void;
+		cycleTheme: () => void;
     }
 }

@@ -6,6 +6,15 @@
 	margin: 0 auto;
 }
 
+.theme-toggle {
+	position: fixed;
+	top: 16px;
+	right: 16px;
+	z-index: 1200;
+	padding: 8px 14px;
+	font-size: 0.78rem;
+}
+
 .surface-card {
 	background: linear-gradient(180deg, var(--theme-surface-card-start) 0%, var(--theme-surface-card-end) 100%);
 	border: 1px solid var(--theme-surface-card-border);
