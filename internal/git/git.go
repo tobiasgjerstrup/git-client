@@ -302,7 +302,7 @@ func ContinueGitMerge(repoPath string) error {
 		return fmt.Errorf("no merge in progress")
 	}
 
-	_, err := runGitForRepo(repoPath, "merge", "--continue")
+	_, err := runGitForRepo(repoPath, "commit", "--no-edit")
 	return err
 }
 
