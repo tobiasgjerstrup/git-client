@@ -14,9 +14,11 @@ type GitService interface {
 	DiscardFile(repoPath, path string) (string, error)
 	Commit(repoPath, message string) error
 	SwitchBranch(repoPath, branch string) error
+	DeleteBranch(repoPath, branch string, force bool) error
 	Push(repoPath string) error
 	Pull(repoPath string) error
 	Fetch(repoPath string) (string, error)
+	Prune(repoPath string) (string, error)
 
 	GetCommit(repoPath, hash string) (*CommitObject, error)
 	GetTree(repoPath, hash string) ([]TreeEntry, error)

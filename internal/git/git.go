@@ -268,6 +268,25 @@ func SwitchGitBranch(repoPath string, branchName string) error {
 	return nil
 }
 
+func DeleteGitBranch(repoPath string, branchName string, force bool) error {
+	currentBranch, err := runGitForRepo(repoPath, "branch", "--show-current")
+	if err != nil {
+		return err
+	}
+
+	if strings.TrimSpace(currentBranch) == branchName {
+		return fmt.Errorf("cannot delete the current branch")
+	}
+
+	deleteFlag := "-d"
+	if force {
+		deleteFlag = "-D"
+	}
+
+	_, err = runGitForRepo(repoPath, "branch", deleteFlag, branchName)
+	return err
+}
+
 func PushGitChanges(repoPath string) error {
 	_, err := runGitForRepo(repoPath, "push")
 	if err == nil {
@@ -372,6 +391,7 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 	defaultBranch = "origin/" + defaultBranch
 	lines := strings.Split(string(out), "\n")
 	branches := make([]GitBranch, len(lines))
+	validBranches := make([]bool, len(lines))
 
 	for i, line := range lines {
 		line = strings.TrimSuffix(line, "\r")
@@ -380,7 +400,7 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 		}
 		
 		wg.Add(1)
-		go func(line string) {
+		go func(i int, line string) {
 			defer wg.Done()
 			remote := false
 			nameAndHash := []string{}
@@ -415,24 +435,42 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 			} else {
 				nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/heads/"), "|", 2)
 			}
-			// fmt.Printf("Branch: %s, Remote: %v, Commits Behind: %d, Commits Ahead: %d\n", nameAndHash[0], remote, commitsBehind, commitsAhead)
-			branches[i] = GitBranch{
+			if len(nameAndHash) < 2 || strings.TrimSpace(nameAndHash[0]) == "" {
+				return
+			}
+
+			branch := GitBranch{
 				Remote:        remote,
 				Name:          nameAndHash[0],
 				CommitId:      nameAndHash[1],
 				CommitsBehind: commitsBehind,
 				CommitsAhead:  commitsAhead,
 			}
-		}(line)
+
+			branches[i] = branch
+			validBranches[i] = true
+		}(i, line)
 	}
 
 	wg.Wait()
 
-	return &branches, nil
+	orderedBranches := make([]GitBranch, 0, len(branches))
+	for i, branch := range branches {
+		if !validBranches[i] {
+			continue
+		}
+		orderedBranches = append(orderedBranches, branch)
+	}
+
+	return &orderedBranches, nil
 }
 
 func GitFetch(repoPath string) (string, error) {
 	return runGitForRepo(repoPath, "fetch")
+}
+
+func GitPrune(repoPath string) (string, error) {
+	return runGitForRepo(repoPath, "fetch", "--prune")
 }
 
 func parsePorcelainV2FileLine(line string) (string, bool) {

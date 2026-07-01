@@ -184,6 +184,26 @@
 	gap: 10px;
 }
 
+.branch-card.local {
+	cursor: pointer;
+}
+
+.branch-card.remote {
+	cursor: pointer;
+}
+
+.branch-card.local:hover,
+.branch-card.remote:hover {
+	border-color: rgba(244, 178, 60, 0.34);
+	background: rgba(18, 27, 39, 0.84);
+}
+
+.branch-card.current {
+	border-color: rgba(91, 168, 255, 0.34);
+	background: rgba(91, 168, 255, 0.08);
+	cursor: default;
+}
+
 .branch-card-top,
 .branch-card-bottom,
 .commit-meta {
@@ -213,6 +233,42 @@
 	border-radius: 999px;
 	background: rgba(255, 255, 255, 0.06);
 	color: #cfe6ff;
+}
+
+.branch-card-hint {
+	font-size: 0.75rem;
+	color: rgba(239, 245, 255, 0.48);
+	margin-left: auto;
+}
+
+.branch-card-hint.current {
+	color: #93d7b0;
+}
+
+.branch-switch-trigger {
+	padding: 6px 10px;
+	font-size: 0.78rem;
+	margin-left: auto;
+}
+
+.branch-card-actions {
+	display: flex;
+	gap: 8px;
+	margin-left: auto;
+	flex-wrap: wrap;
+}
+
+.branch-delete-trigger {
+	padding: 6px 10px;
+	font-size: 0.78rem;
+	background: rgba(255, 122, 122, 0.16);
+	border-color: rgba(255, 122, 122, 0.22);
+	color: #ffc4c4;
+}
+
+.branch-delete-trigger:hover {
+	background: rgba(255, 122, 122, 0.24);
+	border-color: rgba(255, 122, 122, 0.34);
 }
 
 .commit-card {

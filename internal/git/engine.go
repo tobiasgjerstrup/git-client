@@ -155,6 +155,10 @@ func (e *GitEngine) SwitchBranch(repoPath, branch string) error {
 	return e.cli.SwitchBranch(repoPath, branch)
 }
 
+func (e *GitEngine) DeleteBranch(repoPath, branch string, force bool) error {
+	return e.cli.DeleteBranch(repoPath, branch, force)
+}
+
 func (e *GitEngine) Push(repoPath string) error {
 	return e.cli.Push(repoPath)
 }
@@ -165,6 +169,10 @@ func (e *GitEngine) Pull(repoPath string) error {
 
 func (e *GitEngine) Fetch(repoPath string) (string, error) {
 	return e.cli.Fetch(repoPath)
+}
+
+func (e *GitEngine) Prune(repoPath string) (string, error) {
+	return e.cli.Prune(repoPath)
 }
 
 func (e *GitEngine) GetCommit(repoPath, hash string) (*CommitObject, error) {

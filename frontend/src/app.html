@@ -19,6 +19,7 @@
 			<div class="cluster-title">Sync</div>
 			<div class="cluster-controls">
 				<button id="Refresh" class="button-secondary" onclick="refresh()">Refresh</button>
+				<button id="PruneButton" class="button-secondary" onclick="pruneGitBranches()">Prune</button>
 				<button id="PullChanges" class="button-secondary" onclick="pullGitChanges()">Pull</button>
 				<button id="PushButton" class="button-secondary" onclick="pushGitChanges()">Push</button>
 			</div>
@@ -83,6 +84,32 @@
 			<div class="modal-actions">
 				<button class="button-secondary" type="button" onclick="cancelDiscardGitFile()">Cancel</button>
 				<button id="ConfirmDiscardButton" class="button-danger" type="button" onclick="confirmDiscardGitFile()">Discard changes</button>
+			</div>
+		</div>
+	</div>
+
+	<div id="BranchSwitchModal" class="modal-backdrop" hidden>
+		<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="BranchSwitchModalTitle">
+			<p class="eyebrow">Branch Switch</p>
+			<h2 id="BranchSwitchModalTitle">Switch branch?</h2>
+			<p id="BranchSwitchModalCopy" class="modal-copy">This will check out the selected branch in your current repository.</p>
+			<p id="BranchSwitchModalDescription" class="modal-description"></p>
+			<div class="modal-actions">
+				<button class="button-secondary" type="button" onclick="cancelBranchSwitch()">Cancel</button>
+				<button id="ConfirmBranchSwitchButton" class="button-primary" type="button" onclick="confirmBranchSwitch()">Switch branch</button>
+			</div>
+		</div>
+	</div>
+
+	<div id="BranchDeleteModal" class="modal-backdrop" hidden>
+		<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="BranchDeleteModalTitle">
+			<p class="eyebrow">Branch Deletion</p>
+			<h2 id="BranchDeleteModalTitle">Delete local branch?</h2>
+			<p id="BranchDeleteModalCopy" class="modal-copy">This will delete the selected local branch from your repository.</p>
+			<p id="BranchDeleteModalDescription" class="modal-description"></p>
+			<div class="modal-actions">
+				<button class="button-secondary" type="button" onclick="cancelDeleteBranch()">Cancel</button>
+				<button id="ConfirmDeleteBranchButton" class="button-danger" type="button" onclick="confirmDeleteBranch()">Delete branch</button>
 			</div>
 		</div>
 	</div>

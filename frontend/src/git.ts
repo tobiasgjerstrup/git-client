@@ -229,7 +229,19 @@ export async function getGitBranches() {
 	const branchesHtml = branches.map(branch => {
 		const branchKind = branch.remote ? "Remote" : "Local";
 		const kindClass = branch.remote ? "remote" : "local";
-		return `<article class="branch-card ${kindClass}">
+		const isCurrentBranch = !branch.remote && branch.name === currentBranchName;
+		const matchingRemoteBranch = !branch.remote ? branches.find(candidate => candidate.remote && candidate.name === `origin/${branch.name}`) : undefined;
+		const isUnsyncedLocalBranch = !branch.remote && (!matchingRemoteBranch || matchingRemoteBranch.commitId !== branch.commitId);
+		const cardClass = isCurrentBranch ? `${kindClass} current` : kindClass;
+		const cardAction = isCurrentBranch
+			? ""
+			: ` onclick="promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, ${branch.remote})"`;
+		const actionHint = branch.remote
+			? `<button type="button" class="branch-switch-trigger" onclick="event.stopPropagation(); promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, true)">Create local</button>`
+			: isCurrentBranch
+				? `<span class="branch-card-hint current">Current branch</span>`
+				: `<div class="branch-card-actions"><button type="button" class="branch-switch-trigger" onclick="event.stopPropagation(); promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, false)">Switch</button><button type="button" class="branch-delete-trigger" onclick="event.stopPropagation(); promptDeleteBranch(${escapeHtml(JSON.stringify(branch.name))}, ${isUnsyncedLocalBranch})">Delete</button></div>`;
+		return `<article class="branch-card ${cardClass}"${cardAction}>
 			<div class="branch-card-top">
 				<span class="branch-name">${escapeHtml(branch.name)}</span>
 				<span class="branch-kind">${branchKind}</span>
@@ -237,6 +249,7 @@ export async function getGitBranches() {
 			<div class="branch-card-bottom">
 				<span class="branch-delta">↑ ${branch.commitsAhead}</span>
 				<span class="branch-delta">↓ ${branch.commitsBehind}</span>
+				${actionHint}
 			</div>
 		</article>`;
 	}).join("");

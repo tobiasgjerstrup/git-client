@@ -47,6 +47,10 @@ func (a *App) GitFetch() (string, error) {
 	return a.gitService.Fetch(a.repoPath)
 }
 
+func (a *App) GitPrune() (string, error) {
+	return a.gitService.Prune(a.repoPath)
+}
+
 func (a *App) GitDiff() (*git.GitDiffResult, error) {
 	return a.gitService.GetDiff(a.repoPath)
 }
@@ -73,6 +77,10 @@ func (a *App) CommitGitChanges(message string) error {
 
 func (a *App) SwitchGitBranch(branchName string) error {
 	return a.gitService.SwitchBranch(a.repoPath, branchName)
+}
+
+func (a *App) DeleteGitBranch(branchName string, force bool) error {
+	return a.gitService.DeleteBranch(a.repoPath, branchName, force)
 }
 
 func (a *App) PushGitChanges() error {

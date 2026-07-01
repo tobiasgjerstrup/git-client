@@ -12,8 +12,22 @@ type DiscardModalState = {
 	items: { filePath: string; description: string }[];
 } | null;
 
+type BranchSwitchModalState = {
+	displayBranchName: string;
+	targetBranchName: string;
+	createLocal: boolean;
+} | null;
+
+type BranchDeleteModalState = {
+	branchName: string;
+	forceDelete: boolean;
+} | null;
+
 let discardModalState: DiscardModalState = null;
+let branchSwitchModalState: BranchSwitchModalState = null;
+let branchDeleteModalState: BranchDeleteModalState = null;
 let gitSelectionKeyListenerBound = false;
+let modalKeyListenerBound = false;
 
 window.pickFolder = async function () {
 	const folder = await window.go.main.App.PickFolder();
@@ -70,6 +84,74 @@ window.switchGitBranch = async function () {
 	} finally {
 		document.getElementById("SwitchBranch")!.removeAttribute("disabled");
 	}
+}
+
+window.promptBranchSwitch = function (branchName: string, isRemote?: boolean) {
+	branchSwitchModalState = isRemote
+		? {
+			displayBranchName: branchName,
+			targetBranchName: toLocalBranchName(branchName),
+			createLocal: true,
+		}
+		: {
+			displayBranchName: branchName,
+			targetBranchName: branchName,
+			createLocal: false,
+		};
+	updateBranchSwitchModal();
+}
+
+window.confirmBranchSwitch = async function () {
+	if (!branchSwitchModalState) {
+		return;
+	}
+
+	const { targetBranchName } = branchSwitchModalState;
+	hideBranchSwitchModal();
+
+	try {
+		document.getElementById("SwitchBranch")!.setAttribute("disabled", "");
+		await window.go.main.App.SwitchGitBranch(targetBranchName);
+		const branchInput = document.getElementById("BranchNameInput") as HTMLInputElement | null;
+		if (branchInput) {
+			branchInput.value = "";
+		}
+		await window.refresh();
+	} finally {
+		document.getElementById("SwitchBranch")!.removeAttribute("disabled");
+	}
+}
+
+window.cancelBranchSwitch = function () {
+	hideBranchSwitchModal();
+}
+
+window.promptDeleteBranch = function (branchName: string, forceDelete?: boolean) {
+	branchDeleteModalState = {
+		branchName,
+		forceDelete: !!forceDelete,
+	};
+	updateBranchDeleteModal();
+}
+
+window.confirmDeleteBranch = async function () {
+	if (!branchDeleteModalState) {
+		return;
+	}
+
+	const { branchName, forceDelete } = branchDeleteModalState;
+	hideBranchDeleteModal();
+
+	try {
+		await window.go.main.App.DeleteGitBranch(branchName, forceDelete);
+		await window.refresh();
+	} catch (error) {
+		throw error;
+	}
+	}
+
+window.cancelDeleteBranch = function () {
+	hideBranchDeleteModal();
 }
 
 /*
@@ -157,6 +239,16 @@ window.pushGitChanges = async function () {
 	}
 }
 
+window.pruneGitBranches = async function () {
+	try {
+		document.getElementById("PruneButton")!.setAttribute("disabled", "");
+		await window.go.main.App.GitPrune();
+		await window.refresh();
+	} finally {
+		document.getElementById("PruneButton")!.removeAttribute("disabled");
+	}
+}
+
 window.toggleDiff = function (headerEl: HTMLElement) {
 	const entry = headerEl.closest('.diff-file-entry') as HTMLElement;
 	const content = entry.querySelector('.diff-content') as HTMLElement;
@@ -187,6 +279,8 @@ function loadHtml() {
 	document.getElementById('CommitPanel')!.innerHTML = commitPanelHtml;
 	ensureGitSelectionKeyListener();
 	updateDiscardModal();
+	updateBranchSwitchModal();
+	updateBranchDeleteModal();
 	window.refresh();
 }
 
@@ -218,6 +312,117 @@ function updateDiscardModal() {
 function hideDiscardModal() {
 	discardModalState = null;
 	updateDiscardModal();
+}
+
+function updateBranchSwitchModal() {
+	const modal = document.getElementById("BranchSwitchModal");
+	if (!modal) {
+		return;
+	}
+
+	const titleEl = document.getElementById("BranchSwitchModalTitle");
+	const copyEl = document.getElementById("BranchSwitchModalCopy");
+	const descriptionEl = document.getElementById("BranchSwitchModalDescription");
+	const confirmButton = document.getElementById("ConfirmBranchSwitchButton") as HTMLButtonElement | null;
+	if (branchSwitchModalState) {
+		modal.removeAttribute("hidden");
+		if (titleEl) {
+			titleEl.textContent = branchSwitchModalState.createLocal ? "Create local branch and switch?" : "Switch branch?";
+		}
+		if (copyEl) {
+			copyEl.textContent = branchSwitchModalState.createLocal
+				? "This will create a local branch from the selected remote branch and check it out in your current repository."
+				: "This will check out the selected branch in your current repository.";
+		}
+		if (descriptionEl) {
+			descriptionEl.textContent = branchSwitchModalState.createLocal
+				? `${branchSwitchModalState.displayBranchName} -> ${branchSwitchModalState.targetBranchName}`
+				: branchSwitchModalState.displayBranchName;
+		}
+		if (confirmButton) {
+			confirmButton.disabled = false;
+			confirmButton.textContent = branchSwitchModalState.createLocal ? "Create local and switch" : "Switch branch";
+		}
+	} else {
+		modal.setAttribute("hidden", "");
+		if (titleEl) {
+			titleEl.textContent = "Switch branch?";
+		}
+		if (copyEl) {
+			copyEl.textContent = "This will check out the selected branch in your current repository.";
+		}
+		if (descriptionEl) {
+			descriptionEl.textContent = "";
+		}
+		if (confirmButton) {
+			confirmButton.disabled = false;
+			confirmButton.textContent = "Switch branch";
+		}
+	}
+}
+
+function hideBranchSwitchModal() {
+	branchSwitchModalState = null;
+	updateBranchSwitchModal();
+}
+
+function updateBranchDeleteModal() {
+	const modal = document.getElementById("BranchDeleteModal");
+	if (!modal) {
+		return;
+	}
+
+	const titleEl = document.getElementById("BranchDeleteModalTitle");
+	const copyEl = document.getElementById("BranchDeleteModalCopy");
+	const descriptionEl = document.getElementById("BranchDeleteModalDescription");
+	const confirmButton = document.getElementById("ConfirmDeleteBranchButton") as HTMLButtonElement | null;
+	if (branchDeleteModalState) {
+		modal.removeAttribute("hidden");
+		if (titleEl) {
+			titleEl.textContent = branchDeleteModalState.forceDelete ? "Force delete unsynced local branch?" : "Delete local branch?";
+		}
+		if (copyEl) {
+			copyEl.textContent = branchDeleteModalState.forceDelete
+				? "This branch is not synced with its remote counterpart. Deleting it will force-remove the local branch even if it contains work not present on origin."
+				: "This will delete the selected local branch from your repository.";
+		}
+		if (descriptionEl) {
+			descriptionEl.textContent = branchDeleteModalState.branchName;
+		}
+		if (confirmButton) {
+			confirmButton.disabled = false;
+			confirmButton.textContent = branchDeleteModalState.forceDelete ? "Force delete branch" : "Delete branch";
+		}
+	} else {
+		modal.setAttribute("hidden", "");
+		if (titleEl) {
+			titleEl.textContent = "Delete local branch?";
+		}
+		if (copyEl) {
+			copyEl.textContent = "This will delete the selected local branch from your repository.";
+		}
+		if (descriptionEl) {
+			descriptionEl.textContent = "";
+		}
+		if (confirmButton) {
+			confirmButton.disabled = false;
+			confirmButton.textContent = "Delete branch";
+		}
+	}
+}
+
+function hideBranchDeleteModal() {
+	branchDeleteModalState = null;
+	updateBranchDeleteModal();
+}
+
+function toLocalBranchName(remoteBranchName: string) {
+	const slashIndex = remoteBranchName.indexOf("/");
+	if (slashIndex < 0 || slashIndex === remoteBranchName.length-1) {
+		return remoteBranchName;
+	}
+
+	return remoteBranchName.slice(slashIndex + 1);
 }
 
 function getActionTargetsOrFallback(action: GitSelectionAction, filePath: string, changeKey?: string, label?: string) {
@@ -276,12 +481,49 @@ function formatDiscardDescription(items: { filePath: string; description: string
 }
 
 function ensureGitSelectionKeyListener() {
+	ensureModalKeyListener();
+
 	if (gitSelectionKeyListenerBound) {
 		return;
 	}
 
 	document.addEventListener("keydown", handleGitSelectionKeydown);
 	gitSelectionKeyListenerBound = true;
+}
+
+function ensureModalKeyListener() {
+	if (modalKeyListenerBound) {
+		return;
+	}
+
+	document.addEventListener("keydown", handleModalKeydown);
+	modalKeyListenerBound = true;
+}
+
+function handleModalKeydown(event: KeyboardEvent) {
+	if (event.key !== "Escape") {
+		return;
+	}
+
+	if (discardModalState) {
+		event.preventDefault();
+		event.stopImmediatePropagation();
+		hideDiscardModal();
+		return;
+	}
+
+	if (branchSwitchModalState) {
+		event.preventDefault();
+		event.stopImmediatePropagation();
+		hideBranchSwitchModal();
+		return;
+	}
+
+	if (branchDeleteModalState) {
+		event.preventDefault();
+		event.stopImmediatePropagation();
+		hideBranchDeleteModal();
+	}
 }
 
 if (openedFolder) {
@@ -304,9 +546,16 @@ declare global {
         greet: () => void;
 		stageGitFile: (filePath: string, changeKey?: string) => Promise<void>;
 		unstageGitFile: (filePath: string, changeKey?: string) => Promise<void>;
+		pruneGitBranches: () => Promise<void>;
 		discardGitFile: (filePath: string, description?: string, changeKey?: string) => Promise<void>;
 		confirmDiscardGitFile: () => Promise<void>;
 		cancelDiscardGitFile: () => void;
+		promptBranchSwitch: (branchName: string, isRemote?: boolean) => void;
+		confirmBranchSwitch: () => Promise<void>;
+		cancelBranchSwitch: () => void;
+		promptDeleteBranch: (branchName: string, forceDelete?: boolean) => void;
+		confirmDeleteBranch: () => Promise<void>;
+		cancelDeleteBranch: () => void;
 		selectGitChange: (event: MouseEvent, key: string) => void;
     }
 }
