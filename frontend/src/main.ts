@@ -287,11 +287,16 @@ function ensureGitSelectionKeyListener() {
 if (openedFolder) {
 	loadHtml();
 } else {
-	document.querySelector('#app')!.innerHTML = `<div class="welcome">
-	<h1>Welcome to Git GUI</h1>
-	<p>Please select a folder to get started.</p>
-	<button onclick="pickFolder()">Select Folder</button>
-</div>`;
+	document.querySelector('#app')!.innerHTML = `<section class="welcome-shell">
+		<div class="welcome-panel surface-card">
+			<p class="eyebrow">Desktop Git Workspace</p>
+			<h1>Open a repository to get started</h1>
+			<p class="welcome-copy">Track diffs, review branches, select multiple files like VS Code, and commit with a faster local workflow.</p>
+			<div class="welcome-actions">
+				<button class="button-primary" onclick="pickFolder()">Choose Repository</button>
+			</div>
+		</div>
+	</section>`;
 }
 
 declare global {

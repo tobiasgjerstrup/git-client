@@ -1,34 +1,72 @@
 button {
-	transition: background-color 0.1s ease;
+	transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+	background: rgba(255, 255, 255, 0.08);
+	color: #eff5ff;
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	padding: 10px 16px;
+	border-radius: 999px;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	backdrop-filter: blur(8px);
+}
 
-	background-color: #222;
-	color: #fff;
-	border: none;
-	padding: 10px 20px;
-	border-radius: 5px;
-	&:hover {
-		background-color: #333;
-	}
-	&.highlight {
-		background-color: #007bff;
-		color: white;
-		&:hover {
-			background-color: #0056b3;
-		}
-	}
-	&:disabled {
-		background-color: #555;
-		color: #aaa;
-		cursor: not-allowed;
-	}
+button:hover {
+	transform: translateY(-1px);
+	background: rgba(255, 255, 255, 0.14);
+	border-color: rgba(255, 255, 255, 0.24);
+}
+
+button.highlight,
+.button-primary {
+	background: linear-gradient(135deg, #f4b23c 0%, #df7c29 100%);
+	border-color: rgba(255, 199, 103, 0.5);
+	color: #1f1407;
+	box-shadow: 0 10px 24px rgba(223, 124, 41, 0.24);
+}
+
+button.highlight:hover,
+.button-primary:hover {
+	background: linear-gradient(135deg, #ffc75a 0%, #eb8f41 100%);
+}
+
+.button-secondary {
+	background: rgba(255, 255, 255, 0.06);
+}
+
+.button-danger {
+	background: linear-gradient(135deg, #ff7a7a 0%, #d94949 100%);
+	border-color: rgba(255, 132, 132, 0.4);
+	color: #240a0a;
+}
+
+button:disabled {
+	background: rgba(255, 255, 255, 0.08);
+	color: rgba(239, 245, 255, 0.46);
+	border-color: rgba(255, 255, 255, 0.08);
+	cursor: not-allowed;
+	transform: none;
+	box-shadow: none;
 }
 
 input {
-	background-color: #222;
-	color: #fff;
-	border: none;
-	padding: 10px;
-	border-radius: 5px;
+	background: rgba(8, 14, 24, 0.72);
+	color: #f8fbff;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	padding: 12px 14px;
+	border-radius: 16px;
+	min-width: 0;
+	outline: none;
+	transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+input:focus {
+	border-color: rgba(91, 168, 255, 0.7);
+	box-shadow: 0 0 0 4px rgba(91, 168, 255, 0.12);
+	background: rgba(10, 18, 30, 0.92);
+}
+
+input::placeholder {
+	color: rgba(239, 245, 255, 0.48);
 }
 
 ::-webkit-scrollbar {

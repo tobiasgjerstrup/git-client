@@ -1,110 +1,399 @@
-.input-box {
-	&.btn {
-		width: 60px;
-		height: 30px;
-		line-height: 30px;
-		border-radius: 3px;
-		border: none;
-		margin: 0 0 0 20px;
-		padding: 0 8px;
-		cursor: pointer;
-		&:hover {
-			background-image: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%);
-			color: #333333;
-		}
-	}
-	&.input {
-		border: none;
-		border-radius: 3px;
-		outline: none;
-		height: 30px;
-		line-height: 30px;
-		padding: 0 10px;
-		background-color: rgba(240, 240, 240, 1);
-		-webkit-font-smoothing: antialiased;
-		&:hover {
-			border: none;
-			background-color: rgba(255, 255, 255, 1);
-		}
-		&:focus {
-			border: none;
-			background-color: rgba(255, 255, 255, 1);
-		}
-	}
+.app-shell {
+	display: grid;
+	gap: 20px;
+	width: 100%;
+	max-width: none;
+	margin: 0 auto;
 }
 
+.surface-card {
+	background: linear-gradient(180deg, rgba(24, 35, 52, 0.94) 0%, rgba(14, 22, 34, 0.94) 100%);
+	border: 1px solid rgba(255, 255, 255, 0.09);
+	box-shadow: 0 24px 60px rgba(4, 10, 18, 0.36);
+	backdrop-filter: blur(16px);
+	border-radius: 24px;
+}
+
+.workspace-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-end;
+	gap: 24px;
+	padding: 28px;
+}
+
+.workspace-heading h1,
+.panel-header h2,
+.welcome-panel h1,
+.modal-card h2 {
+	margin: 0;
+	letter-spacing: -0.03em;
+}
+
+.workspace-subtitle,
+.welcome-copy,
+.panel-hint,
+.modal-copy {
+	margin: 8px 0 0;
+	color: rgba(239, 245, 255, 0.68);
+	line-height: 1.5;
+}
+
+.eyebrow {
+	margin: 0 0 8px;
+	font-size: 0.76rem;
+	font-weight: 800;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: #f4b23c;
+}
+
+.workspace-status {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+.status-chip {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 12px 16px;
+	min-width: 240px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 18px;
+}
+
+.status-chip-label {
+	font-size: 0.72rem;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	color: rgba(239, 245, 255, 0.48);
+}
+
+.workspace-actions {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+	gap: 16px;
+	padding: 20px;
+}
+
+.action-cluster {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 16px;
+	border-radius: 20px;
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cluster-title {
+	font-size: 0.78rem;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.12em;
+	color: rgba(239, 245, 255, 0.5);
+}
+
+.cluster-controls {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+	align-items: center;
+}
+
+.cluster-controls-wide input {
+	flex: 1 1 220px;
+}
+
+.workspace-grid {
+	display: grid;
+	grid-template-columns:
+		clamp(220px, 17vw, 320px)
+		minmax(0, 1fr)
+		clamp(240px, 19vw, 360px);
+	gap: 20px;
+	align-items: start;
+}
+
+.workspace-panel {
+	min-height: 72vh;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.workspace-panel-main {
+	min-width: 0;
+}
+
+.panel-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 16px;
+	padding: 22px 22px 16px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.panel-header-main {
+	align-items: center;
+}
+
+.panel-body,
+.changes-list {
+	padding: 18px;
+	overflow: auto;
+	flex: 1;
+}
+
+.panel-stack,
+.branch-list,
+.commit-list,
+.changes-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.empty-panel-state {
+	padding: 18px;
+	border: 1px dashed rgba(255, 255, 255, 0.12);
+	border-radius: 18px;
+	color: rgba(239, 245, 255, 0.56);
+	background: rgba(255, 255, 255, 0.03);
+}
+
+.branch-card,
+.commit-card,
+.diff-file-entry {
+	border-radius: 18px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(9, 14, 22, 0.56);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.branch-card {
+	padding: 14px 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.branch-card-top,
+.branch-card-bottom,
+.commit-meta {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+}
+
+.branch-name,
+.commit-author,
+.diff-file-header {
+	font-weight: 800;
+}
+
+.branch-kind,
+.branch-delta,
+.commit-date,
+.commit-hash,
 .diff-file-status {
-	&.unstaged {
-		font-style: italic;
-	}
+	font-size: 0.8rem;
+	color: rgba(239, 245, 255, 0.62);
+}
+
+.branch-kind {
+	padding: 4px 8px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.06);
+	color: #cfe6ff;
+}
+
+.commit-card {
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.commit-message {
+	margin: 0;
+	line-height: 1.5;
+	color: #f4f8ff;
+}
+
+.commit-hash {
+	align-self: flex-start;
+	padding: 4px 8px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.05);
+	font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
 .diff-file-entry {
-	margin-bottom: 10px;
-	border: 1px solid #333;
-	border-radius: 4px;
-	padding: 8px;
+	padding: 16px;
 	cursor: default;
+	transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.diff-file-entry:hover {
+	border-color: rgba(255, 255, 255, 0.16);
+	transform: translateY(-1px);
 }
 
 .diff-file-entry.selected {
 	border-color: #5ba8ff;
-	background: rgba(91, 168, 255, 0.14);
+	background: rgba(91, 168, 255, 0.13);
+	box-shadow: 0 0 0 1px rgba(91, 168, 255, 0.18);
 }
 
 .diff-file-header-row {
 	display: flex;
+	justify-content: space-between;
 	align-items: center;
-	gap: 8px;
+	gap: 16px;
 	flex-wrap: wrap;
 	user-select: none;
 }
 
-.changedLinesContainer {
-	background-color: #111111;
-	text-align: left;
+.diff-file-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+	flex: 1;
+}
+
+.diff-file-status.unstaged {
+	color: #ffd38a;
+}
+
+.diff-file-status.staged {
+	color: #93d7b0;
 }
 
 .diff-file-header {
-	cursor: pointer;
+	margin: 0;
 	user-select: none;
-	&:hover {
-		text-decoration: underline;
-	}
+	overflow-wrap: anywhere;
+	align-self: flex-start;
+}
+
+.diff-file-toggle {
+	padding: 0;
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	background: none;
+	box-shadow: none;
+	color: inherit;
+	cursor: pointer;
+	font: inherit;
+	font-weight: inherit;
+	text-align: left;
+	letter-spacing: inherit;
+	display: inline-block;
+	width: fit-content;
+	max-width: 100%;
+}
+
+.diff-file-toggle:hover {
+	transform: none;
+	background: none;
+	border-color: transparent;
+	box-shadow: none;
+	text-decoration: underline;
+}
+
+.diff-file-toggle:focus-visible {
+	outline: 2px solid rgba(91, 168, 255, 0.75);
+	outline-offset: 3px;
+	border-radius: 6px;
+}
+
+.diff-file-actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.diff-content {
+	margin-top: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.changedLinesContainer {
+	margin: 0;
+	padding: 14px;
+	background: #09111b;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 16px;
+	text-align: left;
+	overflow: auto;
+	white-space: pre-wrap;
+	font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+	line-height: 1.5;
+}
+
+.diff-stats {
+	display: flex;
+	gap: 8px;
+}
+
+.diff-stat {
+	display: inline-flex;
+	align-items: center;
+	padding: 6px 10px;
+	border-radius: 999px;
+	font-size: 0.82rem;
+	font-weight: 700;
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.diff-stat-added {
+	color: #87df8d;
+}
+
+.diff-stat-removed {
+	color: #ff9696;
 }
 
 .addedLine {
-	color: #00ff00;
+	color: #8de09a;
 }
 
 .removedLine {
-	color: #ff0000;
+	color: #ff8d8d;
 }
 
 .unchangedLine {
-	color: #ffffff;
+	color: #e3edf7;
 }
 
-.panel {
-	border: 3px solid #ccc2;
-	border-radius: 5px;
-	width: 20%;
-	height: 99vh;
-	overflow: auto;
-	&.right {
-		float: right;
-	}
-
-	&.left {
-		float: left;
-	}
+.welcome-shell {
+	min-height: calc(100vh - 48px);
+	display: grid;
+	place-items: center;
 }
 
-.center-panel {
-	border: 3px solid #ccc2;
-	border-radius: 5px;
-	width: 58%;
-	margin: 0 auto;
+.welcome-panel {
+	max-width: 680px;
+	padding: 40px;
+	text-align: left;
+}
+
+.welcome-actions {
+	margin-top: 24px;
+	display: flex;
+	gap: 12px;
 }
 
 .modal-backdrop {
@@ -113,7 +402,8 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: rgba(8, 12, 18, 0.72);
+	background: rgba(5, 8, 14, 0.7);
+	backdrop-filter: blur(8px);
 	padding: 24px;
 	z-index: 1000;
 }
@@ -123,21 +413,26 @@
 }
 
 .modal-card {
-	width: min(440px, 100%);
-	background: #1d2a38;
+	width: min(480px, 100%);
+	background: linear-gradient(180deg, #1d2a38 0%, #131c28 100%);
 	border: 1px solid rgba(255, 255, 255, 0.12);
-	border-radius: 12px;
-	padding: 20px;
+	border-radius: 24px;
+	padding: 24px;
 	text-align: left;
 	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
+.modal-copy {
+	margin-bottom: 14px;
+}
+
 .modal-description {
-	padding: 10px 12px;
-	border-radius: 8px;
+	padding: 12px 14px;
+	border-radius: 16px;
 	background: rgba(255, 255, 255, 0.06);
 	word-break: break-word;
 	white-space: pre-wrap;
+	border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .modal-actions {
@@ -145,4 +440,39 @@
 	justify-content: flex-end;
 	gap: 10px;
 	margin-top: 20px;
+}
+
+@media (max-width: 1280px) {
+	.workspace-grid {
+		grid-template-columns: clamp(220px, 28vw, 300px) minmax(0, 1fr);
+	}
+
+	.panel-commits {
+		grid-column: 1 / -1;
+		min-height: auto;
+	}
+}
+
+@media (max-width: 900px) {
+	#app {
+		padding: 16px;
+	}
+
+	.workspace-header {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.workspace-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.workspace-panel,
+	.panel-commits {
+		min-height: auto;
+	}
+
+	.welcome-panel {
+		padding: 28px;
+	}
 }

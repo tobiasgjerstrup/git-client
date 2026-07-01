@@ -168,15 +168,17 @@ function renderDiffContent(diffFile?: GitDiffOutput["files"][0]): string {
 		return "";
 	}
 
-	return `<div class="diff-content" style="display:none"><pre class="changedLinesContainer">${diffFile.diff}</pre><p>Lines Added: ${diffFile.linesAdded}, Lines Removed: ${diffFile.linesRemoved}</p></div>`;
+	return `<div class="diff-content" style="display:none"><pre class="changedLinesContainer">${diffFile.diff}</pre><div class="diff-stats"><span class="diff-stat diff-stat-added">+${diffFile.linesAdded}</span><span class="diff-stat diff-stat-removed">-${diffFile.linesRemoved}</span></div></div>`;
 }
 
 function renderChangeEntry(entry: GitChangeEntry): string {
 	return `<div class="diff-file-entry" data-change-key="${escapeHtml(entry.key)}" onclick="selectGitChange(event, ${escapeHtml(JSON.stringify(entry.key))})">
 		<div class="diff-file-header-row">
-			${entry.buttonsHtml}
-			<span class="diff-file-status ${entry.statusClass}">${escapeHtml(entry.label)}</span>
-			<h3 class="diff-file-header" onclick="event.stopPropagation(); toggleDiff(this)">${escapeHtml(entry.path)}</h3>
+			<div class="diff-file-copy">
+				<span class="diff-file-status ${entry.statusClass}">${escapeHtml(entry.label)}</span>
+				<h3 class="diff-file-header"><button type="button" class="diff-file-toggle" onclick="event.stopPropagation(); toggleDiff(this.closest('.diff-file-entry').querySelector('.diff-file-header'))">${escapeHtml(entry.path)}</button></h3>
+			</div>
+			<div class="diff-file-actions">${entry.buttonsHtml}</div>
 		</div>
 		${renderDiffContent(entry.diffFile)}
 	</div>`;
@@ -197,24 +199,47 @@ function renderDiscardButton(actionPath: string, label: string, entryKey: string
 export async function gitStatus() {
 	const output = await window.go.main.App.RunGitStatus() as GitStatusOutput;
 	currentBranchName = output.branchName;
-	document.getElementById("BranchName")!.innerText = `Current Branch: ${currentBranchName}`;
+	document.getElementById("BranchName")!.innerText = currentBranchName || "No repository selected";
 }
 
 export async function getGitCommits() {
 	commits = await window.go.main.App.GetCommitHistory() as GitCommit[];
+	if (commits.length === 0) {
+		document.getElementById("GitCommits")!.innerHTML = `<div class="empty-panel-state">No commits available yet.</div>`;
+		return;
+	}
+
 	let commitsHtml = "";
 	for (const commit of commits) {
-		commitsHtml += `<div class="commit">`
-		commitsHtml += `<span>${commit.date.substring(0, 16)} <strong>${escapeHtml(commit.author)}</strong></span><br>`;
-		commitsHtml += `<span>${escapeHtml(commit.message)}</span><br>`;
-		commitsHtml += `<hr></div>`;
+		commitsHtml += `<article class="commit-card">`;
+		commitsHtml += `<div class="commit-meta"><span class="commit-author">${escapeHtml(commit.author)}</span><span class="commit-date">${escapeHtml(commit.date.substring(0, 16))}</span></div>`;
+		commitsHtml += `<p class="commit-message">${escapeHtml(commit.message)}</p>`;
+		commitsHtml += `<code class="commit-hash">${escapeHtml(commit.hash.substring(0, 8))}</code></article>`;
 	}
 	document.getElementById("GitCommits")!.innerHTML = commitsHtml;
 }
 
 export async function getGitBranches() {
 	branches = await window.go.main.App.GetGitBranches() as GitBranch[];
-	const branchesHtml = branches.map(branch => `<p>${branch.remote ? "☁️" : "🗃️"}${escapeHtml(branch.name)} ${branch.commitsAhead}/${branch.commitsBehind}</p>`)/*(Commit ID: ${escapeHtml(branch.commitId)})</p>`)*/.join("");
+	if (branches.length === 0) {
+		document.getElementById("GitBranches")!.innerHTML = `<div class="empty-panel-state">No branches detected.</div>`;
+		return;
+	}
+
+	const branchesHtml = branches.map(branch => {
+		const branchKind = branch.remote ? "Remote" : "Local";
+		const kindClass = branch.remote ? "remote" : "local";
+		return `<article class="branch-card ${kindClass}">
+			<div class="branch-card-top">
+				<span class="branch-name">${escapeHtml(branch.name)}</span>
+				<span class="branch-kind">${branchKind}</span>
+			</div>
+			<div class="branch-card-bottom">
+				<span class="branch-delta">↑ ${branch.commitsAhead}</span>
+				<span class="branch-delta">↓ ${branch.commitsBehind}</span>
+			</div>
+		</article>`;
+	}).join("");
 	document.getElementById("GitBranches")!.innerHTML = branchesHtml;
 
 	// if local branch is ahead, highlight push button
@@ -239,6 +264,8 @@ export async function gitDiff() {
 		window.go.main.App.GitDiffStaged() as Promise<GitDiffOutput>,
 		window.go.main.App.RunGitStatus() as Promise<GitStatusOutput>,
 	]);
+
+	updateCommitButtonHighlight(statusOutput.files);
 
 	const stagedDiffMap = new Map<string, GitDiffOutput["files"][0]>();
 	for (const file of diffStagedOutput.files) {
@@ -393,7 +420,21 @@ export async function gitDiff() {
 	document.getElementById("Changes")!.innerHTML = changesHtml;
 	setRenderedGitEntries(renderedEntries);
 	currentBranchName = statusOutput.branchName;
-	document.getElementById("BranchName")!.innerText = `Current Branch: ${currentBranchName}`;
+	document.getElementById("BranchName")!.innerText = currentBranchName || "No repository selected";
+}
+
+function updateCommitButtonHighlight(files: string[]) {
+	const commitButton = document.getElementById("CommitChanges");
+	if (!commitButton) {
+		return;
+	}
+
+	const hasStagedChanges = files.some((line) => {
+		const parsedLine = parseGitStatusLine(line);
+		return parsedLine ? isStagedFromXYStatus(parsedLine.xy) : false;
+	});
+
+	commitButton.classList.toggle("highlight", hasStagedChanges);
 }
 
 export async function gitFetch() {
