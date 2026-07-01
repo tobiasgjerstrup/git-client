@@ -18,6 +18,7 @@ const gitPathPairSeparator = "\t"
 type GitStatusResult struct {
 	Files      []string `json:"files"`
 	BranchName string   `json:"branchName"`
+	MergeInProgress bool `json:"mergeInProgress"`
 }
 
 type Commit struct {
@@ -79,6 +80,7 @@ func GitStatus(repoPath string) (*GitStatusResult, error) {
 	return &GitStatusResult{
 		Files:      files,
 		BranchName: branchName,
+		MergeInProgress: isMergeInProgress(repoPath),
 	}, nil
 }
 
@@ -252,6 +254,61 @@ func StageGitFile(repoPath string, filePath string) (string, error) {
 	paths := splitGitActionPaths(filePath)
 	args := append([]string{"add", "--all", "--"}, paths...)
 	return runGitForRepo(repoPath, args...)
+}
+
+func ResolveGitConflict(repoPath string, filePath string, strategy string) error {
+	paths := splitGitActionPaths(filePath)
+	if len(paths) == 0 {
+		return fmt.Errorf("no conflict file path provided")
+	}
+
+	option := ""
+	switch strings.ToLower(strings.TrimSpace(strategy)) {
+	case "ours":
+		option = "--ours"
+	case "theirs":
+		option = "--theirs"
+	default:
+		return fmt.Errorf("unsupported conflict resolution strategy: %s", strategy)
+	}
+
+	for _, targetPath := range paths {
+		if _, err := runGitForRepo(repoPath, "checkout", option, "--", targetPath); err != nil {
+			return err
+		}
+		if _, err := runGitForRepo(repoPath, "add", "--", targetPath); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func AbortGitMerge(repoPath string) error {
+	if !isMergeInProgress(repoPath) {
+		return fmt.Errorf("no merge in progress")
+	}
+
+	if _, err := runGitForRepo(repoPath, "merge", "--abort"); err == nil {
+		return nil
+	}
+
+	_, err := runGitForRepo(repoPath, "reset", "--merge")
+	return err
+}
+
+func ContinueGitMerge(repoPath string) error {
+	if !isMergeInProgress(repoPath) {
+		return fmt.Errorf("no merge in progress")
+	}
+
+	_, err := runGitForRepo(repoPath, "commit", "--no-edit")
+	return err
+}
+
+func isMergeInProgress(repoPath string) bool {
+	_, err := runGitForRepo(repoPath, "rev-parse", "--verify", "MERGE_HEAD")
+	return err == nil
 }
 
 func CommitGitChanges(repoPath string, message string) error {

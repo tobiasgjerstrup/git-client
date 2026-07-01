@@ -71,6 +71,18 @@ func (a *App) StageGitFile(filePath string) (string, error) {
 	return a.gitService.StageFile(a.repoPath, filePath)
 }
 
+func (a *App) ResolveGitConflict(filePath string, strategy string) error {
+	return a.gitService.ResolveConflict(a.repoPath, filePath, strategy)
+}
+
+func (a *App) AbortMerge() error {
+	return a.gitService.AbortMerge(a.repoPath)
+}
+
+func (a *App) ContinueMerge() error {
+	return a.gitService.ContinueMerge(a.repoPath)
+}
+
 func (a *App) CommitGitChanges(message string) error {
 	return a.gitService.Commit(a.repoPath, message)
 }

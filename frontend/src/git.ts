@@ -26,6 +26,7 @@ type GitChangeEntry = {
 export interface GitStatusOutput {
 	files: string[];
 	branchName: string;
+	mergeInProgress: boolean;
 }
 
 export interface GitCommit {
@@ -80,6 +81,13 @@ function parseGitStatusLine(line: string): GitStatusLine | null {
 		return { key: "!", xy: "!!", path, text: `!! ${path}` };
 	}
 
+	const unmergedCodeMatch = line.match(/^(AA|AU|DD|DU|UD|UA|UU) (.+)$/);
+	if (unmergedCodeMatch) {
+		const xy = unmergedCodeMatch[1];
+		const path = unmergedCodeMatch[2];
+		return { key: "u", xy, path, text: `${xy} ${path}` };
+	}
+
 	const ordinaryChangedMatch = line.match(/^1 (\S{2}) (?:\S+ ){6}(.+)$/);
 	if (ordinaryChangedMatch) {
 		const path = ordinaryChangedMatch[2];
@@ -96,16 +104,13 @@ function parseGitStatusLine(line: string): GitStatusLine | null {
 		return { key: "2", xy: renamedOrCopiedMatch[1], path, origPath, text };
 	}
 
-	const unmergedMatch = line.match(/^u (\S{2}) (?:\S+ ){8}(.+)$/);
-	if (unmergedMatch) {
-		const path = unmergedMatch[2];
-		return { key: "u", xy: unmergedMatch[1], path, text: `${unmergedMatch[1]} ${path}` };
-	}
-
 	// Backward compatibility with porcelain v1 ("XY path")
 	if (line.length >= 3) {
 		const xy = line.substring(0, 2);
 		const path = line.substring(3);
+		if (isUnmergedStatusCode(xy)) {
+			return { key: "u", xy, path, text: line };
+		}
 		if (xy === "??") {
 			return { key: "?", xy, path, text: line };
 		}
@@ -116,6 +121,10 @@ function parseGitStatusLine(line: string): GitStatusLine | null {
 	}
 
 	return null;
+}
+
+function isUnmergedStatusCode(xy: string): boolean {
+	return xy === "AA" || xy === "AU" || xy === "DD" || xy === "DU" || xy === "UD" || xy === "UA" || xy === "UU";
 }
 
 function isStagedFromXYStatus(xy: string): boolean {
@@ -194,6 +203,10 @@ function renderUnstageButton(actionPath: string, entryKey: string): string {
 
 function renderDiscardButton(actionPath: string, label: string, entryKey: string): string {
 	return `<button ${getGitActionButtonAttrs(actionPath)} onclick='event.stopPropagation(); discardGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(label))}, ${escapeHtml(JSON.stringify(entryKey))})'>Discard</button>`;
+}
+
+function renderConflictResolutionButtons(actionPath: string, entryKey: string): string {
+	return `<button ${getGitActionButtonAttrs(actionPath)} onclick='event.stopPropagation(); resolveGitConflict(${escapeHtml(JSON.stringify(actionPath))}, "ours", ${escapeHtml(JSON.stringify(entryKey))})'>Use ours</button><button ${getGitActionButtonAttrs(actionPath)} onclick='event.stopPropagation(); resolveGitConflict(${escapeHtml(JSON.stringify(actionPath))}, "theirs", ${escapeHtml(JSON.stringify(entryKey))})'>Use theirs</button>`;
 }
 
 export async function gitStatus() {
@@ -319,6 +332,7 @@ export async function gitDiff() {
 
 	let changesHtml = "";
 	const renderedEntries: GitSelectionEntry[] = [];
+	let currentMergeConflictCount = 0;
 
 	for (const file of statusOutput.files) {
 		const parsedLine = parseGitStatusLine(file);
@@ -330,6 +344,30 @@ export async function gitDiff() {
 		const unstagedCode = parsedLine.xy[1];
 		const entries: GitChangeEntry[] = [];
 		const actionPath = buildActionPath(parsedLine);
+
+		if (parsedLine.key === "u") {
+			currentMergeConflictCount++;
+			renderedEntries.push({
+				key: `${parsedLine.path}:conflict`,
+				actionPath,
+				label: parsedLine.path,
+				supportedActions: ["stage"],
+			});
+			entries.push({
+				key: `${parsedLine.path}:conflict`,
+				path: parsedLine.path,
+				label: `Merge conflict: ${parsedLine.path}`,
+				side: "unstaged",
+				diffFile: unstagedDiffMap.get(parsedLine.path) ?? stagedDiffMap.get(parsedLine.path),
+				buttonsHtml: renderConflictResolutionButtons(actionPath, `${parsedLine.path}:conflict`),
+				statusClass: "unstaged",
+			});
+
+			for (const entry of entries) {
+				changesHtml += renderChangeEntry(entry);
+			}
+			continue;
+		}
 
 		if (isStagedFromXYStatus(parsedLine.xy)) {
 			renderedEntries.push({
@@ -441,8 +479,49 @@ export async function gitDiff() {
 
 	document.getElementById("Changes")!.innerHTML = changesHtml;
 	setRenderedGitEntries(renderedEntries);
+	updateMergeConflictBanner(statusOutput.mergeInProgress, currentMergeConflictCount);
 	currentBranchName = statusOutput.branchName;
 	document.getElementById("BranchName")!.innerText = currentBranchName || "No repository selected";
+}
+
+function updateMergeConflictBanner(mergeInProgress: boolean, conflictCount: number) {
+	const banner = document.getElementById("MergeConflictBanner");
+	if (!banner) {
+		return;
+	}
+
+	banner.hidden = !mergeInProgress;
+	const continueButton = document.getElementById("ContinueMergeButton") as HTMLButtonElement | null;
+	const abortButton = document.getElementById("AbortMergeButton") as HTMLButtonElement | null;
+	if (continueButton) {
+		continueButton.hidden = !mergeInProgress || conflictCount > 0;
+		continueButton.disabled = !mergeInProgress || conflictCount > 0;
+	}
+	if (abortButton) {
+		abortButton.hidden = !mergeInProgress;
+		abortButton.disabled = !mergeInProgress;
+	}
+	if (mergeInProgress && conflictCount > 0) {
+		const title = banner.querySelector(".merge-conflict-title");
+		if (title) {
+			title.textContent = conflictCount === 1 ? "Merge conflict detected" : `${conflictCount} merge conflicts detected`;
+		}
+		const copy = banner.querySelector(".merge-conflict-copy");
+		if (copy) {
+			copy.textContent = conflictCount === 1
+				? "Resolve the file below with Use ours / Use theirs, then continue the merge or abort if you want to start over."
+				: "Resolve the files below with Use ours / Use theirs, then continue the merge or abort if you want to start over.";
+		}
+	} else if (mergeInProgress) {
+		const title = banner.querySelector(".merge-conflict-title");
+		if (title) {
+			title.textContent = "Merge ready to continue";
+		}
+		const copy = banner.querySelector(".merge-conflict-copy");
+		if (copy) {
+			copy.textContent = "All conflicts are resolved. Continue the merge to finish it, or abort if you want to start over.";
+		}
+	}
 }
 
 function updateCommitButtonHighlight(files: string[]) {

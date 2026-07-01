@@ -6,6 +6,9 @@ declare global {
 		pickFolder: () => Promise<void>;
 		stageGitFile: (filePath: string, changeKey?: string) => Promise<void>;
 		unstageGitFile: (filePath: string, changeKey?: string) => Promise<void>;
+		resolveGitConflict: (filePath: string, strategy: "ours" | "theirs", changeKey?: string) => Promise<void>;
+		abortMerge: () => Promise<void>;
+		continueMerge: () => Promise<void>;
 		pruneGitBranches: () => Promise<void>;
 		pushGitChanges: () => Promise<void>;
 		pullGitChanges: () => Promise<void>;

@@ -59,6 +59,16 @@
 					<h2>Changes</h2>
 					<p class="panel-hint">Ctrl/Cmd click to toggle, Shift to select ranges, Esc to clear</p>
 				</div>
+				<div id="MergeConflictBanner" class="merge-conflict-banner" hidden>
+					<div>
+						<p class="merge-conflict-title">Merge in progress</p>
+						<p class="merge-conflict-copy">Resolve the remaining files, then continue the merge. You can abort it if you want to start over.</p>
+					</div>
+					<div class="merge-conflict-actions">
+						<button id="ContinueMergeButton" class="button-primary" type="button" onclick="continueMerge()">Continue merge</button>
+						<button id="AbortMergeButton" class="button-danger" type="button" onclick="abortMerge()">Abort merge</button>
+					</div>
+				</div>
 				<div id="SelectionActions" class="selection-actions" hidden>
 					<span id="SelectionActionsSummary" class="selection-actions-summary"></span>
 					<div class="selection-actions-buttons">

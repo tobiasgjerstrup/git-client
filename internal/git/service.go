@@ -12,6 +12,9 @@ type GitService interface {
 	StageFile(repoPath, path string) (string, error)
 	UnstageFile(repoPath, path string) (string, error)
 	DiscardFile(repoPath, path string) (string, error)
+	ResolveConflict(repoPath, path, strategy string) error
+	AbortMerge(repoPath string) error
+	ContinueMerge(repoPath string) error
 	Commit(repoPath, message string) error
 	SwitchBranch(repoPath, branch string) error
 	DeleteBranch(repoPath, branch string, force bool) error

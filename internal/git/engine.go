@@ -147,6 +147,18 @@ func (e *GitEngine) DiscardFile(repoPath, path string) (string, error) {
 	return e.cli.DiscardFile(repoPath, path)
 }
 
+func (e *GitEngine) ResolveConflict(repoPath, path, strategy string) error {
+	return e.cli.ResolveConflict(repoPath, path, strategy)
+}
+
+func (e *GitEngine) AbortMerge(repoPath string) error {
+	return e.cli.AbortMerge(repoPath)
+}
+
+func (e *GitEngine) ContinueMerge(repoPath string) error {
+	return e.cli.ContinueMerge(repoPath)
+}
+
 func (e *GitEngine) Commit(repoPath, message string) error {
 	return e.cli.Commit(repoPath, message)
 }
