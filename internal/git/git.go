@@ -215,7 +215,7 @@ func GetCommitHistory(repoPath string) (*[]Commit, error) {
 
 func DiscardGitFile(repoPath string, filePath string) (string, error) {
 	paths := splitGitActionPaths(filePath)
-	if len(paths) == 2 {
+	if isRenameDiscardPayload(repoPath, paths) {
 		originalPath := paths[0]
 		currentPath := paths[1]
 
@@ -226,17 +226,26 @@ func DiscardGitFile(repoPath string, filePath string) (string, error) {
 		return runGitForRepo(repoPath, "restore", "--worktree", "--source=HEAD", "--", originalPath)
 	}
 
-	targetPath := paths[0]
-	// If a file is new (?? in git status), we need to remove it instead of restoring it
-	fileStatus, err := runGitForRepo(repoPath, "status", "--porcelain", "--", targetPath)
-	if err != nil {
-		return "", err
+	for _, targetPath := range paths {
+		// If a file is new (?? in git status), we need to remove it instead of restoring it
+		fileStatus, err := runGitForRepo(repoPath, "status", "--porcelain", "--", targetPath)
+		if err != nil {
+			return "", err
+		}
+
+		if strings.HasPrefix(fileStatus, "??") {
+			if err := os.Remove(filepath.Join(repoPath, targetPath)); err != nil && !os.IsNotExist(err) {
+				return "", err
+			}
+			continue
+		}
+
+		if _, err := runGitForRepo(repoPath, "restore", "--", targetPath); err != nil {
+			return "", err
+		}
 	}
 
-	if strings.HasPrefix(fileStatus, "??") {
-		return "", os.Remove(filepath.Join(repoPath, targetPath))
-	}
-	return runGitForRepo(repoPath, "restore", "--", targetPath)
+	return "", nil
 }
 
 func StageGitFile(repoPath string, filePath string) (string, error) {
@@ -333,6 +342,30 @@ func splitGitActionPaths(filePath string) []string {
 		return []string{filePath}
 	}
 	return paths
+}
+
+func isRenameDiscardPayload(repoPath string, paths []string) bool {
+	if len(paths) != 2 {
+		return false
+	}
+
+	out, err := runGitForRepo(repoPath, "status", "--porcelain=v2", "--", paths[0], paths[1])
+	if err != nil {
+		return false
+	}
+
+	lines := 0
+	for _, line := range strings.Split(out, "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		lines++
+		if lines > 1 {
+			return false
+		}
+	}
+
+	return lines == 1 && strings.HasPrefix(strings.TrimSpace(out), "2 ")
 }
 
 func GetGitBranches(repoPath string) (*[]GitBranch, error) {

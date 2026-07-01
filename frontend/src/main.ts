@@ -3,7 +3,7 @@ import './app.css';
 import './defaults.css';
 
 import { getGitBranches, getGitCommits, gitDiff, gitFetch } from './git';
-import { beginGitAction, endGitAction, isGitActionPending } from './gitActionState';
+import { beginGitAction, endGitAction, isAnyGitActionPending } from './gitActionState';
 import { getGitSelectionTargets, handleGitSelectionClick, handleGitSelectionKeydown, type GitSelectionAction } from './gitSelectionState';
 
 export let openedFolder: string | null = null;
@@ -296,8 +296,9 @@ function updateDiscardModal() {
 		modal.removeAttribute("hidden");
 		descriptionEl!.textContent = formatDiscardDescription(discardModalState.items);
 		if (confirmButton) {
-			confirmButton.disabled = discardModalState.items.some((item) => isGitActionPending("discard", item.filePath));
+			confirmButton.disabled = discardModalState.items.some((item) => isAnyGitActionPending(item.filePath));
 		}
+		focusModalInitialTarget("DiscardModal");
 	} else {
 		modal.setAttribute("hidden", "");
 		if (descriptionEl) {
@@ -343,6 +344,7 @@ function updateBranchSwitchModal() {
 			confirmButton.disabled = false;
 			confirmButton.textContent = branchSwitchModalState.createLocal ? "Create local and switch" : "Switch branch";
 		}
+		focusModalInitialTarget("BranchSwitchModal", "#ConfirmBranchSwitchButton");
 	} else {
 		modal.setAttribute("hidden", "");
 		if (titleEl) {
@@ -393,6 +395,7 @@ function updateBranchDeleteModal() {
 			confirmButton.disabled = false;
 			confirmButton.textContent = branchDeleteModalState.forceDelete ? "Force delete branch" : "Delete branch";
 		}
+		focusModalInitialTarget("BranchDeleteModal");
 	} else {
 		modal.setAttribute("hidden", "");
 		if (titleEl) {
@@ -501,7 +504,40 @@ function ensureModalKeyListener() {
 }
 
 function handleModalKeydown(event: KeyboardEvent) {
+	const activeModal = getActiveModal();
+	if (!activeModal) {
+		return;
+	}
+
 	if (event.key !== "Escape") {
+		if (event.key !== "Tab") {
+			return;
+		}
+
+		const focusableElements = getModalFocusableElements(activeModal);
+		if (focusableElements.length === 0) {
+			focusModalCard(activeModal);
+			event.preventDefault();
+			return;
+		}
+
+		const currentIndex = focusableElements.indexOf(document.activeElement as HTMLElement);
+		if (currentIndex === -1) {
+			focusableElements[event.shiftKey ? focusableElements.length - 1 : 0].focus({ preventScroll: true });
+			event.preventDefault();
+			return;
+		}
+
+		if (event.shiftKey && currentIndex === 0) {
+			focusableElements[focusableElements.length - 1].focus({ preventScroll: true });
+			event.preventDefault();
+			return;
+		}
+
+		if (!event.shiftKey && currentIndex === focusableElements.length - 1) {
+			focusableElements[0].focus({ preventScroll: true });
+			event.preventDefault();
+		}
 		return;
 	}
 
@@ -524,6 +560,55 @@ function handleModalKeydown(event: KeyboardEvent) {
 		event.stopImmediatePropagation();
 		hideBranchDeleteModal();
 	}
+}
+
+function focusModalInitialTarget(modalId: string, preferredSelector?: string) {
+	requestAnimationFrame(() => {
+		const modal = document.getElementById(modalId);
+		if (!modal || modal.hasAttribute("hidden")) {
+			return;
+		}
+
+		const preferredTarget = preferredSelector ? modal.querySelector(preferredSelector) as HTMLElement | null : null;
+		if (preferredTarget) {
+			preferredTarget.focus({ preventScroll: true });
+			return;
+		}
+
+		focusModalCard(modal);
+	});
+}
+
+function focusModalCard(modal: HTMLElement) {
+	const modalCard = modal.querySelector(".modal-card") as HTMLElement | null;
+	modalCard?.focus({ preventScroll: true });
+}
+
+function getActiveModal() {
+	if (discardModalState) {
+		return document.getElementById("DiscardModal") as HTMLElement | null;
+	}
+
+	if (branchSwitchModalState) {
+		return document.getElementById("BranchSwitchModal") as HTMLElement | null;
+	}
+
+	if (branchDeleteModalState) {
+		return document.getElementById("BranchDeleteModal") as HTMLElement | null;
+	}
+
+	return null;
+}
+
+function getModalFocusableElements(modal: HTMLElement) {
+	return Array.from(modal.querySelectorAll<HTMLElement>([
+		"button:not([disabled])",
+		"[href]",
+		"input:not([disabled])",
+		"select:not([disabled])",
+		"textarea:not([disabled])",
+		"[tabindex]:not([tabindex='-1'])",
+	].join(",")));
 }
 
 if (openedFolder) {

@@ -486,7 +486,7 @@
 	padding: 12px 14px;
 	border-radius: 16px;
 	background: rgba(255, 255, 255, 0.06);
-	word-break: break-word;
+	overflow-wrap: anywhere;
 	white-space: pre-wrap;
 	border: 1px solid rgba(255, 255, 255, 0.08);
 }

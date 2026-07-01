@@ -2,12 +2,12 @@ type GitActionKind = "stage" | "unstage" | "discard";
 
 const pendingActions = new Set<string>();
 
-function buildActionKey(action: GitActionKind, filePath: string): string {
-	return `${action}:${filePath}`;
+function buildActionKey(filePath: string): string {
+	return filePath;
 }
 
 export function beginGitAction(action: GitActionKind, filePath: string): string | null {
-	const actionKey = buildActionKey(action, filePath);
+	const actionKey = buildActionKey(filePath);
 	if (pendingActions.has(actionKey)) {
 		return null;
 	}
@@ -23,11 +23,15 @@ export function endGitAction(actionKey: string): void {
 }
 
 export function isGitActionPending(action: GitActionKind, filePath: string): boolean {
-	return pendingActions.has(buildActionKey(action, filePath));
+	return isAnyGitActionPending(filePath);
+}
+
+export function isAnyGitActionPending(filePath: string): boolean {
+	return pendingActions.has(buildActionKey(filePath));
 }
 
 export function getGitActionButtonAttrs(action: GitActionKind, filePath: string): string {
-	const actionKey = buildActionKey(action, filePath);
+	const actionKey = buildActionKey(filePath);
 	const disabled = pendingActions.has(actionKey) ? " disabled" : "";
 	return `data-git-action-key="${escapeAttribute(actionKey)}"${disabled}`;
 }

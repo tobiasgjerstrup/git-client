@@ -255,18 +255,27 @@ export async function getGitBranches() {
 	}).join("");
 	document.getElementById("GitBranches")!.innerHTML = branchesHtml;
 
-	// if local branch is ahead, highlight push button
+	const pushButton = document.getElementById("PushButton");
+	const pullButton = document.getElementById("PullChanges");
+	// Highlight sync actions when the current branch is out of date relative to origin.
 	if (currentBranchName) {
 		const currentBranch = branches.find(branch => branch.name === currentBranchName && !branch.remote);
 		const remoteBranch = branches.find(branch => branch.name === "origin/"+currentBranchName && branch.remote);
-		if (!remoteBranch) {
-			document.getElementById("PushButton")!.classList.add("highlight");
-		} else {
-			if (remoteBranch && currentBranch && currentBranch.commitsAhead > remoteBranch.commitsAhead) {
-				document.getElementById("PushButton")!.classList.add("highlight");
-			} else {
-				document.getElementById("PushButton")!.classList.remove("highlight");
-			}
+		const isBehindRemote = !!currentBranch && !!remoteBranch && remoteBranch.commitsAhead > currentBranch.commitsAhead;
+		const isAheadOfRemote = !remoteBranch || !!currentBranch && currentBranch.commitsAhead > remoteBranch.commitsAhead;
+
+		if (pushButton) {
+			pushButton.classList.toggle("highlight", isAheadOfRemote);
+		}
+		if (pullButton) {
+			pullButton.classList.toggle("highlight", isBehindRemote);
+		}
+	} else {
+		if (pushButton) {
+			pushButton.classList.remove("highlight");
+		}
+		if (pullButton) {
+			pullButton.classList.remove("highlight");
 		}
 	}
 }
