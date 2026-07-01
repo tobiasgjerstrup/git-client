@@ -50,7 +50,7 @@ window.pickFolder = async function () {
 
 window.stageGitFile = async function (filePath: string, changeKey?: string) {
 	const targets = getActionTargetsOrFallback("stage", filePath, changeKey);
-	await runGitAction("stage", targets, async (targetPath) => {
+	await runGitAction(targets, async (targetPath) => {
 		await window.go.main.App.StageGitFile(targetPath);
 	});
 }
@@ -61,14 +61,14 @@ window.stageSelectedGitFiles = async function () {
 		return;
 	}
 
-	await runGitAction("stage", targets, async (targetPath) => {
+	await runGitAction(targets, async (targetPath) => {
 		await window.go.main.App.StageGitFile(targetPath);
 	});
 }
 
 window.unstageGitFile = async function (filePath: string, changeKey?: string) {
 	const targets = getActionTargetsOrFallback("unstage", filePath, changeKey);
-	await runGitAction("unstage", targets, async (targetPath) => {
+	await runGitAction(targets, async (targetPath) => {
 		await window.go.main.App.UnstageGitFile(targetPath);
 	});
 }
@@ -79,7 +79,7 @@ window.unstageSelectedGitFiles = async function () {
 		return;
 	}
 
-	await runGitAction("unstage", targets, async (targetPath) => {
+	await runGitAction(targets, async (targetPath) => {
 		await window.go.main.App.UnstageGitFile(targetPath);
 	});
 }
@@ -249,7 +249,7 @@ window.discardSelectedGitFiles = async function () {
 		return;
 	}
 
-	await runGitAction("discard", targets.map((target) => ({ actionPath: target.actionPath, label: target.label })), async (targetPath) => {
+	await runGitAction(targets.map((target) => ({ actionPath: target.actionPath, label: target.label })), async (targetPath) => {
 		await window.go.main.App.DiscardGitFile(targetPath);
 	});
 }
@@ -261,7 +261,7 @@ window.confirmDiscardGitFile = async function () {
 
 	const targets = discardModalState.items;
 	hideDiscardModal();
-	await runGitAction("discard", targets.map((target) => ({ actionPath: target.filePath, label: target.description })), async (targetPath) => {
+	await runGitAction(targets.map((target) => ({ actionPath: target.filePath, label: target.description })), async (targetPath) => {
 		await window.go.main.App.DiscardGitFile(targetPath);
 	});
 }
@@ -523,7 +523,6 @@ function getActionTargetsOrFallback(action: GitSelectionAction, filePath: string
 }
 
 async function runGitAction(
-	action: GitSelectionAction,
 	targets: Array<{ actionPath: string; label?: string }>,
 	runner: (targetPath: string) => Promise<void>,
 ) {
