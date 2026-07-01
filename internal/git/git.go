@@ -269,12 +269,39 @@ func SwitchGitBranch(repoPath string, branchName string) error {
 		return nil
 	}
 
-	_, err = runGitForRepo(repoPath, "switch", "-c", branchName)
+	// Only attempt branch creation if the switch failed because the branch is missing.
+	// For all other failures (already on branch, local changes would be overwritten, etc.),
+	// return the original switch error.
+	if !isMissingBranchSwitchError(err) {
+		fmt.Printf("Error switching branch: %v\n", err)
+		return err
+	}
+
+	// If a matching remote branch exists, create a local tracking branch.
+	if _, remoteBranchErr := runGitForRepo(repoPath, "show-ref", "--verify", "--quiet", "refs/remotes/origin/"+branchName); remoteBranchErr == nil {
+		_, err = runGitForRepo(repoPath, "switch", "-c", branchName, "--track", "origin/"+branchName)
+	} else {
+		_, err = runGitForRepo(repoPath, "switch", "-c", branchName)
+	}
+
 	if err != nil {
 		fmt.Printf("Error switching/creating branch: %v\n", err)
 		return err
 	}
 	return nil
+}
+
+func isMissingBranchSwitchError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "invalid reference") ||
+		strings.Contains(msg, "not found") ||
+		strings.Contains(msg, "unknown revision") ||
+		strings.Contains(msg, "could not resolve") ||
+		strings.Contains(msg, "cannot find")
 }
 
 func DeleteGitBranch(repoPath string, branchName string, force bool) error {
