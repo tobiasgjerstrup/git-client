@@ -484,9 +484,8 @@ async function runGitAction(
 			console.error("Failed to refresh git diff after git action", refreshError);
 		}
 	}
-		for (const actionKey of actionKeys) {
-			endGitAction(actionKey);
-		}
+	for (const actionKey of actionKeys) {
+		endGitAction(actionKey);
 	}
 }
 
