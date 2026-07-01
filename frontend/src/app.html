@@ -12,4 +12,15 @@
 		<button id="SwitchBranch" onclick="switchGitBranch()">Switch Branch</button>
 		<div id="Changes"></div>
 	</div>
+	<div id="DiscardModal" class="modal-backdrop" hidden>
+		<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="DiscardModalTitle">
+			<h2 id="DiscardModalTitle">Discard changes?</h2>
+			<p>This will remove the current uncommitted changes for:</p>
+			<p id="DiscardModalDescription" class="modal-description"></p>
+			<div class="modal-actions">
+				<button type="button" onclick="cancelDiscardGitFile()">Cancel</button>
+				<button id="ConfirmDiscardButton" type="button" onclick="confirmDiscardGitFile()">Discard</button>
+			</div>
+		</div>
+	</div>
 </div>

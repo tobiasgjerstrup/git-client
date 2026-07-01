@@ -99,3 +99,42 @@
 	width: 58%;
 	margin: 0 auto;
 }
+
+.modal-backdrop {
+	position: fixed;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(8, 12, 18, 0.72);
+	padding: 24px;
+	z-index: 1000;
+}
+
+.modal-backdrop[hidden] {
+	display: none;
+}
+
+.modal-card {
+	width: min(440px, 100%);
+	background: #1d2a38;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 12px;
+	padding: 20px;
+	text-align: left;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.modal-description {
+	padding: 10px 12px;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.06);
+	word-break: break-word;
+}
+
+.modal-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+	margin-top: 20px;
+}

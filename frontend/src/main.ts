@@ -3,8 +3,16 @@ import './app.css';
 import './defaults.css';
 
 import { getGitBranches, getGitCommits, gitDiff, gitFetch } from './git';
+import { beginGitAction, endGitAction, isGitActionPending } from './gitActionState';
 
 export let openedFolder: string | null = null;
+
+type DiscardModalState = {
+	filePath: string;
+	description: string;
+} | null;
+
+let discardModalState: DiscardModalState = null;
 
 window.pickFolder = async function () {
 	const folder = await window.go.main.App.PickFolder();
@@ -14,13 +22,31 @@ window.pickFolder = async function () {
 };
 
 window.stageGitFile = async function (filePath: string) {
-	await window.go.main.App.StageGitFile(filePath);
-	gitDiff();
+	const actionKey = beginGitAction("stage", filePath);
+	if (!actionKey) {
+		return;
+	}
+
+	try {
+		await window.go.main.App.StageGitFile(filePath);
+		await gitDiff();
+	} finally {
+		endGitAction(actionKey);
+	}
 }
 
 window.unstageGitFile = async function (filePath: string) {
-	await window.go.main.App.UnstageGitFile(filePath);
-	gitDiff();
+	const actionKey = beginGitAction("unstage", filePath);
+	if (!actionKey) {
+		return;
+	}
+
+	try {
+		await window.go.main.App.UnstageGitFile(filePath);
+		await gitDiff();
+	} finally {
+		endGitAction(actionKey);
+	}
 }
 
 window.commitGitChanges = async function () {
@@ -102,9 +128,37 @@ window.refresh = async function () {
 	}
 }
 
-window.discardGitFile = async function (filePath: string) {
-	await window.go.main.App.DiscardGitFile(filePath);
-	gitDiff();
+window.discardGitFile = async function (filePath: string, description?: string) {
+	discardModalState = {
+		filePath,
+		description: description ?? filePath,
+	};
+	updateDiscardModal();
+}
+
+window.confirmDiscardGitFile = async function () {
+	if (!discardModalState) {
+		return;
+	}
+
+	const { filePath } = discardModalState;
+	const actionKey = beginGitAction("discard", filePath);
+	if (!actionKey) {
+		return;
+	}
+
+	hideDiscardModal();
+
+	try {
+		await window.go.main.App.DiscardGitFile(filePath);
+		await gitDiff();
+	} finally {
+		endGitAction(actionKey);
+	}
+}
+
+window.cancelDiscardGitFile = function () {
+	hideDiscardModal();
 }
 
 window.pushGitChanges = async function () {
@@ -145,7 +199,38 @@ function loadHtml() {
 	document.querySelector('#app')!.innerHTML = appHtml;
 	document.getElementById('BranchPanel')!.innerHTML = branchPanelHtml;
 	document.getElementById('CommitPanel')!.innerHTML = commitPanelHtml;
+	updateDiscardModal();
 	window.refresh();
+}
+
+function updateDiscardModal() {
+	const modal = document.getElementById("DiscardModal");
+	if (!modal) {
+		return;
+	}
+
+	const descriptionEl = document.getElementById("DiscardModalDescription");
+	const confirmButton = document.getElementById("ConfirmDiscardButton") as HTMLButtonElement | null;
+	if (discardModalState) {
+		modal.removeAttribute("hidden");
+		descriptionEl!.textContent = discardModalState.description;
+		if (confirmButton) {
+			confirmButton.disabled = isGitActionPending("discard", discardModalState.filePath);
+		}
+	} else {
+		modal.setAttribute("hidden", "");
+		if (descriptionEl) {
+			descriptionEl.textContent = "";
+		}
+		if (confirmButton) {
+			confirmButton.disabled = false;
+		}
+	}
+}
+
+function hideDiscardModal() {
+	discardModalState = null;
+	updateDiscardModal();
 }
 
 if (openedFolder) {
@@ -161,5 +246,10 @@ if (openedFolder) {
 declare global {
     interface Window {
         greet: () => void;
+		stageGitFile: (filePath: string) => Promise<void>;
+		unstageGitFile: (filePath: string) => Promise<void>;
+		discardGitFile: (filePath: string, description?: string) => Promise<void>;
+		confirmDiscardGitFile: () => Promise<void>;
+		cancelDiscardGitFile: () => void;
     }
 }
