@@ -34,6 +34,18 @@ func (c *GitCLI) DiscardFile(repoPath, path string) (string, error) {
 	return DiscardGitFile(repoPath, path)
 }
 
+func (c *GitCLI) ResolveConflict(repoPath, path, strategy string) error {
+	return ResolveGitConflict(repoPath, path, strategy)
+}
+
+func (c *GitCLI) AbortMerge(repoPath string) error {
+	return AbortGitMerge(repoPath)
+}
+
+func (c *GitCLI) ContinueMerge(repoPath string) error {
+	return ContinueGitMerge(repoPath)
+}
+
 func (c *GitCLI) Commit(repoPath, message string) error {
 	return CommitGitChanges(repoPath, message)
 }

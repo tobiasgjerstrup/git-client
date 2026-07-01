@@ -84,6 +84,23 @@ window.unstageSelectedGitFiles = async function () {
 	});
 }
 
+window.resolveGitConflict = async function (filePath: string, strategy: "ours" | "theirs", changeKey?: string) {
+	const targets = getActionTargetsOrFallback("stage", filePath, changeKey);
+	await runGitAction(targets, async (targetPath) => {
+		await window.go.main.App.ResolveGitConflict(targetPath, strategy);
+	});
+}
+
+window.abortMerge = async function () {
+	await window.go.main.App.AbortMerge();
+	await window.refresh();
+}
+
+window.continueMerge = async function () {
+	await window.go.main.App.ContinueMerge();
+	await window.refresh();
+}
+
 window.commitGitChanges = async function () {
 	try {
 		document.getElementById("CommitChanges")!.setAttribute("disabled", "");
@@ -282,9 +299,20 @@ window.pushGitChanges = async function () {
 	try {
 		document.getElementById("PushButton")!.setAttribute("disabled", "");
 		await window.go.main.App.PushGitChanges();
-		getGitBranches();
+	} catch (error) {
+		const message = toErrorMessage(error);
+		if (isNonFastForwardPushError(message)) {
+			const shouldPull = window.confirm("Push was rejected because your branch is behind origin. Pull now to integrate remote changes?");
+			if (shouldPull) {
+				await window.pullGitChanges();
+			}
+			return;
+		}
+
+		throw error;
 	} finally {
 		document.getElementById("PushButton")!.removeAttribute("disabled");
+		await getGitBranches();
 	}
 }
 
@@ -309,13 +337,28 @@ window.toggleDiff = function (headerEl: HTMLElement) {
 }
 
 window.pullGitChanges = async function () {
+	let pullError: unknown;
 	try {
 		document.getElementById("PullChanges")!.setAttribute("disabled", "");
 		await window.go.main.App.PullGitChanges();
-		window.refresh();
+	} catch (error) {
+		pullError = error;
 	} finally {
 		document.getElementById("PullChanges")!.removeAttribute("disabled");
+		await window.refresh();
 	}
+
+	if (!pullError) {
+		return;
+	}
+
+	const pullErrorMessage = toErrorMessage(pullError);
+	if (isMergeConflictError(pullErrorMessage)) {
+		alert("Pull reported merge conflicts. They are now shown in the Changes panel, where you can resolve them with 'Use ours' or 'Use theirs'.");
+		return;
+	}
+
+	throw pullError;
 }
 
 window.cycleTheme = function () {
@@ -366,6 +409,24 @@ function updateThemeToggle() {
 	const theme = themeOptions.find((entry) => entry.name === activeTheme) ?? themeOptions[0];
 	themeButton.textContent = `Theme: ${theme.label}`;
 	themeButton.setAttribute("aria-label", `Switch theme, current theme is ${theme.label}`);
+}
+
+function toErrorMessage(error: unknown): string {
+	if (error instanceof Error) {
+		return error.message;
+	}
+
+	return String(error ?? "");
+}
+
+function isNonFastForwardPushError(errorMessage: string): boolean {
+	const message = errorMessage.toLowerCase();
+	return message.includes("non-fast-forward") || message.includes("failed to push some refs");
+}
+
+function isMergeConflictError(errorMessage: string): boolean {
+	const message = errorMessage.toLowerCase();
+	return message.includes("conflict") || message.includes("automatic merge failed") || message.includes("merge conflict");
 }
 
 function updateDiscardModal() {
@@ -744,6 +805,8 @@ declare global {
 		stageSelectedGitFiles: () => Promise<void>;
 		unstageSelectedGitFiles: () => Promise<void>;
 		discardSelectedGitFiles: () => Promise<void>;
+		resolveGitConflict: (filePath: string, strategy: "ours" | "theirs", changeKey?: string) => Promise<void>;
+		abortMerge: () => Promise<void>;
 		cycleTheme: () => void;
     }
 }
