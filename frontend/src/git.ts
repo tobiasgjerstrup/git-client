@@ -1,4 +1,5 @@
 import { getGitActionButtonAttrs } from './gitActionState';
+import { setRenderedGitEntries, type GitSelectionEntry } from './gitSelectionState';
 
 type GitPorcelainV2Key = "1" | "2" | "u" | "?" | "!";
 
@@ -171,26 +172,26 @@ function renderDiffContent(diffFile?: GitDiffOutput["files"][0]): string {
 }
 
 function renderChangeEntry(entry: GitChangeEntry): string {
-	return `<div class="diff-file-entry">
+	return `<div class="diff-file-entry" data-change-key="${escapeHtml(entry.key)}" onclick="selectGitChange(event, ${escapeHtml(JSON.stringify(entry.key))})">
 		<div class="diff-file-header-row">
 			${entry.buttonsHtml}
 			<span class="diff-file-status ${entry.statusClass}">${escapeHtml(entry.label)}</span>
-			<h3 class="diff-file-header" onclick="toggleDiff(this)">${escapeHtml(entry.path)}</h3>
+			<h3 class="diff-file-header" onclick="event.stopPropagation(); toggleDiff(this)">${escapeHtml(entry.path)}</h3>
 		</div>
 		${renderDiffContent(entry.diffFile)}
 	</div>`;
 }
 
-function renderStageButton(actionPath: string): string {
-	return `<button ${getGitActionButtonAttrs("stage", actionPath)} onclick='stageGitFile(${escapeHtml(JSON.stringify(actionPath))})'>Stage</button>`;
+function renderStageButton(actionPath: string, entryKey: string): string {
+	return `<button ${getGitActionButtonAttrs("stage", actionPath)} onclick='event.stopPropagation(); stageGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(entryKey))})'>Stage</button>`;
 }
 
-function renderUnstageButton(actionPath: string): string {
-	return `<button ${getGitActionButtonAttrs("unstage", actionPath)} onclick='unstageGitFile(${escapeHtml(JSON.stringify(actionPath))})'>Unstage</button>`;
+function renderUnstageButton(actionPath: string, entryKey: string): string {
+	return `<button ${getGitActionButtonAttrs("unstage", actionPath)} onclick='event.stopPropagation(); unstageGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(entryKey))})'>Unstage</button>`;
 }
 
-function renderDiscardButton(actionPath: string, label: string): string {
-	return `<button ${getGitActionButtonAttrs("discard", actionPath)} onclick='discardGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(label))})'>Discard</button>`;
+function renderDiscardButton(actionPath: string, label: string, entryKey: string): string {
+	return `<button ${getGitActionButtonAttrs("discard", actionPath)} onclick='event.stopPropagation(); discardGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(label))}, ${escapeHtml(JSON.stringify(entryKey))})'>Discard</button>`;
 }
 
 export async function gitStatus() {
@@ -268,6 +269,7 @@ export async function gitDiff() {
 	}
 
 	let changesHtml = "";
+	const renderedEntries: GitSelectionEntry[] = [];
 
 	for (const file of statusOutput.files) {
 		const parsedLine = parseGitStatusLine(file);
@@ -281,13 +283,19 @@ export async function gitDiff() {
 		const actionPath = buildActionPath(parsedLine);
 
 		if (isStagedFromXYStatus(parsedLine.xy)) {
+			renderedEntries.push({
+				key: `${parsedLine.path}:staged`,
+				actionPath,
+				label: buildStatusLabel(parsedLine, "staged", stagedCode),
+				supportedActions: ["unstage"],
+			});
 			entries.push({
 				key: `${parsedLine.path}:staged`,
 				path: parsedLine.path,
 				label: buildStatusLabel(parsedLine, "staged", stagedCode),
 				side: "staged",
 				diffFile: stagedDiffMap.get(parsedLine.path),
-				buttonsHtml: renderUnstageButton(actionPath),
+				buttonsHtml: renderUnstageButton(actionPath, `${parsedLine.path}:staged`),
 				statusClass: "staged",
 			});
 		}
@@ -296,25 +304,37 @@ export async function gitDiff() {
 			const discardLabel = parsedLine.origPath
 				? `${parsedLine.origPath} -> ${parsedLine.path}`
 				: parsedLine.path;
+			renderedEntries.push({
+				key: `${parsedLine.path}:unstaged`,
+				actionPath,
+				label: discardLabel,
+				supportedActions: ["stage", "discard"],
+			});
 			entries.push({
 				key: `${parsedLine.path}:unstaged`,
 				path: parsedLine.path,
 				label: buildStatusLabel(parsedLine, "unstaged", parsedLine.key === "?" ? "A" : unstagedCode),
 				side: "unstaged",
 				diffFile: unstagedDiffMap.get(parsedLine.path),
-				buttonsHtml: `${renderStageButton(actionPath)}${renderDiscardButton(actionPath, discardLabel)}`,
+				buttonsHtml: `${renderStageButton(actionPath, `${parsedLine.path}:unstaged`)}${renderDiscardButton(actionPath, discardLabel, `${parsedLine.path}:unstaged`)}`,
 				statusClass: "unstaged",
 			});
 		}
 
 		if (entries.length === 0) {
+			renderedEntries.push({
+				key: `${parsedLine.path}:fallback`,
+				actionPath,
+				label: parsedLine.path,
+				supportedActions: ["stage", "discard"],
+			});
 			entries.push({
 				key: `${parsedLine.path}:fallback`,
 				path: parsedLine.path,
 				label: parsedLine.text,
 				side: "unstaged",
 				diffFile: unstagedDiffMap.get(parsedLine.path),
-				buttonsHtml: `${renderStageButton(actionPath)}${renderDiscardButton(actionPath, parsedLine.path)}`,
+				buttonsHtml: `${renderStageButton(actionPath, `${parsedLine.path}:fallback`)}${renderDiscardButton(actionPath, parsedLine.path, `${parsedLine.path}:fallback`)}`,
 				statusClass: "unstaged",
 			});
 		}
@@ -329,7 +349,14 @@ export async function gitDiff() {
 		if (seenPaths.has(path)) continue;
 		seenPaths.add(path);
 
-		const buttonsHtml = `${renderStageButton(path)}${renderDiscardButton(path, path)}`;
+		renderedEntries.push({
+			key: `${path}:unstaged-fallback`,
+			actionPath: path,
+			label: path,
+			supportedActions: ["stage", "discard"],
+		});
+
+		const buttonsHtml = `${renderStageButton(path, `${path}:unstaged-fallback`)}${renderDiscardButton(path, path, `${path}:unstaged-fallback`)}`;
 
 		changesHtml += renderChangeEntry({
 			key: `${path}:unstaged-fallback`,
@@ -345,18 +372,26 @@ export async function gitDiff() {
 	for (const [path, diffFile] of stagedDiffMap) {
 		if (seenPaths.has(path)) continue;
 
+		renderedEntries.push({
+			key: `${path}:staged-fallback`,
+			actionPath: path,
+			label: path,
+			supportedActions: ["unstage"],
+		});
+
 		changesHtml += renderChangeEntry({
 			key: `${path}:staged-fallback`,
 			path,
 			label: `Staged change: ${path}`,
 			side: "staged",
 			diffFile,
-			buttonsHtml: renderUnstageButton(path),
+			buttonsHtml: renderUnstageButton(path, `${path}:staged-fallback`),
 			statusClass: "staged",
 		});
 	}
 
 	document.getElementById("Changes")!.innerHTML = changesHtml;
+	setRenderedGitEntries(renderedEntries);
 	currentBranchName = statusOutput.branchName;
 	document.getElementById("BranchName")!.innerText = `Current Branch: ${currentBranchName}`;
 }

@@ -44,6 +44,12 @@
 	border: 1px solid #333;
 	border-radius: 4px;
 	padding: 8px;
+	cursor: default;
+}
+
+.diff-file-entry.selected {
+	border-color: #5ba8ff;
+	background: rgba(91, 168, 255, 0.14);
 }
 
 .diff-file-header-row {
@@ -51,6 +57,7 @@
 	align-items: center;
 	gap: 8px;
 	flex-wrap: wrap;
+	user-select: none;
 }
 
 .changedLinesContainer {
@@ -130,6 +137,7 @@
 	border-radius: 8px;
 	background: rgba(255, 255, 255, 0.06);
 	word-break: break-word;
+	white-space: pre-wrap;
 }
 
 .modal-actions {
