@@ -1,15 +1,189 @@
+:root {
+	--theme-text: #eff5ff;
+	--theme-text-strong: #f8fbff;
+	--theme-text-muted: rgba(239, 245, 255, 0.68);
+	--theme-text-subtle: rgba(239, 245, 255, 0.56);
+	--theme-text-faint: rgba(239, 245, 255, 0.5);
+	--theme-text-placeholder: rgba(239, 245, 255, 0.48);
+	--theme-text-disabled: rgba(239, 245, 255, 0.46);
+	--theme-text-on-primary: #1f1407;
+	--theme-text-on-danger: #240a0a;
+	--theme-text-info: #cfe6ff;
+	--theme-text-success: #93d7b0;
+	--theme-text-success-strong: #87df8d;
+	--theme-text-warning: #ffd38a;
+	--theme-text-danger: #ffc4c4;
+	--theme-text-danger-strong: #ff9696;
+	--theme-text-danger-alt: #8de09a;
+	--theme-text-danger-alt-strong: #ff8d8d;
+	--theme-text-accent-soft: #e3edf7;
+	--theme-state-text: #f4f8ff;
+
+	--theme-page-top-left: rgba(244, 178, 60, 0.14);
+	--theme-page-top-right: rgba(76, 160, 220, 0.18);
+	--theme-page-start: #0f1722;
+	--theme-page-mid: #152233;
+	--theme-page-end: #101723;
+
+	--theme-button-bg: rgba(255, 255, 255, 0.08);
+	--theme-button-hover-bg: rgba(255, 255, 255, 0.14);
+	--theme-button-secondary-bg: rgba(255, 255, 255, 0.06);
+	--theme-accent-start: #f4b23c;
+	--theme-accent-end: #df7c29;
+	--theme-accent-hover-start: #ffc75a;
+	--theme-accent-hover-end: #eb8f41;
+	--theme-danger-start: #ff7a7a;
+	--theme-danger-end: #d94949;
+	--theme-input-bg: rgba(8, 14, 24, 0.72);
+	--theme-input-bg-focus: rgba(10, 18, 30, 0.92);
+
+	--theme-surface-card-start: rgba(24, 35, 52, 0.94);
+	--theme-surface-card-end: rgba(14, 22, 34, 0.94);
+	--theme-surface-card-border: rgba(255, 255, 255, 0.09);
+	--theme-surface-card-shadow: rgba(4, 10, 18, 0.36);
+	--theme-surface-muted: rgba(255, 255, 255, 0.05);
+	--theme-surface-muted-strong: rgba(255, 255, 255, 0.06);
+	--theme-surface-muted-weak: rgba(255, 255, 255, 0.03);
+	--theme-surface-inset: rgba(255, 255, 255, 0.03);
+	--theme-surface-card: rgba(9, 14, 22, 0.56);
+	--theme-surface-card-hover: rgba(18, 27, 39, 0.84);
+	--theme-surface-card-current: rgba(91, 168, 255, 0.08);
+	--theme-surface-card-dim: rgba(8, 14, 24, 0.72);
+	--theme-surface-card-dim-focus: rgba(10, 18, 30, 0.92);
+	--theme-surface-danger: rgba(255, 122, 122, 0.16);
+	--theme-surface-danger-hover: rgba(255, 122, 122, 0.24);
+	--theme-surface-selection: rgba(91, 168, 255, 0.13);
+	--theme-surface-modal: rgba(5, 8, 14, 0.7);
+	--theme-surface-modal-card-start: #1d2a38;
+	--theme-surface-modal-card-end: #131c28;
+	--theme-surface-graphite: #09111b;
+
+	--theme-border-default: rgba(255, 255, 255, 0.1);
+	--theme-border-soft: rgba(255, 255, 255, 0.06);
+	--theme-border-medium: rgba(255, 255, 255, 0.08);
+	--theme-border-strong: rgba(255, 255, 255, 0.12);
+	--theme-border-button: rgba(255, 255, 255, 0.14);
+	--theme-border-button-hover: rgba(255, 255, 255, 0.24);
+	--theme-border-disabled: rgba(255, 255, 255, 0.08);
+	--theme-border-primary: rgba(255, 199, 103, 0.5);
+	--theme-border-primary-hover: rgba(255, 255, 255, 0.16);
+	--theme-border-danger: rgba(255, 132, 132, 0.4);
+	--theme-border-danger-soft: rgba(255, 122, 122, 0.22);
+	--theme-border-danger-hover: rgba(255, 122, 122, 0.34);
+	--theme-border-info: rgba(91, 168, 255, 0.34);
+	--theme-border-focus: #5ba8ff;
+	--theme-border-focus-outline: rgba(91, 168, 255, 0.75);
+	--theme-focus-ring: rgba(91, 168, 255, 0.12);
+	--theme-border-focus-ring: rgba(91, 168, 255, 0.18);
+	--theme-border-accent: rgba(244, 178, 60, 0.34);
+
+	--theme-scrollbar-track: #1e1e1e;
+	--theme-scrollbar-thumb: #3a3a3a;
+	--theme-scrollbar-thumb-hover: #555;
+
+	--theme-shadow-primary: rgba(223, 124, 41, 0.24);
+	--theme-shadow-modal: rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="midnight"] {
+	--theme-text: #edf5ff;
+	--theme-text-strong: #f8fcff;
+	--theme-text-muted: rgba(233, 242, 255, 0.68);
+	--theme-text-subtle: rgba(233, 242, 255, 0.56);
+	--theme-text-faint: rgba(233, 242, 255, 0.5);
+	--theme-text-placeholder: rgba(233, 242, 255, 0.48);
+	--theme-text-disabled: rgba(233, 242, 255, 0.46);
+	--theme-text-on-primary: #08111d;
+	--theme-text-on-danger: #200a10;
+	--theme-text-info: #c5dbff;
+	--theme-text-success: #9edcc8;
+	--theme-text-success-strong: #93f0d5;
+	--theme-text-warning: #ffd89a;
+	--theme-text-danger: #ffd1de;
+	--theme-text-danger-strong: #ff9cad;
+	--theme-text-danger-alt: #8ee9ff;
+	--theme-text-danger-alt-strong: #66d7ff;
+	--theme-text-accent-soft: #dfeeff;
+	--theme-state-text: #f4fbff;
+
+	--theme-page-top-left: rgba(87, 199, 255, 0.18);
+	--theme-page-top-right: rgba(54, 214, 193, 0.14);
+	--theme-page-start: #0b1220;
+	--theme-page-mid: #13263b;
+	--theme-page-end: #0d1421;
+
+	--theme-button-bg: rgba(255, 255, 255, 0.08);
+	--theme-button-hover-bg: rgba(255, 255, 255, 0.14);
+	--theme-button-secondary-bg: rgba(255, 255, 255, 0.06);
+	--theme-accent-start: #57c7ff;
+	--theme-accent-end: #3778e8;
+	--theme-accent-hover-start: #79daff;
+	--theme-accent-hover-end: #4f8cff;
+	--theme-danger-start: #ff7a9a;
+	--theme-danger-end: #d94973;
+	--theme-input-bg: rgba(8, 15, 27, 0.76);
+	--theme-input-bg-focus: rgba(11, 21, 36, 0.94);
+
+	--theme-surface-card-start: rgba(18, 30, 48, 0.96);
+	--theme-surface-card-end: rgba(11, 18, 31, 0.96);
+	--theme-surface-card-border: rgba(255, 255, 255, 0.08);
+	--theme-surface-card-shadow: rgba(0, 0, 0, 0.4);
+	--theme-surface-muted: rgba(255, 255, 255, 0.05);
+	--theme-surface-muted-strong: rgba(255, 255, 255, 0.06);
+	--theme-surface-muted-weak: rgba(255, 255, 255, 0.03);
+	--theme-surface-inset: rgba(255, 255, 255, 0.03);
+	--theme-surface-card: rgba(10, 17, 29, 0.6);
+	--theme-surface-card-hover: rgba(19, 32, 51, 0.88);
+	--theme-surface-card-current: rgba(87, 199, 255, 0.1);
+	--theme-surface-card-dim: rgba(7, 13, 23, 0.76);
+	--theme-surface-card-dim-focus: rgba(10, 19, 33, 0.94);
+	--theme-surface-danger: rgba(255, 122, 154, 0.16);
+	--theme-surface-danger-hover: rgba(255, 122, 154, 0.24);
+	--theme-surface-selection: rgba(87, 199, 255, 0.14);
+	--theme-surface-modal: rgba(4, 8, 16, 0.72);
+	--theme-surface-modal-card-start: #15263a;
+	--theme-surface-modal-card-end: #0d1726;
+	--theme-surface-graphite: #08101d;
+
+	--theme-border-default: rgba(255, 255, 255, 0.09);
+	--theme-border-soft: rgba(255, 255, 255, 0.06);
+	--theme-border-medium: rgba(255, 255, 255, 0.08);
+	--theme-border-strong: rgba(255, 255, 255, 0.12);
+	--theme-border-button: rgba(255, 255, 255, 0.14);
+	--theme-border-button-hover: rgba(255, 255, 255, 0.24);
+	--theme-border-disabled: rgba(255, 255, 255, 0.08);
+	--theme-border-primary: rgba(123, 210, 255, 0.48);
+	--theme-border-primary-hover: rgba(255, 255, 255, 0.16);
+	--theme-border-danger: rgba(255, 132, 164, 0.42);
+	--theme-border-danger-soft: rgba(255, 122, 154, 0.22);
+	--theme-border-danger-hover: rgba(255, 122, 154, 0.34);
+	--theme-border-info: rgba(87, 199, 255, 0.34);
+	--theme-border-focus: #57c7ff;
+	--theme-border-focus-outline: rgba(87, 199, 255, 0.78);
+	--theme-focus-ring: rgba(87, 199, 255, 0.12);
+	--theme-border-focus-ring: rgba(87, 199, 255, 0.2);
+	--theme-border-accent: rgba(87, 199, 255, 0.34);
+
+	--theme-scrollbar-track: #182131;
+	--theme-scrollbar-thumb: #304057;
+	--theme-scrollbar-thumb-hover: #425877;
+
+	--theme-shadow-primary: rgba(71, 145, 227, 0.28);
+	--theme-shadow-modal: rgba(0, 0, 0, 0.4);
+}
+
 html {
-    background-color: rgba(27, 38, 54, 1);
-    text-align: center;
-    color: white;
+	background:
+		radial-gradient(circle at top left, var(--theme-page-top-left), transparent 28%),
+		radial-gradient(circle at top right, var(--theme-page-top-right), transparent 24%),
+		linear-gradient(180deg, var(--theme-page-start) 0%, var(--theme-page-mid) 46%, var(--theme-page-end) 100%);
+	color: var(--theme-text);
 }
 
 body {
-    margin: 0;
-    color: white;
-    font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
+	margin: 0;
+	color: var(--theme-text);
+	font-family: Nunito, "Avenir Next", "Segoe UI", sans-serif;
 }
 
 @font-face {
@@ -21,6 +195,7 @@ body {
 }
 
 #app {
-    height: 100vh;
-    text-align: center;
+    min-height: 100vh;
+	padding: clamp(12px, 1.6vw, 24px);
+    box-sizing: border-box;
 }

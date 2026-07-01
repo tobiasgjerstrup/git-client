@@ -1,15 +1,124 @@
-<div>
-	<div id="BranchPanel" class="panel right"></div>
-	<div id="CommitPanel" class="panel left"></div>
-	<div class="center-panel">
-		<button id="Refresh" onclick="refresh()">Refresh</button>
-		<input id="CommitMessage" placeholder="Enter commit message">
-		<button id="CommitChanges" onclick="commitGitChanges()">Commit Changes</button>
-		<button id="PushButton" onclick="pushGitChanges()">Push Changes</button>
-		<button id="PullChanges" onclick="pullGitChanges()">Pull Changes</button>
-	    <button id="PickFolder" onclick="pickFolder()">Pick Folder</button>
-		<input id="BranchNameInput" placeholder="Enter branch name">
-		<button id="SwitchBranch" onclick="switchGitBranch()">Switch Branch</button>
-		<div id="Changes"></div>
+<div class="app-shell">
+	<header class="workspace-header surface-card">
+		<div class="workspace-heading">
+			<p class="eyebrow">Repository Workspace</p>
+			<h1>Git Client</h1>
+			<p class="workspace-subtitle">Inspect changes, manage branches, and ship commits without leaving the app.</p>
+		</div>
+		<div class="workspace-status">
+			<div class="status-chip status-chip-branch">
+				<span class="status-chip-label">Branch</span>
+				<span id="BranchName">No repository selected</span>
+			</div>
+			<button id="PickFolder" class="button-secondary" onclick="pickFolder()">Open Repository</button>
+		</div>
+	</header>
+
+	<section class="workspace-actions surface-card">
+		<div class="action-cluster action-cluster-sync">
+			<div class="cluster-title">Sync</div>
+			<div class="cluster-controls">
+				<button id="Refresh" class="button-secondary" onclick="refresh()">Refresh</button>
+				<button id="PruneButton" class="button-secondary" onclick="pruneGitBranches()">Prune</button>
+				<button id="PullChanges" class="button-secondary" onclick="pullGitChanges()">Pull</button>
+				<button id="PushButton" class="button-secondary" onclick="pushGitChanges()">Push</button>
+			</div>
+		</div>
+		<div class="action-cluster action-cluster-commit">
+			<div class="cluster-title">Commit</div>
+			<div class="cluster-controls cluster-controls-wide">
+				<input id="CommitMessage" aria-label="Commit message" placeholder="Write a concise commit message">
+				<button id="CommitChanges" class="button-secondary" onclick="commitGitChanges()">Commit</button>
+			</div>
+		</div>
+		<div class="action-cluster action-cluster-branch">
+			<div class="cluster-title">Branch</div>
+			<div class="cluster-controls cluster-controls-wide">
+				<input id="BranchNameInput" aria-label="Branch name" placeholder="Create or switch branch">
+				<button id="SwitchBranch" class="button-secondary" onclick="switchGitBranch()">Switch</button>
+			</div>
+		</div>
+	</section>
+
+	<main class="workspace-grid">
+		<aside class="workspace-panel surface-card panel-branches">
+			<div class="panel-header">
+				<div>
+					<p class="eyebrow">Overview</p>
+					<h2>Branches</h2>
+				</div>
+				<p class="panel-hint">Local and remote refs</p>
+			</div>
+			<div id="BranchPanel" class="panel-body"></div>
+		</aside>
+
+		<section class="workspace-panel workspace-panel-main surface-card">
+			<div class="panel-header panel-header-main">
+				<div class="panel-header-copy">
+					<p class="eyebrow">Working Tree</p>
+					<h2>Changes</h2>
+					<p class="panel-hint">Ctrl/Cmd click to toggle, Shift to select ranges, Esc to clear</p>
+				</div>
+				<div id="SelectionActions" class="selection-actions" hidden>
+					<span id="SelectionActionsSummary" class="selection-actions-summary"></span>
+					<div class="selection-actions-buttons">
+						<button id="StageSelectedButton" class="button-secondary" type="button" onclick="stageSelectedGitFiles()">Stage selected</button>
+						<button id="UnstageSelectedButton" class="button-secondary" type="button" onclick="unstageSelectedGitFiles()">Unstage selected</button>
+						<button id="DiscardSelectedButton" class="button-danger" type="button" onclick="discardSelectedGitFiles()">Discard selected</button>
+					</div>
+				</div>
+			</div>
+			<div id="Changes" class="changes-list"></div>
+		</section>
+
+		<aside class="workspace-panel surface-card panel-commits">
+			<div class="panel-header">
+				<div>
+					<p class="eyebrow">History</p>
+					<h2>Recent Commits</h2>
+				</div>
+				<p class="panel-hint">Latest 100 entries</p>
+			</div>
+			<div id="CommitPanel" class="panel-body"></div>
+		</aside>
+	</main>
+
+	<div id="DiscardModal" class="modal-backdrop" hidden>
+		<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="DiscardModalTitle" aria-describedby="DiscardModalDescription" tabindex="-1">
+			<p class="eyebrow">Destructive Action</p>
+			<h2 id="DiscardModalTitle">Discard selected changes?</h2>
+			<p class="modal-copy">This will remove the current uncommitted changes for the selected file selection.</p>
+			<p id="DiscardModalDescription" class="modal-description"></p>
+			<div class="modal-actions">
+				<button class="button-secondary" type="button" onclick="cancelDiscardGitFile()">Cancel</button>
+				<button id="ConfirmDiscardButton" class="button-danger" type="button" onclick="confirmDiscardGitFile()">Discard changes</button>
+			</div>
+		</div>
+	</div>
+
+	<div id="BranchSwitchModal" class="modal-backdrop" hidden>
+		<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="BranchSwitchModalTitle" aria-describedby="BranchSwitchModalDescription" tabindex="-1">
+			<p class="eyebrow">Branch Switch</p>
+			<h2 id="BranchSwitchModalTitle">Switch branch?</h2>
+			<p id="BranchSwitchModalCopy" class="modal-copy">This will check out the selected branch in your current repository.</p>
+			<p id="BranchSwitchModalDescription" class="modal-description"></p>
+			<div class="modal-actions">
+				<button class="button-secondary" type="button" onclick="cancelBranchSwitch()">Cancel</button>
+				<button id="ConfirmBranchSwitchButton" class="button-primary" type="button" onclick="confirmBranchSwitch()">Switch branch</button>
+			</div>
+		</div>
+	</div>
+
+	<div id="BranchDeleteModal" class="modal-backdrop" hidden>
+		<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="BranchDeleteModalTitle" aria-describedby="BranchDeleteModalDescription" tabindex="-1">
+			<p class="eyebrow">Branch Deletion</p>
+			<h2 id="BranchDeleteModalTitle">Delete local branch?</h2>
+			<p id="BranchDeleteModalCopy" class="modal-copy">This will delete the selected local branch from your repository.</p>
+			<p id="BranchDeleteModalDescription" class="modal-description"></p>
+			<div class="modal-actions">
+				<button class="button-secondary" type="button" onclick="cancelDeleteBranch()">Cancel</button>
+				<button id="ConfirmDeleteBranchButton" class="button-danger" type="button" onclick="confirmDeleteBranch()">Delete branch</button>
+			</div>
+		</div>
 	</div>
 </div>

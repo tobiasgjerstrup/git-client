@@ -17,3 +17,13 @@ to this in your browser, and you can call your Go code from devtools.
 ## Building
 
 To build a redistributable, production mode package, use `wails build`.
+
+## Linux
+
+The app now uses only cross-platform git process settings in shared code, so the Go backend builds on Linux as well.
+
+To run or build it on Linux:
+
+- Install `git`
+- Install the Linux dependencies required by Wails/WebKitGTK: https://wails.io/docs/gettingstarted/installation#linux
+- Run `wails dev` for development or `wails build` for a production build

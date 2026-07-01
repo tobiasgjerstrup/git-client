@@ -42,6 +42,10 @@ func (c *GitCLI) SwitchBranch(repoPath, branch string) error {
 	return SwitchGitBranch(repoPath, branch)
 }
 
+func (c *GitCLI) DeleteBranch(repoPath, branch string, force bool) error {
+	return DeleteGitBranch(repoPath, branch, force)
+}
+
 func (c *GitCLI) Push(repoPath string) error {
 	return PushGitChanges(repoPath)
 }
@@ -52,6 +56,10 @@ func (c *GitCLI) Pull(repoPath string) error {
 
 func (c *GitCLI) Fetch(repoPath string) (string, error) {
 	return GitFetch(repoPath)
+}
+
+func (c *GitCLI) Prune(repoPath string) (string, error) {
+	return GitPrune(repoPath)
 }
 
 func (c *GitCLI) GetCommit(repoPath, hash string) (*CommitObject, error) {

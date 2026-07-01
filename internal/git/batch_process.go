@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"time"
 )
 
@@ -71,7 +70,7 @@ func (bp *BatchProcess) Start(ctx context.Context, repoPath string) error {
 	bp.ctx, bp.cancel = context.WithCancel(ctx)
 
 	bp.cmd = exec.CommandContext(bp.ctx, "git", "-C", repoPath, "cat-file", "--batch")
-	bp.cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	bp.cmd.SysProcAttr = newSysProcAttr()
 
 	var err error
 	bp.stdin, err = bp.cmd.StdinPipe()

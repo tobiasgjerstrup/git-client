@@ -10,9 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
+
+const gitPathPairSeparator = "\t"
 
 type GitStatusResult struct {
 	Files      []string `json:"files"`
@@ -213,20 +214,44 @@ func GetCommitHistory(repoPath string) (*[]Commit, error) {
 }
 
 func DiscardGitFile(repoPath string, filePath string) (string, error) {
-	// If a file is new (?? in git status), we need to remove it instead of restoring it
-	fileStatus, err := runGitForRepo(repoPath, "status", "--porcelain", "--", filePath)
-	if err != nil {
-		return "", err
+	paths := splitGitActionPaths(filePath)
+	if isRenameDiscardPayload(repoPath, paths) {
+		originalPath := paths[0]
+		currentPath := paths[1]
+
+		if err := os.Remove(filepath.Join(repoPath, currentPath)); err != nil && !os.IsNotExist(err) {
+			return "", err
+		}
+
+		return runGitForRepo(repoPath, "restore", "--worktree", "--source=HEAD", "--", originalPath)
 	}
 
-	if strings.HasPrefix(fileStatus, "??") {
-		return "", os.Remove(filePath)
+	for _, targetPath := range paths {
+		// If a file is new (?? in git status), we need to remove it instead of restoring it
+		fileStatus, err := runGitForRepo(repoPath, "status", "--porcelain", "--", targetPath)
+		if err != nil {
+			return "", err
+		}
+
+		if strings.HasPrefix(fileStatus, "??") {
+			if err := os.Remove(filepath.Join(repoPath, targetPath)); err != nil && !os.IsNotExist(err) {
+				return "", err
+			}
+			continue
+		}
+
+		if _, err := runGitForRepo(repoPath, "restore", "--", targetPath); err != nil {
+			return "", err
+		}
 	}
-	return runGitForRepo(repoPath, "restore", "--", filePath)
+
+	return "", nil
 }
 
 func StageGitFile(repoPath string, filePath string) (string, error) {
-	return runGitForRepo(repoPath, "add", "--", filePath)
+	paths := splitGitActionPaths(filePath)
+	args := append([]string{"add", "--all", "--"}, paths...)
+	return runGitForRepo(repoPath, args...)
 }
 
 func CommitGitChanges(repoPath string, message string) error {
@@ -250,6 +275,25 @@ func SwitchGitBranch(repoPath string, branchName string) error {
 		return err
 	}
 	return nil
+}
+
+func DeleteGitBranch(repoPath string, branchName string, force bool) error {
+	currentBranch, err := runGitForRepo(repoPath, "branch", "--show-current")
+	if err != nil {
+		return err
+	}
+
+	if strings.TrimSpace(currentBranch) == branchName {
+		return fmt.Errorf("cannot delete the current branch")
+	}
+
+	deleteFlag := "-d"
+	if force {
+		deleteFlag = "-D"
+	}
+
+	_, err = runGitForRepo(repoPath, "branch", deleteFlag, branchName)
+	return err
 }
 
 func PushGitChanges(repoPath string) error {
@@ -279,7 +323,49 @@ func PullGitChanges(repoPath string) error {
 }
 
 func UnstageGitFile(repoPath string, filePath string) (string, error) {
-	return runGitForRepo(repoPath, "restore", "--staged", "--", filePath)
+	paths := splitGitActionPaths(filePath)
+	args := append([]string{"restore", "--staged", "--"}, paths...)
+	return runGitForRepo(repoPath, args...)
+}
+
+func splitGitActionPaths(filePath string) []string {
+	parts := strings.Split(filePath, gitPathPairSeparator)
+	paths := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		paths = append(paths, part)
+	}
+	if len(paths) == 0 {
+		return []string{filePath}
+	}
+	return paths
+}
+
+func isRenameDiscardPayload(repoPath string, paths []string) bool {
+	if len(paths) != 2 {
+		return false
+	}
+
+	out, err := runGitForRepo(repoPath, "status", "--porcelain=v2", "--", paths[0], paths[1])
+	if err != nil {
+		return false
+	}
+
+	lines := 0
+	for _, line := range strings.Split(out, "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		lines++
+		if lines > 1 {
+			return false
+		}
+	}
+
+	return lines == 1 && strings.HasPrefix(strings.TrimSpace(out), "2 ")
 }
 
 func GetGitBranches(repoPath string) (*[]GitBranch, error) {
@@ -334,19 +420,20 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 	}
 
 	out := localOut + "\n" + remoteOut
-	
+
 	defaultBranch = "origin/" + defaultBranch
 	lines := strings.Split(string(out), "\n")
 	branches := make([]GitBranch, len(lines))
+	validBranches := make([]bool, len(lines))
 
 	for i, line := range lines {
 		line = strings.TrimSuffix(line, "\r")
 		if line == "" {
 			continue
 		}
-		
+
 		wg.Add(1)
-		go func(line string) {
+		go func(i int, line string) {
 			defer wg.Done()
 			remote := false
 			nameAndHash := []string{}
@@ -381,24 +468,42 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 			} else {
 				nameAndHash = strings.SplitN(strings.TrimPrefix(line, "refs/heads/"), "|", 2)
 			}
-			// fmt.Printf("Branch: %s, Remote: %v, Commits Behind: %d, Commits Ahead: %d\n", nameAndHash[0], remote, commitsBehind, commitsAhead)
-			branches[i] = GitBranch{
+			if len(nameAndHash) < 2 || strings.TrimSpace(nameAndHash[0]) == "" {
+				return
+			}
+
+			branch := GitBranch{
 				Remote:        remote,
 				Name:          nameAndHash[0],
 				CommitId:      nameAndHash[1],
 				CommitsBehind: commitsBehind,
 				CommitsAhead:  commitsAhead,
 			}
-		}(line)
+
+			branches[i] = branch
+			validBranches[i] = true
+		}(i, line)
 	}
 
 	wg.Wait()
 
-	return &branches, nil
+	orderedBranches := make([]GitBranch, 0, len(branches))
+	for i, branch := range branches {
+		if !validBranches[i] {
+			continue
+		}
+		orderedBranches = append(orderedBranches, branch)
+	}
+
+	return &orderedBranches, nil
 }
 
 func GitFetch(repoPath string) (string, error) {
 	return runGitForRepo(repoPath, "fetch")
+}
+
+func GitPrune(repoPath string) (string, error) {
+	return runGitForRepo(repoPath, "fetch", "--prune")
 }
 
 func parsePorcelainV2FileLine(line string) (string, bool) {
@@ -438,22 +543,21 @@ func parsePorcelainV2FileLine(line string) (string, bool) {
 }
 
 func runCommand(name string, args ...string) (string, error) {
-    start := time.Now()
-    defer func() {
-        fmt.Printf("Command finished in %v\n", time.Since(start))
-    }()
+	start := time.Now()
+	defer func() {
+		fmt.Printf("Command finished in %v\n", time.Since(start))
+	}()
 
-    cmd := exec.Command(name, args...)
-    cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	cmd := exec.Command(name, args...)
+	cmd.SysProcAttr = newSysProcAttr()
 
-    out, err := cmd.CombinedOutput()
+	out, err := cmd.CombinedOutput()
 	fmt.Printf("Ran command: %s %s\n", name, strings.Join(args, " "))
-    if err != nil {
-        return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
-    }
-    return string(out), nil
+	if err != nil {
+		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return string(out), nil
 }
-
 
 func runGitForRepo(repoPath string, args ...string) (string, error) {
 	if repoPath == "" {
@@ -474,26 +578,25 @@ func getDefaultBranch(repoPath string) (string, error) {
 		return branch, nil
 	}
 
-    out, err := runGitForRepo(repoPath,
-        "ls-remote", "--symref", "origin", "HEAD",
-    )
-    if err != nil {
-        return "", err
-    }
+	out, err := runGitForRepo(repoPath,
+		"ls-remote", "--symref", "origin", "HEAD",
+	)
+	if err != nil {
+		return "", err
+	}
 
-    for _, line := range strings.Split(out, "\n") {
-        if strings.HasPrefix(line, "ref: ") {
-            parts := strings.Fields(line)
-            if len(parts) >= 2 {
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "ref: ") {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
 				defaultBranchCache[repoPath] = strings.TrimPrefix(parts[1], "refs/heads/")
 				return strings.TrimPrefix(parts[1], "refs/heads/"), nil
-            }
-        }
-    }
+			}
+		}
+	}
 
-    return "", fmt.Errorf("default branch not found")
+	return "", fmt.Errorf("default branch not found")
 }
-
 
 /*
 func getDefaultBranch(repoPath string) (string, error) {
