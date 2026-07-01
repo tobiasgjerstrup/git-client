@@ -463,12 +463,27 @@ async function runGitAction(
 		return;
 	}
 
+	let actionError: unknown;
 	try {
 		for (const actionPath of actionPaths) {
 			await runner(actionPath);
 		}
-		await gitDiff();
+	} catch (error) {
+		actionError = error;
+		throw error;
 	} finally {
+		for (const actionKey of actionKeys) {
+			endGitAction(actionKey);
+		}
+		try {
+			await gitDiff();
+		} catch (refreshError) {
+			if (!actionError) {
+				throw refreshError;
+			}
+			console.error("Failed to refresh git diff after git action", refreshError);
+		}
+	}
 		for (const actionKey of actionKeys) {
 			endGitAction(actionKey);
 		}

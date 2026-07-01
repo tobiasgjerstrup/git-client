@@ -9,7 +9,7 @@ html {
 body {
 	margin: 0;
 	color: #eff5ff;
-	font-family: "Nunito", "Avenir Next", "Segoe UI", sans-serif;
+	font-family: Nunito, "Avenir Next", "Segoe UI", sans-serif;
 }
 
 @font-face {
