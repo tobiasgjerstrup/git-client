@@ -33,10 +33,20 @@ button.highlight:hover,
 	background: var(--theme-button-secondary-bg);
 }
 
+.button-secondary:hover {
+	background: var(--theme-button-secondary-bg);
+	border-color: var(--theme-border-button-hover);
+}
+
 .button-danger {
 	background: linear-gradient(135deg, var(--theme-danger-start) 0%, var(--theme-danger-end) 100%);
 	border-color: var(--theme-border-danger);
 	color: var(--theme-text-on-danger);
+}
+
+.button-danger:hover {
+	background: linear-gradient(135deg, var(--theme-danger-start) 0%, var(--theme-danger-end) 100%);
+	border-color: var(--theme-border-danger);
 }
 
 button:disabled {

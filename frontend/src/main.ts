@@ -249,9 +249,13 @@ window.discardSelectedGitFiles = async function () {
 		return;
 	}
 
-	await runGitAction(targets.map((target) => ({ actionPath: target.actionPath, label: target.label })), async (targetPath) => {
-		await window.go.main.App.DiscardGitFile(targetPath);
-	});
+	discardModalState = {
+		items: targets.map((target) => ({
+			filePath: target.actionPath,
+			description: target.label,
+		})),
+	};
+	updateDiscardModal();
 }
 
 window.confirmDiscardGitFile = async function () {
@@ -543,28 +547,30 @@ async function runGitAction(
 	}
 
 	let actionError: unknown;
+	let refreshError: unknown;
 	try {
 		for (const actionPath of actionPaths) {
 			await runner(actionPath);
 		}
 	} catch (error) {
 		actionError = error;
-		throw error;
 	} finally {
 		for (const actionKey of actionKeys) {
 			endGitAction(actionKey);
 		}
 		try {
 			await gitDiff();
-		} catch (refreshError) {
-			if (!actionError) {
-				throw refreshError;
-			}
-			console.error("Failed to refresh git diff after git action", refreshError);
+		} catch (error) {
+			refreshError = error;
+			console.error("Failed to refresh git diff after git action", error);
 		}
 	}
-	for (const actionKey of actionKeys) {
-		endGitAction(actionKey);
+
+	if (actionError) {
+		throw actionError;
+	}
+	if (refreshError) {
+		throw refreshError;
 	}
 }
 
