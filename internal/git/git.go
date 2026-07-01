@@ -420,7 +420,7 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 	}
 
 	out := localOut + "\n" + remoteOut
-	
+
 	defaultBranch = "origin/" + defaultBranch
 	lines := strings.Split(string(out), "\n")
 	branches := make([]GitBranch, len(lines))
@@ -431,7 +431,7 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 		if line == "" {
 			continue
 		}
-		
+
 		wg.Add(1)
 		go func(i int, line string) {
 			defer wg.Done()
@@ -543,22 +543,21 @@ func parsePorcelainV2FileLine(line string) (string, bool) {
 }
 
 func runCommand(name string, args ...string) (string, error) {
-    start := time.Now()
-    defer func() {
-        fmt.Printf("Command finished in %v\n", time.Since(start))
-    }()
+	start := time.Now()
+	defer func() {
+		fmt.Printf("Command finished in %v\n", time.Since(start))
+	}()
 
-    cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, args...)
 	cmd.SysProcAttr = newSysProcAttr()
 
-    out, err := cmd.CombinedOutput()
+	out, err := cmd.CombinedOutput()
 	fmt.Printf("Ran command: %s %s\n", name, strings.Join(args, " "))
-    if err != nil {
-        return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
-    }
-    return string(out), nil
+	if err != nil {
+		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return string(out), nil
 }
-
 
 func runGitForRepo(repoPath string, args ...string) (string, error) {
 	if repoPath == "" {
@@ -579,26 +578,25 @@ func getDefaultBranch(repoPath string) (string, error) {
 		return branch, nil
 	}
 
-    out, err := runGitForRepo(repoPath,
-        "ls-remote", "--symref", "origin", "HEAD",
-    )
-    if err != nil {
-        return "", err
-    }
+	out, err := runGitForRepo(repoPath,
+		"ls-remote", "--symref", "origin", "HEAD",
+	)
+	if err != nil {
+		return "", err
+	}
 
-    for _, line := range strings.Split(out, "\n") {
-        if strings.HasPrefix(line, "ref: ") {
-            parts := strings.Fields(line)
-            if len(parts) >= 2 {
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "ref: ") {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
 				defaultBranchCache[repoPath] = strings.TrimPrefix(parts[1], "refs/heads/")
 				return strings.TrimPrefix(parts[1], "refs/heads/"), nil
-            }
-        }
-    }
+			}
+		}
+	}
 
-    return "", fmt.Errorf("default branch not found")
+	return "", fmt.Errorf("default branch not found")
 }
-
 
 /*
 func getDefaultBranch(repoPath string) (string, error) {

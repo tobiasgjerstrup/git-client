@@ -7,9 +7,9 @@
 }
 
 .surface-card {
-	background: linear-gradient(180deg, rgba(24, 35, 52, 0.94) 0%, rgba(14, 22, 34, 0.94) 100%);
-	border: 1px solid rgba(255, 255, 255, 0.09);
-	box-shadow: 0 24px 60px rgba(4, 10, 18, 0.36);
+	background: linear-gradient(180deg, var(--theme-surface-card-start) 0%, var(--theme-surface-card-end) 100%);
+	border: 1px solid var(--theme-surface-card-border);
+	box-shadow: 0 24px 60px var(--theme-surface-card-shadow);
 	backdrop-filter: blur(16px);
 	border-radius: 24px;
 }
@@ -35,7 +35,7 @@
 .panel-hint,
 .modal-copy {
 	margin: 8px 0 0;
-	color: rgba(239, 245, 255, 0.68);
+	color: var(--theme-text-muted);
 	line-height: 1.5;
 }
 
@@ -45,7 +45,7 @@
 	font-weight: 800;
 	letter-spacing: 0.14em;
 	text-transform: uppercase;
-	color: #f4b23c;
+	color: var(--theme-accent-start);
 }
 
 .workspace-status {
@@ -61,8 +61,8 @@
 	gap: 4px;
 	padding: 12px 16px;
 	min-width: 240px;
-	background: rgba(255, 255, 255, 0.05);
-	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: var(--theme-surface-muted);
+	border: 1px solid var(--theme-border-default);
 	border-radius: 18px;
 }
 
@@ -71,7 +71,7 @@
 	font-weight: 800;
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
-	color: rgba(239, 245, 255, 0.48);
+	color: var(--theme-text-placeholder);
 }
 
 .workspace-actions {
@@ -87,8 +87,8 @@
 	gap: 12px;
 	padding: 16px;
 	border-radius: 20px;
-	background: rgba(255, 255, 255, 0.03);
-	border: 1px solid rgba(255, 255, 255, 0.06);
+	background: var(--theme-surface-muted-weak);
+	border: 1px solid var(--theme-border-soft);
 }
 
 .cluster-title {
@@ -96,7 +96,7 @@
 	font-weight: 800;
 	text-transform: uppercase;
 	letter-spacing: 0.12em;
-	color: rgba(239, 245, 255, 0.5);
+	color: var(--theme-text-faint);
 }
 
 .cluster-controls {
@@ -137,7 +137,7 @@
 	align-items: flex-start;
 	gap: 16px;
 	padding: 22px 22px 16px;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	border-bottom: 1px solid var(--theme-border-soft);
 }
 
 .panel-header-main {
@@ -162,19 +162,19 @@
 
 .empty-panel-state {
 	padding: 18px;
-	border: 1px dashed rgba(255, 255, 255, 0.12);
+	border: 1px dashed var(--theme-border-strong);
 	border-radius: 18px;
-	color: rgba(239, 245, 255, 0.56);
-	background: rgba(255, 255, 255, 0.03);
+	color: var(--theme-text-subtle);
+	background: var(--theme-surface-muted-weak);
 }
 
 .branch-card,
 .commit-card,
 .diff-file-entry {
 	border-radius: 18px;
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	background: rgba(9, 14, 22, 0.56);
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+	border: 1px solid var(--theme-border-medium);
+	background: var(--theme-surface-card);
+	box-shadow: inset 0 1px 0 var(--theme-surface-inset);
 }
 
 .branch-card {
@@ -194,13 +194,13 @@
 
 .branch-card.local:hover,
 .branch-card.remote:hover {
-	border-color: rgba(244, 178, 60, 0.34);
-	background: rgba(18, 27, 39, 0.84);
+	border-color: var(--theme-border-accent);
+	background: var(--theme-surface-card-hover);
 }
 
 .branch-card.current {
-	border-color: rgba(91, 168, 255, 0.34);
-	background: rgba(91, 168, 255, 0.08);
+	border-color: var(--theme-border-info);
+	background: var(--theme-surface-card-current);
 	cursor: default;
 }
 
@@ -225,24 +225,24 @@
 .commit-hash,
 .diff-file-status {
 	font-size: 0.8rem;
-	color: rgba(239, 245, 255, 0.62);
+	color: var(--theme-text-info);
 }
 
 .branch-kind {
 	padding: 4px 8px;
 	border-radius: 999px;
-	background: rgba(255, 255, 255, 0.06);
-	color: #cfe6ff;
+	background: var(--theme-surface-muted-strong);
+	color: var(--theme-text-info);
 }
 
 .branch-card-hint {
 	font-size: 0.75rem;
-	color: rgba(239, 245, 255, 0.48);
+	color: var(--theme-text-placeholder);
 	margin-left: auto;
 }
 
 .branch-card-hint.current {
-	color: #93d7b0;
+	color: var(--theme-text-success);
 }
 
 .branch-switch-trigger {
@@ -261,14 +261,14 @@
 .branch-delete-trigger {
 	padding: 6px 10px;
 	font-size: 0.78rem;
-	background: rgba(255, 122, 122, 0.16);
-	border-color: rgba(255, 122, 122, 0.22);
-	color: #ffc4c4;
+	background: var(--theme-surface-danger);
+	border-color: var(--theme-border-danger-soft);
+	color: var(--theme-text-danger);
 }
 
 .branch-delete-trigger:hover {
-	background: rgba(255, 122, 122, 0.24);
-	border-color: rgba(255, 122, 122, 0.34);
+	background: var(--theme-surface-danger-hover);
+	border-color: var(--theme-border-danger-hover);
 }
 
 .commit-card {
@@ -281,14 +281,14 @@
 .commit-message {
 	margin: 0;
 	line-height: 1.5;
-	color: #f4f8ff;
+	color: var(--theme-state-text);
 }
 
 .commit-hash {
 	align-self: flex-start;
 	padding: 4px 8px;
 	border-radius: 999px;
-	background: rgba(255, 255, 255, 0.05);
+	background: var(--theme-surface-muted);
 	font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
@@ -299,14 +299,14 @@
 }
 
 .diff-file-entry:hover {
-	border-color: rgba(255, 255, 255, 0.16);
+	border-color: var(--theme-border-primary-hover);
 	transform: translateY(-1px);
 }
 
 .diff-file-entry.selected {
-	border-color: #5ba8ff;
-	background: rgba(91, 168, 255, 0.13);
-	box-shadow: 0 0 0 1px rgba(91, 168, 255, 0.18);
+	border-color: var(--theme-border-focus);
+	background: var(--theme-surface-selection);
+	box-shadow: 0 0 0 1px var(--theme-border-focus-ring);
 }
 
 .diff-file-header-row {
@@ -327,11 +327,11 @@
 }
 
 .diff-file-status.unstaged {
-	color: #ffd38a;
+	color: var(--theme-text-warning);
 }
 
 .diff-file-status.staged {
-	color: #93d7b0;
+	color: var(--theme-text-success);
 }
 
 .diff-file-header {
@@ -368,7 +368,7 @@
 }
 
 .diff-file-toggle:focus-visible {
-	outline: 2px solid rgba(91, 168, 255, 0.75);
+	outline: 2px solid var(--theme-border-focus-outline);
 	outline-offset: 3px;
 	border-radius: 6px;
 }
@@ -389,8 +389,8 @@
 .changedLinesContainer {
 	margin: 0;
 	padding: 14px;
-	background: #09111b;
-	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: var(--theme-surface-graphite);
+	border: 1px solid var(--theme-border-medium);
 	border-radius: 16px;
 	text-align: left;
 	overflow: auto;
@@ -411,27 +411,27 @@
 	border-radius: 999px;
 	font-size: 0.82rem;
 	font-weight: 700;
-	background: rgba(255, 255, 255, 0.05);
+	background: var(--theme-surface-muted);
 }
 
 .diff-stat-added {
-	color: #87df8d;
+	color: var(--theme-text-success-strong);
 }
 
 .diff-stat-removed {
-	color: #ff9696;
+	color: var(--theme-text-danger-strong);
 }
 
 .addedLine {
-	color: #8de09a;
+	color: var(--theme-text-danger-alt);
 }
 
 .removedLine {
-	color: #ff8d8d;
+	color: var(--theme-text-danger-alt-strong);
 }
 
 .unchangedLine {
-	color: #e3edf7;
+	color: var(--theme-text-accent-soft);
 }
 
 .welcome-shell {
@@ -458,7 +458,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: rgba(5, 8, 14, 0.7);
+	background: var(--theme-surface-modal);
 	backdrop-filter: blur(8px);
 	padding: 24px;
 	z-index: 1000;
@@ -470,12 +470,12 @@
 
 .modal-card {
 	width: min(480px, 100%);
-	background: linear-gradient(180deg, #1d2a38 0%, #131c28 100%);
-	border: 1px solid rgba(255, 255, 255, 0.12);
+	background: linear-gradient(180deg, var(--theme-surface-modal-card-start) 0%, var(--theme-surface-modal-card-end) 100%);
+	border: 1px solid var(--theme-border-strong);
 	border-radius: 24px;
 	padding: 24px;
 	text-align: left;
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+	box-shadow: 0 20px 60px var(--theme-shadow-modal);
 }
 
 .modal-copy {
@@ -485,10 +485,10 @@
 .modal-description {
 	padding: 12px 14px;
 	border-radius: 16px;
-	background: rgba(255, 255, 255, 0.06);
+	background: var(--theme-surface-muted-strong);
 	overflow-wrap: anywhere;
 	white-space: pre-wrap;
-	border: 1px solid rgba(255, 255, 255, 0.08);
+	border: 1px solid var(--theme-border-medium);
 }
 
 .modal-actions {
