@@ -54,11 +54,19 @@
 
 		<section class="workspace-panel workspace-panel-main surface-card">
 			<div class="panel-header panel-header-main">
-				<div>
+				<div class="panel-header-copy">
 					<p class="eyebrow">Working Tree</p>
 					<h2>Changes</h2>
+					<p class="panel-hint">Ctrl/Cmd click to toggle, Shift to select ranges, Esc to clear</p>
 				</div>
-				<p class="panel-hint">Ctrl/Cmd click to toggle, Shift to select ranges, Esc to clear</p>
+				<div id="SelectionActions" class="selection-actions" hidden>
+					<span id="SelectionActionsSummary" class="selection-actions-summary"></span>
+					<div class="selection-actions-buttons">
+						<button id="StageSelectedButton" class="button-secondary" type="button" onclick="stageSelectedGitFiles()">Stage selected</button>
+						<button id="UnstageSelectedButton" class="button-secondary" type="button" onclick="unstageSelectedGitFiles()">Unstage selected</button>
+						<button id="DiscardSelectedButton" class="button-danger" type="button" onclick="discardSelectedGitFiles()">Discard selected</button>
+					</div>
+				</div>
 			</div>
 			<div id="Changes" class="changes-list"></div>
 		</section>

@@ -55,8 +55,30 @@ window.stageGitFile = async function (filePath: string, changeKey?: string) {
 	});
 }
 
+window.stageSelectedGitFiles = async function () {
+	const targets = getGitSelectionTargets("stage");
+	if (targets.length === 0) {
+		return;
+	}
+
+	await runGitAction("stage", targets, async (targetPath) => {
+		await window.go.main.App.StageGitFile(targetPath);
+	});
+}
+
 window.unstageGitFile = async function (filePath: string, changeKey?: string) {
 	const targets = getActionTargetsOrFallback("unstage", filePath, changeKey);
+	await runGitAction("unstage", targets, async (targetPath) => {
+		await window.go.main.App.UnstageGitFile(targetPath);
+	});
+}
+
+window.unstageSelectedGitFiles = async function () {
+	const targets = getGitSelectionTargets("unstage");
+	if (targets.length === 0) {
+		return;
+	}
+
 	await runGitAction("unstage", targets, async (targetPath) => {
 		await window.go.main.App.UnstageGitFile(targetPath);
 	});
@@ -219,6 +241,17 @@ window.discardGitFile = async function (filePath: string, description?: string, 
 		})),
 	};
 	updateDiscardModal();
+}
+
+window.discardSelectedGitFiles = async function () {
+	const targets = getGitSelectionTargets("discard");
+	if (targets.length === 0) {
+		return;
+	}
+
+	await runGitAction("discard", targets.map((target) => ({ actionPath: target.actionPath, label: target.label })), async (targetPath) => {
+		await window.go.main.App.DiscardGitFile(targetPath);
+	});
 }
 
 window.confirmDiscardGitFile = async function () {
@@ -498,7 +531,7 @@ async function runGitAction(
 	const actionPaths: string[] = [];
 
 	for (const target of targets) {
-		const actionKey = beginGitAction(action, target.actionPath);
+		const actionKey = beginGitAction(target.actionPath);
 		if (!actionKey) {
 			continue;
 		}
@@ -703,6 +736,9 @@ declare global {
 		confirmDeleteBranch: () => Promise<void>;
 		cancelDeleteBranch: () => void;
 		selectGitChange: (event: MouseEvent, key: string) => void;
+		stageSelectedGitFiles: () => Promise<void>;
+		unstageSelectedGitFiles: () => Promise<void>;
+		discardSelectedGitFiles: () => Promise<void>;
 		cycleTheme: () => void;
     }
 }

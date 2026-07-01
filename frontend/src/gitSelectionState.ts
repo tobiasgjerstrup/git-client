@@ -79,6 +79,10 @@ export function handleGitSelectionClick(event: MouseEvent, key: string): void {
 }
 
 export function getGitSelectionTargets(action: GitSelectionAction, clickedKey?: string): GitSelectionEntry[] {
+	if (clickedKey === undefined) {
+		return getSelectedActionTargets(action);
+	}
+
 	const clickedEntry = clickedKey
 		? renderedEntries.find((entry) => entry.key === clickedKey)
 		: undefined;
@@ -93,6 +97,22 @@ export function getGitSelectionTargets(action: GitSelectionAction, clickedKey?: 
 
 	const seenPaths = new Set<string>();
 	const targets: GitSelectionEntry[] = [];
+	for (const entry of candidates) {
+		if (seenPaths.has(entry.actionPath)) {
+			continue;
+		}
+		seenPaths.add(entry.actionPath);
+		targets.push(entry);
+	}
+
+	return targets;
+}
+
+function getSelectedActionTargets(action: GitSelectionAction): GitSelectionEntry[] {
+	const candidates = renderedEntries.filter((entry) => selectedKeys.has(entry.key) && entry.supportedActions.includes(action));
+	const seenPaths = new Set<string>();
+	const targets: GitSelectionEntry[] = [];
+
 	for (const entry of candidates) {
 		if (seenPaths.has(entry.actionPath)) {
 			continue;
@@ -154,4 +174,36 @@ function syncSelectedEntries(): void {
 
 		row.classList.toggle("selected", selectedKeys.has(key));
 	});
+
+	syncSelectionActionBar();
+}
+
+function syncSelectionActionBar(): void {
+	const selectionActions = document.getElementById("SelectionActions");
+	if (!selectionActions) {
+		return;
+	}
+
+	const hasSelection = selectedKeys.size > 0;
+	selectionActions.hidden = !hasSelection;
+
+	const selectionSummary = document.getElementById("SelectionActionsSummary");
+	if (selectionSummary) {
+		selectionSummary.textContent = hasSelection ? `${selectedKeys.size} selected` : "";
+	}
+
+	const stageButton = document.getElementById("StageSelectedButton") as HTMLButtonElement | null;
+	if (stageButton) {
+		stageButton.disabled = getSelectedActionTargets("stage").length === 0;
+	}
+
+	const unstageButton = document.getElementById("UnstageSelectedButton") as HTMLButtonElement | null;
+	if (unstageButton) {
+		unstageButton.disabled = getSelectedActionTargets("unstage").length === 0;
+	}
+
+	const discardButton = document.getElementById("DiscardSelectedButton") as HTMLButtonElement | null;
+	if (discardButton) {
+		discardButton.disabled = getSelectedActionTargets("discard").length === 0;
+	}
 }

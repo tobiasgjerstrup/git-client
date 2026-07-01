@@ -185,15 +185,15 @@ function renderChangeEntry(entry: GitChangeEntry): string {
 }
 
 function renderStageButton(actionPath: string, entryKey: string): string {
-	return `<button ${getGitActionButtonAttrs("stage", actionPath)} onclick='event.stopPropagation(); stageGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(entryKey))})'>Stage</button>`;
+	return `<button ${getGitActionButtonAttrs(actionPath)} onclick='event.stopPropagation(); stageGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(entryKey))})'>Stage</button>`;
 }
 
 function renderUnstageButton(actionPath: string, entryKey: string): string {
-	return `<button ${getGitActionButtonAttrs("unstage", actionPath)} onclick='event.stopPropagation(); unstageGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(entryKey))})'>Unstage</button>`;
+	return `<button ${getGitActionButtonAttrs(actionPath)} onclick='event.stopPropagation(); unstageGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(entryKey))})'>Unstage</button>`;
 }
 
 function renderDiscardButton(actionPath: string, label: string, entryKey: string): string {
-	return `<button ${getGitActionButtonAttrs("discard", actionPath)} onclick='event.stopPropagation(); discardGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(label))}, ${escapeHtml(JSON.stringify(entryKey))})'>Discard</button>`;
+	return `<button ${getGitActionButtonAttrs(actionPath)} onclick='event.stopPropagation(); discardGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(label))}, ${escapeHtml(JSON.stringify(entryKey))})'>Discard</button>`;
 }
 
 export async function gitStatus() {
