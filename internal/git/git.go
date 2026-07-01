@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+const gitPathPairSeparator = "\t"
+
 type GitStatusResult struct {
 	Files      []string `json:"files"`
 	BranchName string   `json:"branchName"`
@@ -212,20 +214,35 @@ func GetCommitHistory(repoPath string) (*[]Commit, error) {
 }
 
 func DiscardGitFile(repoPath string, filePath string) (string, error) {
+	paths := splitGitActionPaths(filePath)
+	if len(paths) == 2 {
+		originalPath := paths[0]
+		currentPath := paths[1]
+
+		if err := os.Remove(filepath.Join(repoPath, currentPath)); err != nil && !os.IsNotExist(err) {
+			return "", err
+		}
+
+		return runGitForRepo(repoPath, "restore", "--worktree", "--source=HEAD", "--", originalPath)
+	}
+
+	targetPath := paths[0]
 	// If a file is new (?? in git status), we need to remove it instead of restoring it
-	fileStatus, err := runGitForRepo(repoPath, "status", "--porcelain", "--", filePath)
+	fileStatus, err := runGitForRepo(repoPath, "status", "--porcelain", "--", targetPath)
 	if err != nil {
 		return "", err
 	}
 
 	if strings.HasPrefix(fileStatus, "??") {
-		return "", os.Remove(filepath.Join(repoPath, filePath))
+		return "", os.Remove(filepath.Join(repoPath, targetPath))
 	}
-	return runGitForRepo(repoPath, "restore", "--", filePath)
+	return runGitForRepo(repoPath, "restore", "--", targetPath)
 }
 
 func StageGitFile(repoPath string, filePath string) (string, error) {
-	return runGitForRepo(repoPath, "add", "--", filePath)
+	paths := splitGitActionPaths(filePath)
+	args := append([]string{"add", "--all", "--"}, paths...)
+	return runGitForRepo(repoPath, args...)
 }
 
 func CommitGitChanges(repoPath string, message string) error {
@@ -278,7 +295,25 @@ func PullGitChanges(repoPath string) error {
 }
 
 func UnstageGitFile(repoPath string, filePath string) (string, error) {
-	return runGitForRepo(repoPath, "restore", "--staged", "--", filePath)
+	paths := splitGitActionPaths(filePath)
+	args := append([]string{"restore", "--staged", "--"}, paths...)
+	return runGitForRepo(repoPath, args...)
+}
+
+func splitGitActionPaths(filePath string) []string {
+	parts := strings.Split(filePath, gitPathPairSeparator)
+	paths := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		paths = append(paths, part)
+	}
+	if len(paths) == 0 {
+		return []string{filePath}
+	}
+	return paths
 }
 
 func GetGitBranches(repoPath string) (*[]GitBranch, error) {

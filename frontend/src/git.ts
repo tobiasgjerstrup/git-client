@@ -4,7 +4,20 @@ type GitStatusLine = {
 	key: GitPorcelainV2Key;
 	xy: string;
 	path: string;
+	origPath?: string;
 	text: string;
+};
+
+type GitChangeSide = "staged" | "unstaged";
+
+type GitChangeEntry = {
+	key: string;
+	path: string;
+	label: string;
+	side: GitChangeSide;
+	diffFile?: GitDiffOutput["files"][0];
+	buttonsHtml: string;
+	statusClass: string;
 };
 
 export interface GitStatusOutput {
@@ -73,8 +86,11 @@ function parseGitStatusLine(line: string): GitStatusLine | null {
 	const renamedOrCopiedMatch = line.match(/^2 (\S{2}) (?:\S+ ){7}(.+)$/);
 	if (renamedOrCopiedMatch) {
 		const pathWithOrigin = renamedOrCopiedMatch[2];
-		const path = pathWithOrigin.split("\t")[0];
-		return { key: "2", xy: renamedOrCopiedMatch[1], path, text: `${renamedOrCopiedMatch[1]} ${path}` };
+		const [path, origPath] = pathWithOrigin.split("\t");
+		const text = origPath
+			? `${renamedOrCopiedMatch[1]} ${origPath} -> ${path}`
+			: `${renamedOrCopiedMatch[1]} ${path}`;
+		return { key: "2", xy: renamedOrCopiedMatch[1], path, origPath, text };
 	}
 
 	const unmergedMatch = line.match(/^u (\S{2}) (?:\S+ ){8}(.+)$/);
@@ -102,6 +118,65 @@ function parseGitStatusLine(line: string): GitStatusLine | null {
 function isStagedFromXYStatus(xy: string): boolean {
 	// In porcelain v2, "." means unchanged; in v1, " " means unchanged.
 	return xy[0] !== "." && xy[0] !== " " && xy[0] !== "?" && xy[0] !== "!";
+}
+
+function hasUnstagedFromXYStatus(xy: string): boolean {
+	return xy[1] !== "." && xy[1] !== " ";
+}
+
+function describeStatusCode(code: string, side: GitChangeSide): string {
+	switch (code) {
+		case "M":
+			return side === "staged" ? "Modified in index" : "Modified in working tree";
+		case "A":
+			return side === "staged" ? "Added" : "Added in working tree";
+		case "D":
+			return side === "staged" ? "Deleted from index" : "Deleted in working tree";
+		case "R":
+			return side === "staged" ? "Renamed" : "Renamed in working tree";
+		case "C":
+			return side === "staged" ? "Copied" : "Copied in working tree";
+		case "T":
+			return side === "staged" ? "Type changed in index" : "Type changed in working tree";
+		case "U":
+			return "Unmerged";
+		default:
+			return side === "staged" ? "Staged change" : "Unstaged change";
+	}
+}
+
+function buildStatusLabel(parsedLine: GitStatusLine, side: GitChangeSide, code: string): string {
+	const prefix = describeStatusCode(code, side);
+	if (parsedLine.origPath) {
+		return `${prefix}: ${parsedLine.origPath} -> ${parsedLine.path}`;
+	}
+	return `${prefix}: ${parsedLine.path}`;
+}
+
+function buildActionPath(parsedLine: GitStatusLine): string {
+	if (parsedLine.origPath) {
+		return `${parsedLine.origPath}\t${parsedLine.path}`;
+	}
+	return parsedLine.path;
+}
+
+function renderDiffContent(diffFile?: GitDiffOutput["files"][0]): string {
+	if (!diffFile) {
+		return "";
+	}
+
+	return `<div class="diff-content" style="display:none"><pre class="changedLinesContainer">${diffFile.diff}</pre><p>Lines Added: ${diffFile.linesAdded}, Lines Removed: ${diffFile.linesRemoved}</p></div>`;
+}
+
+function renderChangeEntry(entry: GitChangeEntry): string {
+	return `<div class="diff-file-entry">
+		<div class="diff-file-header-row">
+			${entry.buttonsHtml}
+			<span class="diff-file-status ${entry.statusClass}">${escapeHtml(entry.label)}</span>
+			<h3 class="diff-file-header" onclick="toggleDiff(this)">${escapeHtml(entry.path)}</h3>
+		</div>
+		${renderDiffContent(entry.diffFile)}
+	</div>`;
 }
 
 export async function gitStatus() {
@@ -184,36 +259,52 @@ export async function gitDiff() {
 		const parsedLine = parseGitStatusLine(file);
 		if (!parsedLine) continue;
 
-		const isStaged = isStagedFromXYStatus(parsedLine.xy);
 		seenPaths.add(parsedLine.path);
 
-		const diffFile = isStaged
-			? stagedDiffMap.get(parsedLine.path)
-			: unstagedDiffMap.get(parsedLine.path);
+		const stagedCode = parsedLine.xy[0];
+		const unstagedCode = parsedLine.xy[1];
+		const entries: GitChangeEntry[] = [];
+		const actionPath = buildActionPath(parsedLine);
 
-		let buttonsHtml = "";
-		let statusClass = "";
-		if (isStaged) {
-			statusClass = "staged";
-			buttonsHtml = `<button onclick='unstageGitFile(${escapeHtml(JSON.stringify(parsedLine.path))})'>Unstage</button>`;
-		} else {
-			statusClass = "unstaged";
-			buttonsHtml = `<button onclick='stageGitFile(${escapeHtml(JSON.stringify(parsedLine.path))})'>Stage</button>`;
-			buttonsHtml += `<button onclick='discardGitFile(${escapeHtml(JSON.stringify(parsedLine.path))})'>Discard</button>`;
+		if (isStagedFromXYStatus(parsedLine.xy)) {
+			entries.push({
+				key: `${parsedLine.path}:staged`,
+				path: parsedLine.path,
+				label: buildStatusLabel(parsedLine, "staged", stagedCode),
+				side: "staged",
+				diffFile: stagedDiffMap.get(parsedLine.path),
+				buttonsHtml: `<button onclick='unstageGitFile(${escapeHtml(JSON.stringify(actionPath))})'>Unstage</button>`,
+				statusClass: "staged",
+			});
 		}
 
-		const diffContent = diffFile
-			? `<div class="diff-content" style="display:none"><pre class="changedLinesContainer">${diffFile.diff}</pre><p>Lines Added: ${diffFile.linesAdded}, Lines Removed: ${diffFile.linesRemoved}</p></div>`
-			: "";
+		if (hasUnstagedFromXYStatus(parsedLine.xy) || parsedLine.key === "?" || parsedLine.key === "!") {
+			entries.push({
+				key: `${parsedLine.path}:unstaged`,
+				path: parsedLine.path,
+				label: buildStatusLabel(parsedLine, "unstaged", parsedLine.key === "?" ? "A" : unstagedCode),
+				side: "unstaged",
+				diffFile: unstagedDiffMap.get(parsedLine.path),
+				buttonsHtml: `<button onclick='stageGitFile(${escapeHtml(JSON.stringify(actionPath))})'>Stage</button><button onclick='discardGitFile(${escapeHtml(JSON.stringify(actionPath))})'>Discard</button>`,
+				statusClass: "unstaged",
+			});
+		}
 
-		changesHtml += `<div class="diff-file-entry">
-			<div class="diff-file-header-row">
-				${buttonsHtml}
-				<span class="diff-file-status ${statusClass}">${escapeHtml(parsedLine.text)}</span>
-				<h3 class="diff-file-header" onclick="toggleDiff(this)">${escapeHtml(parsedLine.path)}</h3>
-			</div>
-			${diffContent}
-		</div>`;
+		if (entries.length === 0) {
+			entries.push({
+				key: `${parsedLine.path}:fallback`,
+				path: parsedLine.path,
+				label: parsedLine.text,
+				side: "unstaged",
+				diffFile: unstagedDiffMap.get(parsedLine.path),
+				buttonsHtml: `<button onclick='stageGitFile(${escapeHtml(JSON.stringify(actionPath))})'>Stage</button><button onclick='discardGitFile(${escapeHtml(JSON.stringify(actionPath))})'>Discard</button>`,
+				statusClass: "unstaged",
+			});
+		}
+
+		for (const entry of entries) {
+			changesHtml += renderChangeEntry(entry);
+		}
 	}
 
 	// Include any diff files not covered by status (edge case)
@@ -223,27 +314,29 @@ export async function gitDiff() {
 
 		const buttonsHtml = `<button onclick='stageGitFile(${escapeHtml(JSON.stringify(path))})'>Stage</button><button onclick='discardGitFile(${escapeHtml(JSON.stringify(path))})'>Discard</button>`;
 
-		changesHtml += `<div class="diff-file-entry">
-			<div class="diff-file-header-row">
-				${buttonsHtml}
-				<span class="diff-file-status unstaged"></span>
-				<h3 class="diff-file-header" onclick="toggleDiff(this)">${escapeHtml(path)}</h3>
-			</div>
-			<div class="diff-content" style="display:none"><pre class="changedLinesContainer">${diffFile.diff}</pre><p>Lines Added: ${diffFile.linesAdded}, Lines Removed: ${diffFile.linesRemoved}</p></div>
-		</div>`;
+		changesHtml += renderChangeEntry({
+			key: `${path}:unstaged-fallback`,
+			path,
+			label: `Unstaged change: ${path}`,
+			side: "unstaged",
+			diffFile,
+			buttonsHtml,
+			statusClass: "unstaged",
+		});
 	}
 
 	for (const [path, diffFile] of stagedDiffMap) {
 		if (seenPaths.has(path)) continue;
 
-		changesHtml += `<div class="diff-file-entry">
-			<div class="diff-file-header-row">
-				<button onclick='unstageGitFile(${escapeHtml(JSON.stringify(path))})'>Unstage</button>
-				<span class="diff-file-status staged"></span>
-				<h3 class="diff-file-header" onclick="toggleDiff(this)">${escapeHtml(path)}</h3>
-			</div>
-			<div class="diff-content" style="display:none"><pre class="changedLinesContainer">${diffFile.diff}</pre><p>Lines Added: ${diffFile.linesAdded}, Lines Removed: ${diffFile.linesRemoved}</p></div>
-		</div>`;
+		changesHtml += renderChangeEntry({
+			key: `${path}:staged-fallback`,
+			path,
+			label: `Staged change: ${path}`,
+			side: "staged",
+			diffFile,
+			buttonsHtml: `<button onclick='unstageGitFile(${escapeHtml(JSON.stringify(path))})'>Unstage</button>`,
+			statusClass: "staged",
+		});
 	}
 
 	document.getElementById("Changes")!.innerHTML = changesHtml;
