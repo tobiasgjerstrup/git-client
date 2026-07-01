@@ -14,13 +14,11 @@ window.pickFolder = async function () {
 };
 
 window.stageGitFile = async function (filePath: string) {
-	filePath = openedFolder ? `${openedFolder}/${filePath}` : filePath;
 	await window.go.main.App.StageGitFile(filePath);
 	gitDiff();
 }
 
 window.unstageGitFile = async function (filePath: string) {
-	filePath = openedFolder ? `${openedFolder}/${filePath}` : filePath;
 	await window.go.main.App.UnstageGitFile(filePath);
 	gitDiff();
 }
@@ -105,7 +103,6 @@ window.refresh = async function () {
 }
 
 window.discardGitFile = async function (filePath: string) {
-	filePath = openedFolder ? `${openedFolder}/${filePath}` : filePath;
 	await window.go.main.App.DiscardGitFile(filePath);
 	gitDiff();
 }

@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -220,7 +219,7 @@ func DiscardGitFile(repoPath string, filePath string) (string, error) {
 	}
 
 	if strings.HasPrefix(fileStatus, "??") {
-		return "", os.Remove(filePath)
+		return "", os.Remove(filepath.Join(repoPath, filePath))
 	}
 	return runGitForRepo(repoPath, "restore", "--", filePath)
 }
@@ -444,7 +443,7 @@ func runCommand(name string, args ...string) (string, error) {
     }()
 
     cmd := exec.Command(name, args...)
-    cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	cmd.SysProcAttr = newSysProcAttr()
 
     out, err := cmd.CombinedOutput()
 	fmt.Printf("Ran command: %s %s\n", name, strings.Join(args, " "))
