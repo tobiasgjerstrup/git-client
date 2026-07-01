@@ -27,7 +27,7 @@ This app is focused on fast local repository workflows:
 - Git installed and available on PATH
 
 Wails install docs:
-https://wails.io/docs/gettingstarted/installation
+httpw://wails.io/docs/gettingstarted/installation
 
 ## Project Structure
 
