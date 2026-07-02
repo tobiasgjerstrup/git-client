@@ -447,6 +447,7 @@ function loadHtml() {
 function showWelcomeView() {
 	document.querySelector('#app')!.innerHTML = renderWelcomeShell(getViewRenderContext());
 	modalManager.ensureKeyListener();
+	syncFrontendConsoleVisibility();
 	renderFrontendLogConsole();
 }
 

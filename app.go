@@ -135,7 +135,6 @@ func (a *App) CommitGitChanges(message string) error {
 
 func (a *App) SwitchGitBranch(branchName string) error {
 	err := a.gitService.SwitchBranch(a.repoPath, branchName)
-	a.logBackendError("SwitchGitBranch", err)
 	return err
 }
 
@@ -147,7 +146,6 @@ func (a *App) DeleteGitBranch(branchName string, force bool) error {
 
 func (a *App) PushGitChanges() error {
 	err := a.gitService.Push(a.repoPath)
-	a.logBackendError("PushGitChanges", err)
 	return err
 }
 
