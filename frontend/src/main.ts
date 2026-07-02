@@ -484,7 +484,7 @@ function renderWelcomeShell() {
 				<button class="button-primary" onclick="pickFolder()">Choose Repository</button>
 			</div>
 			<div class="recent-repositories">
-				<div class="cluster-title">Recent repositories</div>
+				<div class="cluster-title">Recent Repositories</div>
 				<div class="recent-repositories-list">
 					${recentRepositoriesHtml}
 				</div>
@@ -741,14 +741,15 @@ async function runGitAction(
 	} catch (error) {
 		actionError = error;
 	} finally {
-		for (const actionKey of actionKeys) {
-			endGitAction(actionKey);
-		}
 		try {
 			await gitDiff();
 		} catch (error) {
 			refreshError = error;
 			console.error("Failed to refresh git diff after git action", error);
+		} finally {
+			for (const actionKey of actionKeys) {
+				endGitAction(actionKey);
+			}
 		}
 	}
 
