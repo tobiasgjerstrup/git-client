@@ -3,11 +3,19 @@ button {
 	background: var(--theme-button-bg);
 	color: var(--theme-text);
 	border: 1px solid var(--theme-border-button);
+	cursor: pointer;
 	padding: 10px 16px;
 	border-radius: 999px;
 	font-weight: 700;
 	letter-spacing: 0.02em;
 	backdrop-filter: blur(8px);
+}
+
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+	cursor: pointer;
 }
 
 button:hover {
@@ -54,6 +62,24 @@ button:disabled {
 	color: var(--theme-text-disabled);
 	border-color: var(--theme-border-disabled);
 	cursor: not-allowed;
+	transform: none;
+	box-shadow: none;
+}
+
+button:disabled:hover,
+button:disabled:active,
+button.button-danger:disabled,
+button.button-danger:disabled:hover,
+button.button-danger:disabled:active,
+button.button-primary:disabled,
+button.button-primary:disabled:hover,
+button.button-primary:disabled:active,
+button.highlight:disabled,
+button.highlight:disabled:hover,
+button.highlight:disabled:active {
+	background: var(--theme-button-bg);
+	color: var(--theme-text-disabled);
+	border-color: var(--theme-border-disabled);
 	transform: none;
 	box-shadow: none;
 }
