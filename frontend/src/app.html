@@ -10,6 +10,7 @@
 				<span class="status-chip-label">Branch</span>
 				<span id="BranchName">No repository selected</span>
 			</div>
+			<button id="OpenSettings" class="button-secondary" onclick="openSettings()">Settings</button>
 			<button id="PickFolder" class="button-secondary" onclick="pickFolder()">Open Repository</button>
 			<details class="recent-repositories-dropdown">
 				<summary class="button-secondary recent-repositories-summary">Recent Repositories</summary>
@@ -136,6 +137,12 @@
 				<button class="button-secondary" type="button" onclick="cancelDeleteBranch()">Cancel</button>
 				<button id="ConfirmDeleteBranchButton" class="button-danger" type="button" onclick="confirmDeleteBranch()">Delete branch</button>
 			</div>
+		</div>
+	</div>
+
+	<div id="SettingsModal" class="modal-backdrop" hidden onclick="if (event.target === this) closeSettings()">
+		<div class="modal-card settings-modal-card" role="dialog" aria-modal="true" aria-labelledby="SettingsModalTitle" tabindex="-1" onclick="event.stopPropagation()">
+			<div id="SettingsModalBody" class="settings-modal-content"></div>
 		</div>
 	</div>
 </div>

@@ -5,6 +5,12 @@ declare global {
 		go: any;
 		pickFolder: () => Promise<void>;
 		openRecentRepository: (repoPath: string) => Promise<void>;
+		openSettings: () => void;
+		closeSettings: () => void;
+		selectTheme: (themeName: "aurora" | "midnight") => void;
+		clearRecentRepositories: () => void;
+		removeRecentRepository: (repoPath: string) => void;
+		setMaxRecentRepositories: (value: number) => void;
 		stageGitFile: (filePath: string, changeKey?: string) => Promise<void>;
 		unstageGitFile: (filePath: string, changeKey?: string) => Promise<void>;
 		resolveGitConflict: (filePath: string, strategy: "ours" | "theirs", changeKey?: string) => Promise<void>;

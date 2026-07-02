@@ -10,14 +10,12 @@ export let openedFolder: string | null = null;
 
 type ThemeName = "aurora" | "midnight";
 
-const themeOptions: Array<{ name: ThemeName; label: string }> = [
-	{ name: "aurora", label: "Aurora" },
-	{ name: "midnight", label: "Midnight" },
-];
-
 const themeStorageKey = "git-client-theme";
 const recentRepositoriesStorageKey = "git-client-recent-repositories";
-const maxRecentRepositories = 6;
+const maxRecentRepositoriesStorageKey = "git-client-max-recent-repositories";
+const defaultMaxRecentRepositories = 6;
+const minMaxRecentRepositories = 1;
+const maxMaxRecentRepositories = 99;
 let activeTheme: ThemeName = "aurora";
 
 type DiscardModalState = {
@@ -38,6 +36,7 @@ type BranchDeleteModalState = {
 let discardModalState: DiscardModalState = null;
 let branchSwitchModalState: BranchSwitchModalState = null;
 let branchDeleteModalState: BranchDeleteModalState = null;
+let settingsModalOpen = false;
 let gitSelectionKeyListenerBound = false;
 let modalKeyListenerBound = false;
 let recentRepositoriesDropdownListenerBound = false;
@@ -68,8 +67,48 @@ window.openRecentRepository = async function (repoPath: string) {
 	await window.go.main.App.SetRepositoryPath(repoPath);
 	openedFolder = repoPath;
 	addRecentRepository(repoPath);
+	settingsModalOpen = false;
 	loadHtml();
 };
+
+window.openSettings = function () {
+	settingsModalOpen = true;
+	updateSettingsModal();
+}
+
+window.closeSettings = function () {
+	settingsModalOpen = false;
+	updateSettingsModal();
+}
+
+window.selectTheme = function (themeName: ThemeName) {
+	applyTheme(themeName);
+	syncRecentRepositoriesPanel();
+	updateSettingsModal();
+}
+
+window.clearRecentRepositories = function () {
+	saveRecentRepositories([]);
+	syncRecentRepositoriesPanel();
+	updateSettingsModal();
+}
+
+window.removeRecentRepository = function (repoPath: string) {
+	const nextRepositories = getRecentRepositories().filter((item) => item.path !== repoPath);
+	saveRecentRepositories(nextRepositories);
+	syncRecentRepositoriesPanel();
+	updateSettingsModal();
+}
+
+window.setMaxRecentRepositories = function (value: number) {
+	const normalizedValue = normalizeMaxRecentRepositories(value);
+	window.localStorage.setItem(maxRecentRepositoriesStorageKey, String(normalizedValue));
+
+	// Re-save to enforce the new cap immediately.
+	saveRecentRepositories(getRecentRepositories());
+	syncRecentRepositoriesPanel();
+	updateSettingsModal();
+}
 
 window.stageGitFile = async function (filePath: string, changeKey?: string) {
 	const targets = getActionTargetsOrFallback("stage", filePath, changeKey);
@@ -384,12 +423,6 @@ window.pullGitChanges = async function () {
 	throw pullError;
 }
 
-window.cycleTheme = function () {
-	const currentIndex = themeOptions.findIndex((theme) => theme.name === activeTheme);
-	const nextTheme = themeOptions[(currentIndex + 1) % themeOptions.length];
-	applyTheme(nextTheme.name);
-}
-
 import appHtml from './app.html?raw';
 import branchPanelHtml from './panels/branchPanel.html?raw';
 import commitPanelHtml from './panels/commitPanel.html?raw';
@@ -398,17 +431,43 @@ function loadHtml() {
 	document.querySelector('#app')!.innerHTML = appHtml;
 	document.getElementById('BranchPanel')!.innerHTML = branchPanelHtml;
 	document.getElementById('CommitPanel')!.innerHTML = commitPanelHtml;
+	syncRecentRepositoriesPanel();
+	ensureRecentRepositoriesDropdownListener();
+	ensureGitSelectionKeyListener();
+	updateSettingsModal();
+	updateDiscardModal();
+	updateBranchSwitchModal();
+	updateBranchDeleteModal();
+	window.refresh();
+}
+
+function showWelcomeView() {
+	document.querySelector('#app')!.innerHTML = renderWelcomeShell();
+	ensureModalKeyListener();
+}
+
+function syncRecentRepositoriesPanel() {
 	const recentRepositoriesPanel = document.getElementById('RecentRepositoriesPanel');
 	if (recentRepositoriesPanel) {
 		recentRepositoriesPanel.innerHTML = renderRecentRepositoriesHtml();
 	}
-	ensureRecentRepositoriesDropdownListener();
-	ensureGitSelectionKeyListener();
-	updateDiscardModal();
-	updateBranchSwitchModal();
-	updateBranchDeleteModal();
-	updateThemeToggle();
-	window.refresh();
+}
+
+function updateSettingsModal() {
+	const modal = document.getElementById("SettingsModal");
+	const body = document.getElementById("SettingsModalBody");
+	if (!modal || !body) {
+		return;
+	}
+
+	if (settingsModalOpen) {
+		modal.removeAttribute("hidden");
+		body.innerHTML = renderSettingsContent();
+		focusModalInitialTarget("SettingsModal", "#SettingsCloseButton");
+	} else {
+		modal.setAttribute("hidden", "");
+		body.innerHTML = "";
+	}
 }
 
 function getRecentRepositories(): RecentRepository[] {
@@ -449,7 +508,26 @@ function getRecentRepositories(): RecentRepository[] {
 }
 
 function saveRecentRepositories(repositories: RecentRepository[]) {
+	const maxRecentRepositories = getMaxRecentRepositories();
 	window.localStorage.setItem(recentRepositoriesStorageKey, JSON.stringify(repositories.slice(0, maxRecentRepositories)));
+}
+
+function getMaxRecentRepositories(): number {
+	const storedValue = window.localStorage.getItem(maxRecentRepositoriesStorageKey);
+	if (!storedValue) {
+		return defaultMaxRecentRepositories;
+	}
+
+	const parsedValue = Number.parseInt(storedValue, 10);
+	return normalizeMaxRecentRepositories(parsedValue);
+}
+
+function normalizeMaxRecentRepositories(value: number): number {
+	if (!Number.isFinite(value)) {
+		return defaultMaxRecentRepositories;
+	}
+
+	return Math.min(maxMaxRecentRepositories, Math.max(minMaxRecentRepositories, Math.round(value)));
 }
 
 function getRepositoryLabel(repoPath: string): string {
@@ -482,6 +560,7 @@ function renderWelcomeShell() {
 			<p class="welcome-copy">Track diffs, review branches, select multiple files like VS Code, and commit with a faster local workflow.</p>
 			<div class="welcome-actions">
 				<button class="button-primary" onclick="pickFolder()">Choose Repository</button>
+				<button class="button-secondary" onclick="openSettings()">Settings</button>
 			</div>
 			<div class="recent-repositories">
 				<div class="cluster-title">Recent Repositories</div>
@@ -490,7 +569,74 @@ function renderWelcomeShell() {
 				</div>
 			</div>
 		</div>
+		<div id="SettingsModal" class="modal-backdrop" ${settingsModalOpen ? "" : "hidden"} onclick="if (event.target === this) closeSettings()">
+			<div class="modal-card settings-modal-card" role="dialog" aria-modal="true" aria-labelledby="SettingsModalTitle" tabindex="-1" onclick="event.stopPropagation()">
+				<div id="SettingsModalBody" class="settings-modal-content">${settingsModalOpen ? renderSettingsContent() : ""}</div>
+			</div>
+		</div>
 	</section>`;
+}
+
+function renderSettingsContent() {
+	const recentRepositories = getRecentRepositories();
+	const maxRecentRepositories = getMaxRecentRepositories();
+	const recentRepositoriesHtml = recentRepositories.length > 0
+		? recentRepositories.map((repository) => `
+			<article class="settings-recent-item">
+				<h3>${escapeHtml(repository.label)}</h3>
+				<p>${escapeHtml(repository.path)}</p>
+				<div class="settings-recent-actions">
+					<button type="button" class="button-secondary" onclick="openRecentRepository(${escapeHtml(JSON.stringify(repository.path))})">Open</button>
+					<button type="button" class="button-danger" onclick="removeRecentRepository(${escapeHtml(JSON.stringify(repository.path))})">Remove</button>
+				</div>
+			</article>
+		`).join("")
+		: `<div class="empty-panel-state">No recent repositories saved yet.</div>`;
+
+	return `<div class="settings-header">
+		<div>
+			<p class="eyebrow">Preferences</p>
+			<h2 id="SettingsModalTitle">Settings</h2>
+			<p class="welcome-copy">Tune the Git client behavior for your workflow.</p>
+		</div>
+		<button id="SettingsCloseButton" type="button" class="button-secondary" onclick="closeSettings()">Close</button>
+	</div>
+
+	<div class="settings-grid">
+		<div class="settings-card">
+			<div class="settings-label">Theme</div>
+			<div class="settings-row">
+				<button type="button" class="${activeTheme === "aurora" ? "button-primary" : "button-secondary"}" onclick="selectTheme('aurora')">Aurora</button>
+				<button type="button" class="${activeTheme === "midnight" ? "button-primary" : "button-secondary"}" onclick="selectTheme('midnight')">Midnight</button>
+			</div>
+		</div>
+
+		<div class="settings-card">
+			<div class="settings-label">Data</div>
+			<div class="settings-row">
+				<span>${recentRepositories.length} saved recent repos</span>
+				<button type="button" class="button-secondary" onclick="clearRecentRepositories()">Clear Recent Repositories</button>
+			</div>
+			<div class="settings-row">
+				<label for="MaxRecentRepositoriesInput">Max stored recent repos</label>
+				<input
+					id="MaxRecentRepositoriesInput"
+					type="number"
+					min="${minMaxRecentRepositories}"
+					max="${maxMaxRecentRepositories}"
+					value="${maxRecentRepositories}"
+					onchange="setMaxRecentRepositories(Number(this.value))"
+				>
+			</div>
+		</div>
+	</div>
+
+	<div class="settings-card">
+		<div class="settings-label">Recent Repositories</div>
+		<div class="settings-recent-list">
+			${recentRepositoriesHtml}
+		</div>
+	</div>`;
 }
 
 function renderRecentRepositoriesHtml() {
@@ -522,18 +668,6 @@ function applyTheme(themeName: ThemeName) {
 	activeTheme = themeName;
 	document.documentElement.dataset.theme = themeName;
 	window.localStorage.setItem(themeStorageKey, themeName);
-	updateThemeToggle();
-}
-
-function updateThemeToggle() {
-	const themeButton = document.getElementById("ThemeToggle") as HTMLButtonElement | null;
-	if (!themeButton) {
-		return;
-	}
-
-	const theme = themeOptions.find((entry) => entry.name === activeTheme) ?? themeOptions[0];
-	themeButton.textContent = `Theme: ${theme.label}`;
-	themeButton.setAttribute("aria-label", `Switch theme, current theme is ${theme.label}`);
 }
 
 function toErrorMessage(error: unknown): string {
@@ -889,6 +1023,13 @@ function handleModalKeydown(event: KeyboardEvent) {
 		event.preventDefault();
 		event.stopImmediatePropagation();
 		hideBranchDeleteModal();
+		return;
+	}
+
+	if (settingsModalOpen) {
+		event.preventDefault();
+		event.stopImmediatePropagation();
+		window.closeSettings();
 	}
 }
 
@@ -927,6 +1068,10 @@ function getActiveModal() {
 		return document.getElementById("BranchDeleteModal") as HTMLElement | null;
 	}
 
+	if (settingsModalOpen) {
+		return document.getElementById("SettingsModal") as HTMLElement | null;
+	}
+
 	return null;
 }
 
@@ -944,7 +1089,7 @@ function getModalFocusableElements(modal: HTMLElement) {
 if (openedFolder) {
 	loadHtml();
 } else {
-	document.querySelector('#app')!.innerHTML = renderWelcomeShell();
+	showWelcomeView();
 }
 
 declare global {
@@ -968,7 +1113,12 @@ declare global {
 		discardSelectedGitFiles: () => Promise<void>;
 		resolveGitConflict: (filePath: string, strategy: "ours" | "theirs", changeKey?: string) => Promise<void>;
 		abortMerge: () => Promise<void>;
-		cycleTheme: () => void;
 		openRecentRepository: (repoPath: string) => Promise<void>;
+		openSettings: () => void;
+		closeSettings: () => void;
+		selectTheme: (themeName: ThemeName) => void;
+		clearRecentRepositories: () => void;
+		removeRecentRepository: (repoPath: string) => void;
+		setMaxRecentRepositories: (value: number) => void;
     }
 }
