@@ -24,6 +24,8 @@
 }
 
 .workspace-header {
+	position: relative;
+	z-index: 30;
 	display: flex;
 	justify-content: space-between;
 	align-items: flex-end;
@@ -59,9 +61,21 @@
 
 .workspace-status {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	gap: 16px;
 	flex-wrap: wrap;
+	position: relative;
+}
+
+.workspace-status > button,
+.recent-repositories-summary {
+	width: 200px;
+	height: 44px;
+	min-height: 44px;
+	box-sizing: border-box;
+	justify-content: center;
+	align-items: center;
+	white-space: nowrap;
 }
 
 .status-chip {
@@ -531,6 +545,152 @@
 	margin-top: 24px;
 	display: flex;
 	gap: 12px;
+}
+
+.recent-repositories {
+	margin-top: 28px;
+	padding-top: 22px;
+	border-top: 1px solid var(--theme-border-soft);
+	display: grid;
+	gap: 14px;
+}
+
+.recent-repositories-list {
+	display: grid;
+	gap: 10px;
+}
+
+.recent-repositories-dropdown {
+	position: relative;
+	margin-left: auto;
+	display: inline-flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 10px;
+	z-index: 1300;
+}
+
+.recent-repositories-dropdown summary {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 16px;
+	border: 1px solid var(--theme-border-button);
+	border-radius: 999px;
+	background: var(--theme-button-secondary-bg);
+	color: var(--theme-text);
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	line-height: 1;
+	backdrop-filter: blur(8px);
+	list-style: none;
+	user-select: none;
+	cursor: pointer;
+	transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.recent-repositories-dropdown summary:hover {
+	transform: translateY(-1px);
+	background: var(--theme-button-secondary-bg);
+	border-color: var(--theme-border-button-hover);
+}
+
+.recent-repositories-dropdown summary::-webkit-details-marker {
+	display: none;
+}
+
+.recent-repositories-summary {
+	padding-inline: 14px;
+}
+
+.recent-repositories-summary::after {
+	content: "▾";
+	display: inline-block;
+	font-size: 0.86em;
+	line-height: 1;
+	transition: transform 0.18s ease;
+	transform-origin: center;
+}
+
+.recent-repositories-dropdown[open] .recent-repositories-summary::after {
+	transform: rotate(180deg);
+}
+
+.recent-repositories-dropdown-menu {
+	position: absolute;
+	top: calc(100% + 10px);
+	right: 0;
+	z-index: 1301;
+	width: min(420px, 90vw);
+	max-height: 40vh;
+	overflow: auto;
+	padding: 18px;
+	display: grid;
+	gap: 12px;
+	border-radius: 22px;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+}
+
+.recent-repositories-panel {
+	margin-top: 0;
+	padding: 18px;
+	border-top: 1px solid var(--theme-border-soft);
+	gap: 12px;
+}
+
+.recent-repository-item {
+	display: grid;
+	gap: 4px;
+	justify-items: start;
+	text-align: left;
+	padding: 14px 16px;
+	border-radius: 18px;
+	background: var(--theme-surface-muted-weak);
+	border: 1px solid var(--theme-border-soft);
+	width: 100%;
+	cursor: pointer;
+	transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.recent-repository-item:hover {
+	transform: translateY(-1px);
+	border-color: var(--theme-border-accent);
+	background: var(--theme-surface-muted-strong);
+}
+
+.recent-repository-item-current,
+.recent-repository-item-current:hover {
+	border-color: var(--theme-border-info);
+	background: var(--theme-surface-card-current);
+	transform: none;
+	cursor: default;
+}
+
+.recent-repository-name {
+	font-weight: 800;
+	color: var(--theme-text-strong);
+}
+
+.recent-repository-path {
+	font-size: 0.82rem;
+	color: var(--theme-text-subtle);
+	word-break: break-all;
+}
+
+.recent-repositories-empty {
+	padding: 14px 16px;
+	border-radius: 18px;
+	background: var(--theme-surface-muted-weak);
+	border: 1px dashed var(--theme-border-soft);
+	color: var(--theme-text-subtle);
+}
+
+.recent-repository-current {
+	font-size: 0.72rem;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--theme-text-success);
 }
 
 .modal-backdrop {
