@@ -11,6 +11,8 @@ declare global {
 		clearRecentRepositories: () => void;
 		removeRecentRepository: (repoPath: string) => void;
 		setMaxRecentRepositories: (value: number) => void;
+		setFrontendConsoleEnabled: (enabled: boolean) => void;
+		setFrontendLogMinimumLevel: (level: "debug" | "info" | "warn" | "error") => void;
 		stageGitFile: (filePath: string, changeKey?: string) => Promise<void>;
 		unstageGitFile: (filePath: string, changeKey?: string) => Promise<void>;
 		resolveGitConflict: (filePath: string, strategy: "ours" | "theirs", changeKey?: string) => Promise<void>;
@@ -33,5 +35,7 @@ declare global {
 		selectGitChange: (event: MouseEvent, key: string) => void;
 		refresh(): Promise<void>;
 		toggleDiff: (el: HTMLElement) => void;
+		clearFrontendLogs: () => void;
+		toggleLogConsole: () => void;
 	}
 }

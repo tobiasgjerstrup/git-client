@@ -23,6 +23,24 @@
 		</div>
 	</header>
 
+	<section id="LogConsolePanel" class="workspace-panel surface-card log-console-panel" aria-live="polite" aria-expanded="true" hidden>
+		<div class="panel-header panel-header-main">
+			<div class="panel-header-copy">
+				<p class="eyebrow">Runtime</p>
+				<h2>Frontend Console</h2>
+				<p class="panel-hint">Info, debug, warning, and error logs captured from this app window.</p>
+			</div>
+			<div class="log-console-actions">
+				<span class="log-console-count" id="LogConsoleCount">0</span>
+				<button id="LogConsoleToggle" class="button-secondary" type="button" onclick="toggleLogConsole()">Minimize</button>
+				<button class="button-secondary" type="button" onclick="clearFrontendLogs()">Clear</button>
+			</div>
+		</div>
+		<div id="LogConsoleBody" class="log-console-body">
+			<div class="log-console-empty">No logs yet. Info, debug, warning, and error messages will appear here.</div>
+		</div>
+	</section>
+
 	<section class="workspace-actions surface-card">
 		<div class="action-cluster action-cluster-sync">
 			<div class="cluster-title">Sync</div>

@@ -21,13 +21,24 @@ import {
 	renderWelcomeShell,
 } from '../features/settings/settingsViews';
 import { ModalManager } from '../features/modals/modals';
+import {
+	clearFrontendLogConsole,
+	getFrontendLogMinimumLevel,
+	initializeFrontendConsole,
+	renderFrontendLogConsole,
+	setFrontendLogMinimumLevel,
+	toggleFrontendLogConsole,
+} from '../features/logs/frontendConsole';
 
 export let openedFolder: string | null = null;
 
 type ThemeName = "aurora" | "midnight";
+type FrontendLogLevel = "debug" | "info" | "warn" | "error";
 
 const themeStorageKey = "git-client-theme";
+const consoleVisibilityStorageKey = "git-client-console-visible";
 let activeTheme: ThemeName = "aurora";
+let isFrontendConsoleVisible = false;
 
 let settingsModalOpen = false;
 let gitSelectionKeyListenerBound = false;
@@ -39,6 +50,8 @@ const modalManager = new ModalManager({
 });
 
 initializeTheme();
+initializeConsoleVisibility();
+initializeFrontendConsole();
 
 window.pickFolder = async function () {
 	const folder = await window.go.main.App.PickFolder();
@@ -94,6 +107,26 @@ window.setMaxRecentRepositories = function (value: number) {
 	setMaxRecentRepositoriesLimit(value);
 	syncRecentRepositoriesPanel();
 	updateSettingsModal();
+}
+
+window.setFrontendConsoleEnabled = function (enabled: boolean) {
+	isFrontendConsoleVisible = enabled;
+	window.localStorage.setItem(consoleVisibilityStorageKey, enabled ? "1" : "0");
+	syncFrontendConsoleVisibility();
+	updateSettingsModal();
+}
+
+window.setFrontendLogMinimumLevel = function (level: FrontendLogLevel) {
+	setFrontendLogMinimumLevel(level);
+	updateSettingsModal();
+}
+
+window.clearFrontendLogs = function () {
+	clearFrontendLogConsole();
+}
+
+window.toggleLogConsole = function () {
+	toggleFrontendLogConsole();
 }
 
 window.stageGitFile = async function (filePath: string, changeKey?: string) {
@@ -262,7 +295,7 @@ async function timeIt(label: string, fn: () => Promise<any>) {
         return await fn();
     } finally {
         const end = performance.now();
-        console.log(`${label} took ${(end - start).toFixed(2)} ms`);
+		console.info(`${label} took ${(end - start).toFixed(2)} ms`);
     }
 }
 
@@ -406,12 +439,15 @@ function loadHtml() {
 	ensureGitSelectionKeyListener();
 	updateSettingsModal();
 	modalManager.refreshModals(isAnyGitActionPending);
+	syncFrontendConsoleVisibility();
+	renderFrontendLogConsole();
 	window.refresh();
 }
 
 function showWelcomeView() {
 	document.querySelector('#app')!.innerHTML = renderWelcomeShell(getViewRenderContext());
 	modalManager.ensureKeyListener();
+	renderFrontendLogConsole();
 }
 
 function syncRecentRepositoriesPanel() {
@@ -445,6 +481,8 @@ function getViewRenderContext() {
 		openedFolder,
 		settingsModalOpen,
 		activeTheme,
+		showFrontendConsole: isFrontendConsoleVisible,
+		frontendLogMinimumLevel: getFrontendLogMinimumLevel(),
 		minMaxRecentRepositories: MIN_MAX_RECENT_REPOSITORIES,
 		maxMaxRecentRepositories: MAX_MAX_RECENT_REPOSITORIES,
 		maxRecentRepositories: getMaxRecentRepositories(),
@@ -486,6 +524,24 @@ function initializeTheme() {
 	}
 
 	applyTheme("aurora");
+}
+
+function initializeConsoleVisibility() {
+	isFrontendConsoleVisible = window.localStorage.getItem(consoleVisibilityStorageKey) === "1";
+}
+
+function syncFrontendConsoleVisibility() {
+	const panel = document.getElementById("LogConsolePanel");
+	if (!panel) {
+		return;
+	}
+
+	if (isFrontendConsoleVisible) {
+		panel.removeAttribute("hidden");
+		return;
+	}
+
+	panel.setAttribute("hidden", "");
 }
 
 function applyTheme(themeName: ThemeName) {
@@ -683,5 +739,9 @@ declare global {
 		clearRecentRepositories: () => void;
 		removeRecentRepository: (repoPath: string) => void;
 		setMaxRecentRepositories: (value: number) => void;
+		setFrontendConsoleEnabled: (enabled: boolean) => void;
+		setFrontendLogMinimumLevel: (level: FrontendLogLevel) => void;
+		clearFrontendLogs: () => void;
+		toggleLogConsole: () => void;
     }
 }

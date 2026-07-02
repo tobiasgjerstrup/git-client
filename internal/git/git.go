@@ -16,9 +16,9 @@ import (
 const gitPathPairSeparator = "\t"
 
 type GitStatusResult struct {
-	Files      []string `json:"files"`
-	BranchName string   `json:"branchName"`
-	MergeInProgress bool `json:"mergeInProgress"`
+	Files           []string `json:"files"`
+	BranchName      string   `json:"branchName"`
+	MergeInProgress bool     `json:"mergeInProgress"`
 }
 
 type Commit struct {
@@ -78,8 +78,8 @@ func GitStatus(repoPath string) (*GitStatusResult, error) {
 	}
 
 	return &GitStatusResult{
-		Files:      files,
-		BranchName: branchName,
+		Files:           files,
+		BranchName:      branchName,
 		MergeInProgress: isMergeInProgress(repoPath),
 	}, nil
 }
@@ -193,7 +193,7 @@ func parseDiffOutput(out string) (*GitDiffResult, error) {
 func GetCommitHistory(repoPath string) (*[]Commit, error) {
 	out, err := runGitForRepo(repoPath, "log", "--max-count=100", "--pretty=format:%H|%an|%ad|%s", "--date=iso")
 	if err != nil {
-		fmt.Printf("Error getting git log: %v\n", err)
+		Errorf("Error getting git log: %v", err)
 		return nil, err
 	}
 
@@ -330,7 +330,7 @@ func SwitchGitBranch(repoPath string, branchName string) error {
 	// For all other failures (already on branch, local changes would be overwritten, etc.),
 	// return the original switch error.
 	if !isMissingBranchSwitchError(err) {
-		fmt.Printf("Error switching branch: %v\n", err)
+		Errorf("Error switching branch: %v", err)
 		return err
 	}
 
@@ -342,7 +342,7 @@ func SwitchGitBranch(repoPath string, branchName string) error {
 	}
 
 	if err != nil {
-		fmt.Printf("Error switching/creating branch: %v\n", err)
+		Errorf("Error switching/creating branch: %v", err)
 		return err
 	}
 	return nil
@@ -389,12 +389,12 @@ func PushGitChanges(repoPath string) error {
 	if strings.Contains(err.Error(), "has no upstream branch.") {
 		_, err = runGitForRepo(repoPath, "push", "--set-upstream", "origin", "HEAD")
 		if err != nil {
-			fmt.Printf("Error pushing with upstream: %v\n", err)
+			Errorf("Error pushing with upstream: %v", err)
 			return err
 		}
 		return nil
 	}
-	fmt.Printf("Error pushing changes: %v\n", err)
+	Errorf("Error pushing changes: %v", err)
 	return err
 }
 
@@ -499,7 +499,7 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 		return nil, remoteErr
 	}
 	if defaultBranchErr != nil {
-		fmt.Printf("Error getting default branch: %v\n", defaultBranchErr)
+		Warnf("Error getting default branch: %v", defaultBranchErr)
 		return nil, defaultBranchErr
 	}
 
@@ -525,7 +525,7 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 			commitsAhead := 0
 			out, err := runGitForRepo(repoPath, "rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", strings.Split(line, "|")[0], defaultBranch))
 			if err != nil {
-				fmt.Printf("Error getting rev-list: %v\n", err)
+				Warnf("Error getting rev-list: %v", err)
 				return
 			}
 			parts := strings.Split(strings.TrimSpace(out), "\t")
@@ -540,7 +540,7 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 					commitsAhead = ahead
 					commitsBehind = behind
 				} else {
-					fmt.Println("Parse error:", err1, err2)
+					Warnf("Parse error: %v %v", err1, err2)
 				}
 			}
 			if strings.HasPrefix(line, "refs/remotes/") && strings.Contains(line, "/HEAD|") {
@@ -629,14 +629,14 @@ func parsePorcelainV2FileLine(line string) (string, bool) {
 func runCommand(name string, args ...string) (string, error) {
 	start := time.Now()
 	defer func() {
-		fmt.Printf("Command finished in %v\n", time.Since(start))
+		Debugf("Command finished in %v", time.Since(start))
 	}()
 
 	cmd := exec.Command(name, args...)
 	cmd.SysProcAttr = newSysProcAttr()
 
 	out, err := cmd.CombinedOutput()
-	fmt.Printf("Ran command: %s %s\n", name, strings.Join(args, " "))
+	Debugf("Ran command: %s %s", name, strings.Join(args, " "))
 	if err != nil {
 		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
 	}

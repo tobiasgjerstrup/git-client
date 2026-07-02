@@ -1,12 +1,15 @@
 import type { RecentRepository } from "../recent/recentRepositories";
 
 type ThemeName = "aurora" | "midnight";
+type FrontendLogLevel = "debug" | "info" | "warn" | "error";
 
 type ViewRenderContext = {
 	recentRepositories: RecentRepository[];
 	openedFolder: string | null;
 	settingsModalOpen: boolean;
 	activeTheme: ThemeName;
+	showFrontendConsole: boolean;
+	frontendLogMinimumLevel: FrontendLogLevel;
 	minMaxRecentRepositories: number;
 	maxMaxRecentRepositories: number;
 	maxRecentRepositories: number;
@@ -60,6 +63,22 @@ export function renderSettingsContent(context: ViewRenderContext): string {
 			<p class="welcome-copy">Tune the Git client behavior for your workflow.</p>
 		</div>
 		<button id="SettingsCloseButton" type="button" class="button-secondary" onclick="closeSettings()">Close</button>
+	</div>
+
+	<div class="settings-card">
+		<div class="settings-label">Logs</div>
+		<div class="settings-row">
+			<span>Console panel visibility</span>
+			<button type="button" class="${context.showFrontendConsole ? "button-primary" : "button-secondary"}" onclick="setFrontendConsoleEnabled(true)">Enabled</button>
+			<button type="button" class="${!context.showFrontendConsole ? "button-primary" : "button-secondary"}" onclick="setFrontendConsoleEnabled(false)">Disabled</button>
+		</div>
+		<div class="settings-row">
+			<span>Minimum console log level</span>
+			<button type="button" class="${context.frontendLogMinimumLevel === "debug" ? "button-primary" : "button-secondary"}" onclick="setFrontendLogMinimumLevel('debug')">Debug</button>
+			<button type="button" class="${context.frontendLogMinimumLevel === "info" ? "button-primary" : "button-secondary"}" onclick="setFrontendLogMinimumLevel('info')">Info</button>
+			<button type="button" class="${context.frontendLogMinimumLevel === "warn" ? "button-primary" : "button-secondary"}" onclick="setFrontendLogMinimumLevel('warn')">Warn</button>
+			<button type="button" class="${context.frontendLogMinimumLevel === "error" ? "button-primary" : "button-secondary"}" onclick="setFrontendLogMinimumLevel('error')">Error</button>
+		</div>
 	</div>
 
 	<div class="settings-grid">

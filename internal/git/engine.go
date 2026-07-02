@@ -9,20 +9,20 @@ import (
 )
 
 type EngineOptions struct {
-	MaxObjectSize       int64
-	EnableBatchProcess  bool
-	RequestTimeout      time.Duration
+	MaxObjectSize      int64
+	EnableBatchProcess bool
+	RequestTimeout     time.Duration
 }
 
 type GitEngine struct {
 	cli  *GitCLI
 	opts EngineOptions
 
-	mu          sync.Mutex
-	bp          *BatchProcess
-	bpRepo      string
-	ctx         context.Context
-	cancel      context.CancelFunc
+	mu     sync.Mutex
+	bp     *BatchProcess
+	bpRepo string
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func NewGitEngine(parentCtx context.Context, opts EngineOptions) *GitEngine {
@@ -66,7 +66,7 @@ func (e *GitEngine) acquireBatch(repoPath string) *BatchProcess {
 
 	bp := NewBatchProcess(e.opts.MaxObjectSize)
 	if err := bp.Start(e.ctx, repoPath); err != nil {
-		fmt.Printf("Failed to start batch process: %v\n", err)
+		Warnf("Failed to start batch process: %v", err)
 		return nil
 	}
 
@@ -96,7 +96,7 @@ func (e *GitEngine) GetCommitHistory(repoPath string) (*[]Commit, error) {
 
 	out, err := e.cliRun(repoPath, "log", "--max-count=100", "--pretty=format:%H")
 	if err != nil {
-		fmt.Printf("Error getting git log hashes: %v, falling back to CLI\n", err)
+		Warnf("Error getting git log hashes: %v, falling back to CLI", err)
 		return e.cli.GetCommitHistory(repoPath)
 	}
 
@@ -111,7 +111,7 @@ func (e *GitEngine) GetCommitHistory(repoPath string) (*[]Commit, error) {
 
 		co, err := e.requestCommit(bp, hash)
 		if err != nil {
-			fmt.Printf("Error getting commit %s: %v\n", hash, err)
+			Warnf("Error getting commit %s: %v", hash, err)
 			continue
 		}
 
