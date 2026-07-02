@@ -399,6 +399,7 @@ function loadHtml() {
 	document.querySelector('#app')!.innerHTML = appHtml;
 	document.getElementById('BranchPanel')!.innerHTML = branchPanelHtml;
 	document.getElementById('CommitPanel')!.innerHTML = commitPanelHtml;
+	updateWorkspaceHeader();
 	syncRecentRepositoriesPanel();
 	ensureRecentRepositoriesDropdownListener();
 	modalManager.ensureKeyListener();
@@ -448,6 +449,33 @@ function getViewRenderContext() {
 		maxMaxRecentRepositories: MAX_MAX_RECENT_REPOSITORIES,
 		maxRecentRepositories: getMaxRecentRepositories(),
 	};
+}
+
+function updateWorkspaceHeader() {
+	const title = document.getElementById("WorkspaceTitle");
+	const workspacePath = document.getElementById("WorkspacePath");
+	if (!title || !workspacePath) {
+		return;
+	}
+
+	if (!openedFolder) {
+		title.textContent = "Git Client";
+		workspacePath.textContent = "";
+		workspacePath.title = "";
+		workspacePath.setAttribute("hidden", "");
+		return;
+	}
+
+	title.textContent = getRepositoryName(openedFolder);
+	workspacePath.textContent = openedFolder;
+	workspacePath.title = openedFolder;
+	workspacePath.removeAttribute("hidden");
+}
+
+function getRepositoryName(repoPath: string) {
+	const normalizedPath = repoPath.replace(/\\+$/g, "").replace(/\/+$/g, "");
+	const segments = normalizedPath.split(/[\\/]/).filter(Boolean);
+	return segments[segments.length - 1] ?? repoPath;
 }
 
 function initializeTheme() {
