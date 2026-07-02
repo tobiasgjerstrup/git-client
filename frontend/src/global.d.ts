@@ -4,6 +4,7 @@ declare global {
 	interface Window {
 		go: any;
 		pickFolder: () => Promise<void>;
+		openRecentRepository: (repoPath: string) => Promise<void>;
 		stageGitFile: (filePath: string, changeKey?: string) => Promise<void>;
 		unstageGitFile: (filePath: string, changeKey?: string) => Promise<void>;
 		resolveGitConflict: (filePath: string, strategy: "ours" | "theirs", changeKey?: string) => Promise<void>;

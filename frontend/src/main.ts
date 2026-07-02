@@ -2,7 +2,7 @@ import './style.css';
 import './app.css';
 import './defaults.css';
 
-import { getGitBranches, getGitCommits, gitDiff, gitFetch } from './git';
+import { escapeHtml, getGitBranches, getGitCommits, gitDiff, gitFetch } from './git';
 import { beginGitAction, endGitAction, isAnyGitActionPending } from './gitActionState';
 import { getGitSelectionTargets, handleGitSelectionClick, handleGitSelectionKeydown, type GitSelectionAction } from './gitSelectionState';
 
@@ -16,6 +16,8 @@ const themeOptions: Array<{ name: ThemeName; label: string }> = [
 ];
 
 const themeStorageKey = "git-client-theme";
+const recentRepositoriesStorageKey = "git-client-recent-repositories";
+const maxRecentRepositories = 6;
 let activeTheme: ThemeName = "aurora";
 
 type DiscardModalState = {
@@ -38,13 +40,34 @@ let branchSwitchModalState: BranchSwitchModalState = null;
 let branchDeleteModalState: BranchDeleteModalState = null;
 let gitSelectionKeyListenerBound = false;
 let modalKeyListenerBound = false;
+let recentRepositoriesDropdownListenerBound = false;
+
+type RecentRepository = {
+	path: string;
+	label: string;
+	lastOpenedAt: number;
+};
 
 initializeTheme();
 
 window.pickFolder = async function () {
 	const folder = await window.go.main.App.PickFolder();
+	if (!folder) {
+		return;
+	}
+
+	if (folder) {
+		addRecentRepository(folder);
+	}
 	openedFolder = folder;
 
+	loadHtml();
+};
+
+window.openRecentRepository = async function (repoPath: string) {
+	await window.go.main.App.SetRepositoryPath(repoPath);
+	openedFolder = repoPath;
+	addRecentRepository(repoPath);
 	loadHtml();
 };
 
@@ -375,12 +398,114 @@ function loadHtml() {
 	document.querySelector('#app')!.innerHTML = appHtml;
 	document.getElementById('BranchPanel')!.innerHTML = branchPanelHtml;
 	document.getElementById('CommitPanel')!.innerHTML = commitPanelHtml;
+	const recentRepositoriesPanel = document.getElementById('RecentRepositoriesPanel');
+	if (recentRepositoriesPanel) {
+		recentRepositoriesPanel.innerHTML = renderRecentRepositoriesHtml();
+	}
+	ensureRecentRepositoriesDropdownListener();
 	ensureGitSelectionKeyListener();
 	updateDiscardModal();
 	updateBranchSwitchModal();
 	updateBranchDeleteModal();
 	updateThemeToggle();
 	window.refresh();
+}
+
+function getRecentRepositories(): RecentRepository[] {
+	const storedValue = window.localStorage.getItem(recentRepositoriesStorageKey);
+	if (!storedValue) {
+		return [];
+	}
+
+	try {
+		const parsed = JSON.parse(storedValue) as unknown[];
+		const items = parsed
+			.filter((item): item is RecentRepository => {
+				if (!item || typeof item !== "object") {
+					return false;
+				}
+
+				const candidate = item as Partial<RecentRepository>;
+				return typeof candidate.path === "string" && typeof candidate.label === "string" && typeof candidate.lastOpenedAt === "number";
+			})
+			.map((item) => ({
+				path: item.path,
+				label: item.label || getRepositoryLabel(item.path),
+				lastOpenedAt: item.lastOpenedAt,
+			}))
+			.sort((left, right) => right.lastOpenedAt - left.lastOpenedAt);
+
+		const seenPaths = new Set<string>();
+		return items.filter((item) => {
+			if (seenPaths.has(item.path)) {
+				return false;
+			}
+			seenPaths.add(item.path);
+			return true;
+		});
+	} catch {
+		return [];
+	}
+}
+
+function saveRecentRepositories(repositories: RecentRepository[]) {
+	window.localStorage.setItem(recentRepositoriesStorageKey, JSON.stringify(repositories.slice(0, maxRecentRepositories)));
+}
+
+function getRepositoryLabel(repoPath: string): string {
+	const normalizedPath = repoPath.replace(/\\/g, "/").replace(/\/$/, "");
+	const segments = normalizedPath.split("/").filter(Boolean);
+	return segments[segments.length - 1] || repoPath;
+}
+
+function addRecentRepository(repoPath: string) {
+	if (!repoPath) {
+		return;
+	}
+
+	const nextRepositories = getRecentRepositories().filter((item) => item.path !== repoPath);
+	nextRepositories.unshift({
+		path: repoPath,
+		label: getRepositoryLabel(repoPath),
+		lastOpenedAt: Date.now(),
+	});
+	saveRecentRepositories(nextRepositories);
+}
+
+function renderWelcomeShell() {
+	const recentRepositoriesHtml = renderRecentRepositoriesHtml();
+
+	return `<section class="welcome-shell">
+		<div class="welcome-panel surface-card">
+			<p class="eyebrow">Desktop Git Workspace</p>
+			<h1>Open a repository to get started</h1>
+			<p class="welcome-copy">Track diffs, review branches, select multiple files like VS Code, and commit with a faster local workflow.</p>
+			<div class="welcome-actions">
+				<button class="button-primary" onclick="pickFolder()">Choose Repository</button>
+			</div>
+			<div class="recent-repositories">
+				<div class="cluster-title">Recent repositories</div>
+				<div class="recent-repositories-list">
+					${recentRepositoriesHtml}
+				</div>
+			</div>
+		</div>
+	</section>`;
+}
+
+function renderRecentRepositoriesHtml() {
+	const recentRepositories = getRecentRepositories();
+	const recentRepositoriesHtml = recentRepositories.length > 0
+		? recentRepositories.map((repository) => `
+			<button type="button" class="recent-repository-item${openedFolder === repository.path ? " recent-repository-item-current" : ""}"${openedFolder === repository.path ? ' aria-current="page" disabled' : ''} onclick="openRecentRepository(${escapeHtml(JSON.stringify(repository.path))})">
+				<span class="recent-repository-name">${escapeHtml(repository.label)}</span>
+				<span class="recent-repository-path">${escapeHtml(repository.path)}</span>
+				${openedFolder === repository.path ? '<span class="recent-repository-current">Currently open</span>' : ''}
+			</button>
+		`).join("")
+		: `<div class="recent-repositories-empty">No recent repositories yet.</div>`;
+
+	return recentRepositoriesHtml;
 }
 
 function initializeTheme() {
@@ -663,6 +788,50 @@ function ensureModalKeyListener() {
 	modalKeyListenerBound = true;
 }
 
+function ensureRecentRepositoriesDropdownListener() {
+	if (recentRepositoriesDropdownListenerBound) {
+		return;
+	}
+
+	document.addEventListener("click", handleRecentRepositoriesDropdownClick, true);
+	document.addEventListener("keydown", handleRecentRepositoriesDropdownKeydown, true);
+	recentRepositoriesDropdownListenerBound = true;
+}
+
+function handleRecentRepositoriesDropdownClick(event: MouseEvent) {
+	const dropdown = getRecentRepositoriesDropdown();
+	if (!dropdown || !dropdown.open) {
+		return;
+	}
+
+	const target = event.target as Node | null;
+	if (target && dropdown.contains(target)) {
+		return;
+	}
+
+	dropdown.open = false;
+}
+
+function handleRecentRepositoriesDropdownKeydown(event: KeyboardEvent) {
+	if (event.key !== "Escape") {
+		return;
+	}
+
+	const dropdown = getRecentRepositoriesDropdown();
+	if (!dropdown || !dropdown.open || getActiveModal()) {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopImmediatePropagation();
+	dropdown.open = false;
+	dropdown.querySelector("summary")?.focus({ preventScroll: true });
+}
+
+function getRecentRepositoriesDropdown() {
+	return document.querySelector(".recent-repositories-dropdown") as HTMLDetailsElement | null;
+}
+
 function handleModalKeydown(event: KeyboardEvent) {
 	const activeModal = getActiveModal();
 	if (!activeModal) {
@@ -774,16 +943,7 @@ function getModalFocusableElements(modal: HTMLElement) {
 if (openedFolder) {
 	loadHtml();
 } else {
-	document.querySelector('#app')!.innerHTML = `<section class="welcome-shell">
-		<div class="welcome-panel surface-card">
-			<p class="eyebrow">Desktop Git Workspace</p>
-			<h1>Open a repository to get started</h1>
-			<p class="welcome-copy">Track diffs, review branches, select multiple files like VS Code, and commit with a faster local workflow.</p>
-			<div class="welcome-actions">
-				<button class="button-primary" onclick="pickFolder()">Choose Repository</button>
-			</div>
-		</div>
-	</section>`;
+	document.querySelector('#app')!.innerHTML = renderWelcomeShell();
 }
 
 declare global {
@@ -808,5 +968,6 @@ declare global {
 		resolveGitConflict: (filePath: string, strategy: "ours" | "theirs", changeKey?: string) => Promise<void>;
 		abortMerge: () => Promise<void>;
 		cycleTheme: () => void;
+		openRecentRepository: (repoPath: string) => Promise<void>;
     }
 }

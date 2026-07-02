@@ -39,6 +39,10 @@ func (a *App) PickFolder() string {
 	return folder
 }
 
+func (a *App) SetRepositoryPath(path string) {
+	a.repoPath = path
+}
+
 func (a *App) RunGitStatus() (*git.GitStatusResult, error) {
 	return a.gitService.GetStatus(a.repoPath)
 }
