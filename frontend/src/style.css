@@ -96,13 +96,13 @@ html[data-theme="midnight"] {
 	--theme-text-on-primary: #08111d;
 	--theme-text-on-danger: #200a10;
 	--theme-text-info: #c5dbff;
-	--theme-text-success: #9edcc8;
-	--theme-text-success-strong: #93f0d5;
-	--theme-text-warning: #ffd89a;
-	--theme-text-danger: #ffd1de;
-	--theme-text-danger-strong: #ff9cad;
-	--theme-text-danger-alt: #8ee9ff;
-	--theme-text-danger-alt-strong: #66d7ff;
+	--theme-text-success: #93d7b0;
+	--theme-text-success-strong: #87df8d;
+	--theme-text-warning: #ffd38a;
+	--theme-text-danger: #ffc4c4;
+	--theme-text-danger-strong: #ff9696;
+	--theme-text-danger-alt: #8de09a;
+	--theme-text-danger-alt-strong: #ff8d8d;
 	--theme-text-accent-soft: #dfeeff;
 	--theme-state-text: #f4fbff;
 
