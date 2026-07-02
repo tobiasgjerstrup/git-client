@@ -114,8 +114,8 @@ window.commitGitChanges = async function () {
 		await window.go.main.App.CommitGitChanges(message);
 		messageInput.value = "";
 	} finally {
-		document.getElementById("CommitChanges")!.removeAttribute("disabled");
-		window.refresh();
+		await window.refresh();
+		document.getElementById("CommitChanges")!.removeAttribute("disabled");	
 	}
 }
 
@@ -131,8 +131,8 @@ window.switchGitBranch = async function () {
 		}
 		await window.go.main.App.SwitchGitBranch(branchName);
 		branchInput.value = "";
-		window.refresh();
 	} finally {
+		await window.refresh();
 		document.getElementById("SwitchBranch")!.removeAttribute("disabled");
 	}
 }
@@ -167,8 +167,8 @@ window.confirmBranchSwitch = async function () {
 		if (branchInput) {
 			branchInput.value = "";
 		}
-		await window.refresh();
 	} finally {
+		await window.refresh();
 		document.getElementById("SwitchBranch")!.removeAttribute("disabled");
 	}
 }
@@ -311,17 +311,17 @@ window.pushGitChanges = async function () {
 
 		throw error;
 	} finally {
-		document.getElementById("PushButton")!.removeAttribute("disabled");
 		await getGitBranches();
+		document.getElementById("PushButton")!.removeAttribute("disabled");	
 	}
 }
 
 window.pruneGitBranches = async function () {
 	try {
 		document.getElementById("PruneButton")!.setAttribute("disabled", "");
-		await window.go.main.App.GitPrune();
-		await window.refresh();
+		await window.go.main.App.GitPrune();	
 	} finally {
+		await window.refresh();
 		document.getElementById("PruneButton")!.removeAttribute("disabled");
 	}
 }
@@ -344,8 +344,8 @@ window.pullGitChanges = async function () {
 	} catch (error) {
 		pullError = error;
 	} finally {
-		document.getElementById("PullChanges")!.removeAttribute("disabled");
 		await window.refresh();
+		document.getElementById("PullChanges")!.removeAttribute("disabled");
 	}
 
 	if (!pullError) {
