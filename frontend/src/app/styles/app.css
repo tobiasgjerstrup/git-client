@@ -6,6 +6,10 @@
 	margin: 0 auto;
 }
 
+[hidden] {
+	display: none !important;
+}
+
 .theme-toggle {
 	position: fixed;
 	top: 16px;
@@ -836,6 +840,128 @@
 	margin-top: 20px;
 }
 
+.log-console-panel {
+	position: sticky;
+	top: clamp(10px, 1.2vw, 18px);
+	z-index: 90;
+	min-height: 240px;
+}
+
+.log-console-panel.log-console-panel-collapsed {
+	position: static;
+	top: auto;
+	min-height: 0;
+}
+
+.log-console-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin-left: auto;
+	justify-content: flex-end;
+}
+
+.log-console-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 34px;
+	height: 30px;
+	padding: 0 10px;
+	border-radius: 999px;
+	font-size: 0.78rem;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	color: var(--theme-text-info);
+	background: var(--theme-surface-muted-strong);
+	border: 1px solid var(--theme-border-medium);
+}
+
+.log-console-body {
+	display: grid;
+	gap: 10px;
+	padding: 18px;
+	max-height: 320px;
+	overflow: auto;
+	border-top: 1px solid var(--theme-border-soft);
+	background: linear-gradient(180deg, var(--theme-surface-card) 0%, var(--theme-surface-muted-weak) 100%);
+}
+
+.log-console-body[hidden] {
+	display: none !important;
+}
+
+.log-console-panel.log-console-panel-collapsed .log-console-body {
+	display: none !important;
+}
+
+.log-console-empty {
+	padding: 16px;
+	border-radius: 14px;
+	border: 1px dashed var(--theme-border-medium);
+	background: var(--theme-surface-muted-weak);
+	color: var(--theme-text-subtle);
+}
+
+.log-console-entry {
+	padding: 12px;
+	border-radius: 14px;
+	border: 1px solid var(--theme-border-medium);
+	background: var(--theme-surface-card-dim);
+	box-shadow: inset 0 1px 0 var(--theme-surface-inset);
+	display: grid;
+	gap: 8px;
+	font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.log-console-entry-info {
+	border-left: 4px solid var(--theme-border-info);
+}
+
+.log-console-entry-debug {
+	border-left: 4px solid var(--theme-border-accent);
+}
+
+.log-console-entry-warn {
+	border-left: 4px solid var(--theme-text-warning);
+}
+
+.log-console-entry-error {
+	border-left: 4px solid var(--theme-danger-start);
+	background: color-mix(in srgb, var(--theme-surface-card-dim) 86%, var(--theme-surface-danger));
+}
+
+.log-console-entry-top {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.log-console-level {
+	font-size: 0.72rem;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--theme-text-strong);
+}
+
+.log-console-time {
+	font-size: 0.75rem;
+	color: var(--theme-text-placeholder);
+}
+
+.log-console-message {
+	margin: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+	line-height: 1.4;
+	color: var(--theme-text);
+	font-size: 0.84rem;
+}
+
 @media (max-width: 1280px) {
 	.workspace-grid {
 		grid-template-columns: clamp(220px, 28vw, 300px) minmax(0, 1fr);
@@ -868,5 +994,10 @@
 
 	.welcome-panel {
 		padding: 28px;
+	}
+
+	.log-console-actions {
+		margin-left: 0;
+		justify-content: flex-start;
 	}
 }

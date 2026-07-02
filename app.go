@@ -2,10 +2,23 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"tobiasgitclient/internal/git"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-	"tobiasgitclient/internal/git"
 )
+
+const backendLogEventName = "backend:log"
+
+type backendLogPayload struct {
+	Level     string `json:"level"`
+	Message   string `json:"message"`
+	Timestamp string `json:"timestamp"`
+	Source    string `json:"source"`
+}
 
 type App struct {
 	ctx        context.Context
@@ -23,9 +36,14 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	git.SetLogger(func(level git.LogLevel, message string) {
+		a.emitBackendLog(string(level), message)
+	})
+	a.emitBackendLog("info", "Backend startup complete")
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	git.SetLogger(nil)
 	a.gitService.Close()
 }
 
@@ -44,73 +62,133 @@ func (a *App) SetRepositoryPath(path string) {
 }
 
 func (a *App) RunGitStatus() (*git.GitStatusResult, error) {
-	return a.gitService.GetStatus(a.repoPath)
+	result, err := a.gitService.GetStatus(a.repoPath)
+	a.logBackendError("RunGitStatus", err)
+	return result, err
 }
 
 func (a *App) GitFetch() (string, error) {
-	return a.gitService.Fetch(a.repoPath)
+	result, err := a.gitService.Fetch(a.repoPath)
+	a.logBackendError("GitFetch", err)
+	return result, err
 }
 
 func (a *App) GitPrune() (string, error) {
-	return a.gitService.Prune(a.repoPath)
+	result, err := a.gitService.Prune(a.repoPath)
+	a.logBackendError("GitPrune", err)
+	return result, err
 }
 
 func (a *App) GitDiff() (*git.GitDiffResult, error) {
-	return a.gitService.GetDiff(a.repoPath)
+	result, err := a.gitService.GetDiff(a.repoPath)
+	a.logBackendError("GitDiff", err)
+	return result, err
 }
 
 func (a *App) GitDiffStaged() (*git.GitDiffResult, error) {
-	return a.gitService.GetDiffStaged(a.repoPath)
+	result, err := a.gitService.GetDiffStaged(a.repoPath)
+	a.logBackendError("GitDiffStaged", err)
+	return result, err
 }
 
 func (a *App) GetCommitHistory() (*[]git.Commit, error) {
-	return a.gitService.GetCommitHistory(a.repoPath)
+	result, err := a.gitService.GetCommitHistory(a.repoPath)
+	a.logBackendError("GetCommitHistory", err)
+	return result, err
 }
 
 func (a *App) DiscardGitFile(filePath string) (string, error) {
-	return a.gitService.DiscardFile(a.repoPath, filePath)
+	result, err := a.gitService.DiscardFile(a.repoPath, filePath)
+	a.logBackendError("DiscardGitFile", err)
+	return result, err
 }
 
 func (a *App) StageGitFile(filePath string) (string, error) {
-	return a.gitService.StageFile(a.repoPath, filePath)
+	result, err := a.gitService.StageFile(a.repoPath, filePath)
+	a.logBackendError("StageGitFile", err)
+	return result, err
 }
 
 func (a *App) ResolveGitConflict(filePath string, strategy string) error {
-	return a.gitService.ResolveConflict(a.repoPath, filePath, strategy)
+	err := a.gitService.ResolveConflict(a.repoPath, filePath, strategy)
+	a.logBackendError("ResolveGitConflict", err)
+	return err
 }
 
 func (a *App) AbortMerge() error {
-	return a.gitService.AbortMerge(a.repoPath)
+	err := a.gitService.AbortMerge(a.repoPath)
+	a.logBackendError("AbortMerge", err)
+	return err
 }
 
 func (a *App) ContinueMerge() error {
-	return a.gitService.ContinueMerge(a.repoPath)
+	err := a.gitService.ContinueMerge(a.repoPath)
+	a.logBackendError("ContinueMerge", err)
+	return err
 }
 
 func (a *App) CommitGitChanges(message string) error {
-	return a.gitService.Commit(a.repoPath, message)
+	err := a.gitService.Commit(a.repoPath, message)
+	a.logBackendError("CommitGitChanges", err)
+	return err
 }
 
 func (a *App) SwitchGitBranch(branchName string) error {
-	return a.gitService.SwitchBranch(a.repoPath, branchName)
+	err := a.gitService.SwitchBranch(a.repoPath, branchName)
+	return err
 }
 
 func (a *App) DeleteGitBranch(branchName string, force bool) error {
-	return a.gitService.DeleteBranch(a.repoPath, branchName, force)
+	err := a.gitService.DeleteBranch(a.repoPath, branchName, force)
+	a.logBackendError("DeleteGitBranch", err)
+	return err
 }
 
 func (a *App) PushGitChanges() error {
-	return a.gitService.Push(a.repoPath)
+	err := a.gitService.Push(a.repoPath)
+	return err
 }
 
 func (a *App) PullGitChanges() error {
-	return a.gitService.Pull(a.repoPath)
+	err := a.gitService.Pull(a.repoPath)
+	a.logBackendError("PullGitChanges", err)
+	return err
 }
 
 func (a *App) UnstageGitFile(filePath string) (string, error) {
-	return a.gitService.UnstageFile(a.repoPath, filePath)
+	result, err := a.gitService.UnstageFile(a.repoPath, filePath)
+	a.logBackendError("UnstageGitFile", err)
+	return result, err
 }
 
 func (a *App) GetGitBranches() (*[]git.GitBranch, error) {
-	return a.gitService.GetBranches(a.repoPath)
+	result, err := a.gitService.GetBranches(a.repoPath)
+	a.logBackendError("GetGitBranches", err)
+	return result, err
+}
+
+func (a *App) logBackendError(operation string, err error) {
+	if err == nil {
+		return
+	}
+
+	a.emitBackendLog("error", fmt.Sprintf("%s failed: %v", operation, err))
+}
+
+func (a *App) emitBackendLog(level string, message string) {
+	if a.ctx == nil {
+		return
+	}
+
+	trimmedMessage := strings.TrimSpace(message)
+	if trimmedMessage == "" {
+		return
+	}
+
+	runtime.EventsEmit(a.ctx, backendLogEventName, backendLogPayload{
+		Level:     level,
+		Message:   trimmedMessage,
+		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Source:    "backend",
+	})
 }
