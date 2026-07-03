@@ -456,6 +456,11 @@
 	display: inline-block;
 	width: fit-content;
 	max-width: 100%;
+	
+	/* Centers the icon with the text */
+	align-items:center;
+	display:flex;
+	gap: 6px;
 }
 
 .diff-file-toggle:hover {
