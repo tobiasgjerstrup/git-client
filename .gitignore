@@ -1,4 +1,10 @@
-build/bin
+build/*
+build/windows/*
+build/darwin/*
+!build/icon.png
+!build/windows/
+!build/windows/icon.ico
+!build/darwin/
+!build/darwin/icon.icns
 node_modules
 frontend/dist
-build
