@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { parseGitStatusLine, isStagedFromXYStatus, hasUnstagedFromXYStatus, escapeHtml } from "./git";
+import {
+  parseGitStatusLine,
+  isStagedFromXYStatus,
+  hasUnstagedFromXYStatus,
+  escapeHtml,
+} from "./git";
 
 // Note: parseGitStatusLine, isStagedFromXYStatus, and hasUnstagedFromXYStatus
 // are currently private (not exported from git.ts).  Before writing your test
@@ -92,14 +97,54 @@ describe("parseGitStatusLine", () => {
 // --------------------------------------------------------------------------
 
 describe("isStagedFromXYStatus", () => {
-  it("returns true for 'M.'", () => { /* Fill in */ });
-  it("returns true for 'MM'", () => { /* Fill in */ });
-  it("returns true for 'A.'", () => { /* Fill in */ });
-  it("returns true for 'D.'", () => { /* Fill in */ });
-  it("returns false for '.M'", () => { /* Fill in */ });
-  it("returns false for '??'", () => { /* Fill in */ });
-  it("returns false for '!!'", () => { /* Fill in */ });
-  it("returns false for '  ' (spaces)", () => { /* Fill in */ });
+  it("returns true for 'M.'", () => {
+    if (!isStagedFromXYStatus("M.")) {
+      throw new Error("isStagedFromXYStatus failed for 'M.'");
+    }
+  });
+  it("returns true for 'MM'", () => {
+    if (!isStagedFromXYStatus("MM")) {
+      throw new Error("isStagedFromXYStatus failed for 'MM'");
+    }
+  });
+  it("returns true for 'A.'", () => {
+    if (!isStagedFromXYStatus("A.")) {
+      throw new Error("isStagedFromXYStatus failed for 'A.'");
+    }
+  });
+  it("returns true for 'D.'", () => {
+    if (!isStagedFromXYStatus("D.")) {
+      throw new Error("isStagedFromXYStatus failed for 'D.'");
+    }
+  });
+  it("returns false for '.M'", () => {
+    if (isStagedFromXYStatus(".M")) {
+      throw new Error(
+        "isStagedFromXYStatus incorrectly returned true for '.M'",
+      );
+    }
+  });
+  it("returns false for '??'", () => {
+    if (isStagedFromXYStatus("??")) {
+      throw new Error(
+        "isStagedFromXYStatus incorrectly returned true for '??'",
+      );
+    }
+  });
+  it("returns false for '!!'", () => {
+    if (isStagedFromXYStatus("!!")) {
+      throw new Error(
+        "isStagedFromXYStatus incorrectly returned true for '!!'",
+      );
+    }
+  });
+  it("returns false for '  ' (spaces)", () => {
+    if (isStagedFromXYStatus("  ")) {
+      throw new Error(
+        "isStagedFromXYStatus incorrectly returned true for '  '",
+      );
+    }
+  });
 });
 
 // --------------------------------------------------------------------------
@@ -107,11 +152,37 @@ describe("isStagedFromXYStatus", () => {
 // --------------------------------------------------------------------------
 
 describe("hasUnstagedFromXYStatus", () => {
-  it("returns true for '.M'", () => { /* Fill in */ });
-  it("returns true for 'MM'", () => { /* Fill in */ });
-  it("returns false for 'M.'", () => { /* Fill in */ });
-  it("returns false for '..'", () => { /* Fill in */ });
-  it("returns false for '  ' (spaces)", () => { /* Fill in */ });
+  it("returns true for '.M'", () => {
+    if (!hasUnstagedFromXYStatus(".M")) {
+      throw new Error("hasUnstagedFromXYStatus failed for '.M'");
+    }
+  });
+  it("returns true for 'MM'", () => {
+    if (!hasUnstagedFromXYStatus("MM")) {
+      throw new Error("hasUnstagedFromXYStatus failed for 'MM'");
+    }
+  });
+  it("returns false for 'M.'", () => {
+    if (hasUnstagedFromXYStatus("M.")) {
+      throw new Error(
+        "hasUnstagedFromXYStatus incorrectly returned true for 'M.'",
+      );
+    }
+  });
+  it("returns false for '..'", () => {
+    if (hasUnstagedFromXYStatus("..")) {
+      throw new Error(
+        "hasUnstagedFromXYStatus incorrectly returned true for '..'",
+      );
+    }
+  });
+  it("returns false for '  ' (spaces)", () => {
+    if (hasUnstagedFromXYStatus("  ")) {
+      throw new Error(
+        "hasUnstagedFromXYStatus incorrectly returned true for '  '",
+      );
+    }
+  });
 });
 
 // --------------------------------------------------------------------------
@@ -120,39 +191,41 @@ describe("hasUnstagedFromXYStatus", () => {
 
 // might be a little overkill, but im gonna be sad if this one day breaks
 describe("escapeHtml", () => {
-  it("escapes & as &amp;", () => { 
-	if (escapeHtml("&") !== "&amp;") {
-		throw new Error("escapeHtml failed to escape &");
-	}
+  it("escapes & as &amp;", () => {
+    if (escapeHtml("&") !== "&amp;") {
+      throw new Error("escapeHtml failed to escape &");
+    }
   });
   it("escapes < as &lt;", () => {
-	if (escapeHtml("<") !== "&lt;") {
-		throw new Error("escapeHtml failed to escape <");
-	}
+    if (escapeHtml("<") !== "&lt;") {
+      throw new Error("escapeHtml failed to escape <");
+    }
   });
-  it("escapes > as &gt;", () => { 
-  	if (escapeHtml(">") !== "&gt;") {
-		throw new Error("escapeHtml failed to escape >");
-	}
+  it("escapes > as &gt;", () => {
+    if (escapeHtml(">") !== "&gt;") {
+      throw new Error("escapeHtml failed to escape >");
+    }
   });
-  it("escapes \" as &quot;", () => { 
-	if (escapeHtml("\"") !== "&quot;") {
-		throw new Error("escapeHtml failed to escape \"");
-	}
+  it('escapes " as &quot;', () => {
+    if (escapeHtml('"') !== "&quot;") {
+      throw new Error('escapeHtml failed to escape "');
+    }
   });
-  it("escapes ' as &#39;", () => { 
-	if (escapeHtml("'") !== "&#39;") {
-		throw new Error("escapeHtml failed to escape '");
-	}
+  it("escapes ' as &#39;", () => {
+    if (escapeHtml("'") !== "&#39;") {
+      throw new Error("escapeHtml failed to escape '");
+    }
   });
-  it("returns the same string when nothing needs escaping", () => { 
-	if (escapeHtml("Hello, World!") !== "Hello, World!") {
-		throw new Error("escapeHtml incorrectly modified a string that didn't need escaping");
-	}
+  it("returns the same string when nothing needs escaping", () => {
+    if (escapeHtml("Hello, World!") !== "Hello, World!") {
+      throw new Error(
+        "escapeHtml incorrectly modified a string that didn't need escaping",
+      );
+    }
   });
-  it("handles an empty string", () => { 
-	if (escapeHtml("") !== "") {
-		throw new Error("escapeHtml failed to handle an empty string");
-	}
+  it("handles an empty string", () => {
+    if (escapeHtml("") !== "") {
+      throw new Error("escapeHtml failed to handle an empty string");
+    }
   });
 });
