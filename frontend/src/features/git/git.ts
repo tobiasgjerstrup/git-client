@@ -185,12 +185,54 @@ function renderChangeEntry(entry: GitChangeEntry): string {
 		<div class="diff-file-header-row">
 			<div class="diff-file-copy">
 				<span class="diff-file-status ${entry.statusClass}">${escapeHtml(entry.label)}</span>
-				<h3 class="diff-file-header"><button type="button" class="diff-file-toggle" onclick="event.stopPropagation(); toggleDiff(this.closest('.diff-file-entry').querySelector('.diff-file-header'))">${escapeHtml(entry.path)}</button></h3>
+				<h3 class="diff-file-header">
+					<button type="button" class="diff-file-toggle" onclick="event.stopPropagation(); toggleDiff(this.closest('.diff-file-entry').querySelector('.diff-file-header'))">
+						${escapeHtml(entry.path)} ${renderSvg(entry.path.split('.').pop() || 'file')}
+					</button>
+				</h3>
 			</div>
 			<div class="diff-file-actions">${entry.buttonsHtml}</div>
 		</div>
 		${renderDiffContent(entry.diffFile)}
 	</div>`;
+}
+
+import GoIcon from "../../assets/images/icons/file_type_go.svg";
+import FolderIcon from "../../assets/images/icons/default_folder.svg";
+import CssIcon from "../../assets/images/icons/file_type_css2.svg";
+import HtmlIcon from "../../assets/images/icons/file_type_html.svg";
+import JsIcon from "../../assets/images/icons/file_type_js.svg";
+import JsonIcon from "../../assets/images/icons/file_type_json.svg";
+import PhpIcon from "../../assets/images/icons/file_type_php.svg";
+import PrettierIcon from "../../assets/images/icons/file_type_prettier.svg";
+import PrismaIcon from "../../assets/images/icons/file_type_prisma.svg";
+import TsIcon from "../../assets/images/icons/file_type_ts.svg";
+import EsbuildIcon from "../../assets/images/icons/file_type_esbuild.svg";
+import EslintIcon from "../../assets/images/icons/file_type_eslint.svg";
+import SvgIcon from "../../assets/images/icons/file_type_svg.svg";
+function renderSvg(extension: string): string {
+	// ! Some of these are wrong. Like prettier files arent actually *.prettier so...
+	// TODO: FIX
+	const svgMap: Record<string, string> = {
+		go: GoIcon,
+		css: CssIcon,
+		html: HtmlIcon,
+		js: JsIcon,
+		json: JsonIcon,
+		php: PhpIcon,
+		prettier: PrettierIcon,
+		prisma: PrismaIcon,
+		ts: TsIcon,
+		esbuild: EsbuildIcon,
+		eslint: EslintIcon,
+		svg: SvgIcon,
+	};
+
+	let icon = svgMap[extension.toLowerCase()] || '';
+	if (!icon && extension.endsWith("/")) {
+		icon = FolderIcon;
+	}
+	return `<img height=20 src="${icon}" alt="" class="file-icon">`;
 }
 
 function renderStageButton(actionPath: string, entryKey: string): string {
