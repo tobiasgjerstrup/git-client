@@ -143,14 +143,18 @@ func TestGitStatus_merge_in_progress(t *testing.T) {
 	defer cleanup()
 
 	// Create a diverging branch that conflicts.
-	os.WriteFile(filepath.Join(repo, "conflict.txt"), []byte("branch\n"), 0644)
+	if err := os.WriteFile(filepath.Join(repo, "conflict.txt"), []byte("branch\n"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
 	runGit(t, repo, "checkout", "-b", "conflict-branch")
 	runGit(t, repo, "add", "conflict.txt")
 	runGit(t, repo, "commit", "-m", "branch commit")
 
 	// Switch back to original and make a conflicting change.
 	runGit(t, repo, "checkout", "-") // back to previous branch
-	os.WriteFile(filepath.Join(repo, "conflict.txt"), []byte("main\n"), 0644)
+	if err := os.WriteFile(filepath.Join(repo, "conflict.txt"), []byte("main\n"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
 	runGit(t, repo, "add", "conflict.txt")
 	runGit(t, repo, "commit", "-m", "main commit")
 
