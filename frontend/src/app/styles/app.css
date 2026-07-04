@@ -453,7 +453,6 @@
 	font-weight: inherit;
 	text-align: left;
 	letter-spacing: inherit;
-	display: inline-block;
 	width: fit-content;
 	max-width: 100%;
 	
@@ -848,7 +847,7 @@
 .log-console-panel {
 	position: sticky;
 	top: clamp(10px, 1.2vw, 18px);
-	z-index: 90;
+	z-index: 10;
 	min-height: 240px;
 }
 

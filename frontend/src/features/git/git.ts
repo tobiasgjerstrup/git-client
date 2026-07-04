@@ -228,11 +228,11 @@ function renderSvg(extension: string): string {
 		svg: SvgIcon,
 	};
 
-	let icon = svgMap[extension] || '';
+	let icon = svgMap[extension.toLowerCase()] || '';
 	if (!icon && extension.endsWith("/")) {
 		icon = FolderIcon;
 	}
-	return `<img height=20 src="${icon}" class="file-icon">`;
+	return `<img height=20 src="${icon}" alt="" class="file-icon">`;
 }
 
 function renderStageButton(actionPath: string, entryKey: string): string {
