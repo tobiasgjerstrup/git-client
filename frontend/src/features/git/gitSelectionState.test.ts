@@ -15,15 +15,19 @@ function entry(
     return { key, actionPath: actionPath ?? key, label: key, supportedActions };
 }
 
+function setEventTarget<T extends Event>(event: T, target: EventTarget) {
+  Object.defineProperty(event, 'target', { value: target, writable: false });
+}
+
 function makeClickEvent(opts: { shiftKey?: boolean; ctrlKey?: boolean; metaKey?: boolean } = {}): MouseEvent {
-    const event = new MouseEvent('click', {
-        shiftKey: opts.shiftKey ?? false,
-        ctrlKey: opts.ctrlKey ?? false,
-        metaKey: opts.metaKey ?? false,
-        bubbles: true,
-    });
-    event.target = new HTMLElement();
-    return event;
+  const event = new MouseEvent('click', {
+    shiftKey: opts.shiftKey ?? false,
+    ctrlKey: opts.ctrlKey ?? false,
+    metaKey: opts.metaKey ?? false,
+    bubbles: true,
+  });
+  setEventTarget(event, new HTMLElement());
+  return event;
 }
 
 function keysForAction(action: string): string[] {
@@ -200,7 +204,7 @@ describe('Ctrl+A select all', () => {
         });
         const input = new HTMLElement();
         vi.spyOn(input, 'closest').mockReturnValue(input);
-        event.target = input;
+        setEventTarget(event, input);
         handleGitSelectionKeydown(event);
         expect(keysForAction('stage')).toEqual([]);
     });
@@ -253,7 +257,7 @@ describe('Escape clears selection', () => {
         const event = new KeyboardEvent('keydown', { key: 'Escape' });
         const input = new HTMLElement();
         vi.spyOn(input, 'closest').mockReturnValue(input);
-        event.target = input;
+        setEventTarget(event, input);
 
         handleGitSelectionKeydown(event);
         expect(keysForAction('stage')).toEqual(['a']);

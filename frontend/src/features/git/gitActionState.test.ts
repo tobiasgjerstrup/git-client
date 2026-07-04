@@ -41,6 +41,9 @@ describe('beginGitAction', () => {
 describe('endGitAction', () => {
     it('removes a pending action by its key', () => {
         const key = beginGitAction('src/bar.ts');
+		if (key === null) {
+			throw new Error('beginGitAction returned null unexpectedly');
+		}
         endGitAction(key);
         expect(isAnyGitActionPending('src/bar.ts')).toBe(false);
     });
@@ -62,6 +65,9 @@ describe('isAnyGitActionPending', () => {
 
     it('returns false after the action has ended', () => {
         const key = beginGitAction('x.ts');
+		if (key === null) {
+			throw new Error('beginGitAction returned null unexpectedly');
+		}
         endGitAction(key);
         expect(isAnyGitActionPending('x.ts')).toBe(false);
     });
