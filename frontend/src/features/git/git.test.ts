@@ -118,12 +118,41 @@ describe("hasUnstagedFromXYStatus", () => {
 // escapeHtml
 // --------------------------------------------------------------------------
 
+// might be a little overkill, but im gonna be sad if this one day breaks
 describe("escapeHtml", () => {
-  it("escapes & as &amp;", () => { /* Fill in */ });
-  it("escapes < as &lt;", () => { /* Fill in */ });
-  it("escapes > as &gt;", () => { /* Fill in */ });
-  it("escapes \" as &quot;", () => { /* Fill in */ });
-  it("escapes ' as &#39;", () => { /* Fill in */ });
-  it("returns the same string when nothing needs escaping", () => { /* Fill in */ });
-  it("handles an empty string", () => { /* Fill in */ });
+  it("escapes & as &amp;", () => { 
+	if (escapeHtml("&") !== "&amp;") {
+		throw new Error("escapeHtml failed to escape &");
+	}
+  });
+  it("escapes < as &lt;", () => {
+	if (escapeHtml("<") !== "&lt;") {
+		throw new Error("escapeHtml failed to escape <");
+	}
+  });
+  it("escapes > as &gt;", () => { 
+  	if (escapeHtml(">") !== "&gt;") {
+		throw new Error("escapeHtml failed to escape >");
+	}
+  });
+  it("escapes \" as &quot;", () => { 
+	if (escapeHtml("\"") !== "&quot;") {
+		throw new Error("escapeHtml failed to escape \"");
+	}
+  });
+  it("escapes ' as &#39;", () => { 
+	if (escapeHtml("'") !== "&#39;") {
+		throw new Error("escapeHtml failed to escape '");
+	}
+  });
+  it("returns the same string when nothing needs escaping", () => { 
+	if (escapeHtml("Hello, World!") !== "Hello, World!") {
+		throw new Error("escapeHtml incorrectly modified a string that didn't need escaping");
+	}
+  });
+  it("handles an empty string", () => { 
+	if (escapeHtml("") !== "") {
+		throw new Error("escapeHtml failed to handle an empty string");
+	}
+  });
 });
