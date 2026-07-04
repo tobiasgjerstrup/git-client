@@ -66,7 +66,7 @@ export function escapeHtml(value: string): string {
 		.replace(/'/g, "&#39;");
 }
 
-function parseGitStatusLine(line: string): GitStatusLine | null {
+export function parseGitStatusLine(line: string): GitStatusLine | null {
 	if (line.startsWith("# ")) {
 		return null;
 	}
@@ -127,12 +127,12 @@ function isUnmergedStatusCode(xy: string): boolean {
 	return xy === "AA" || xy === "AU" || xy === "DD" || xy === "DU" || xy === "UD" || xy === "UA" || xy === "UU";
 }
 
-function isStagedFromXYStatus(xy: string): boolean {
+export function isStagedFromXYStatus(xy: string): boolean {
 	// In porcelain v2, "." means unchanged; in v1, " " means unchanged.
 	return xy[0] !== "." && xy[0] !== " " && xy[0] !== "?" && xy[0] !== "!";
 }
 
-function hasUnstagedFromXYStatus(xy: string): boolean {
+export function hasUnstagedFromXYStatus(xy: string): boolean {
 	return xy[1] !== "." && xy[1] !== " ";
 }
 

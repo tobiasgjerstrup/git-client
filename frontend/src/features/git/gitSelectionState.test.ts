@@ -7,7 +7,7 @@ import {
   GitSelectionEntry,
 } from "./gitSelectionState";
 
-function entry(key: string, actionPath?: string, supportedActions?: string[]): GitSelectionEntry {
+function entry(key: string, actionPath?: string, supportedActions: GitSelectionEntry["supportedActions"] = ["stage", "discard"]): GitSelectionEntry {
   return {
     key,
     actionPath: actionPath ?? key,
