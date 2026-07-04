@@ -1,19 +1,9 @@
 import { defineConfig } from "vitest/config";
+import path from "path";
 
 export default defineConfig({
-  plugins: [
-    {
-      name: "mock-svg",
-      transform(_code, id) {
-        if (id.endsWith(".svg")) {
-          return 'export default "mocked-svg";';
-        }
-      },
-      enforce: "pre",
-    },
-  ],
   test: {
-    environment: "jsdom",
     globals: true,
+    setupFiles: [path.resolve(__dirname, "src/__tests__/setup.ts")],
   },
 });

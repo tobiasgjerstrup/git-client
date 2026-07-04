@@ -1,12 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseGitStatusLine, isStagedFromXYStatus, hasUnstagedFromXYStatus, escapeHtml } from './git';
 
-// Note: parseGitStatusLine, isStagedFromXYStatus, and hasUnstagedFromXYStatus
-// are currently private (not exported from git.ts).  Before writing your test
-// bodies, add the 'export' keyword to each function in git.ts.
-//
-// e.g.  export function parseGitStatusLine(...) { ... }
-
 // --------------------------------------------------------------------------
 // parseGitStatusLine
 // --------------------------------------------------------------------------
@@ -14,105 +8,135 @@ import { parseGitStatusLine, isStagedFromXYStatus, hasUnstagedFromXYStatus, esca
 describe('parseGitStatusLine', () => {
     describe('porcelain v2 ordinary changed (1 ...)', () => {
         it('parses a modified staged+unstaged entry', () => {
-            if (!parseGitStatusLine('1 MM N... 0000 0000 100644 <sha><sha><sha> file.txt')) {
-                throw new Error('parseGitStatusLine failed to parse a modified staged+unstaged entry');
-            }
+            const result = parseGitStatusLine(
+                '1 MM N... 0000 0000 100644 0000000000000000000000000000000000000000 0000000000000000000000000000000000000000 src/app.ts',
+            );
+            expect(result).toBeTruthy();
+            expect(result!.key).toBe('1');
+            expect(result!.xy).toBe('MM');
+            expect(result!.path).toBe('src/app.ts');
         });
 
         it('parses an added entry', () => {
-            if (!parseGitStatusLine('1 A. N... 0000 0000 100644 <sha><sha><sha> newfile.txt')) {
-                throw new Error('parseGitStatusLine failed to parse an added entry');
-            }
+            const result = parseGitStatusLine(
+                '1 A. N... 0000 0000 100644 0000000000000000000000000000000000000000 0000000000000000000000000000000000000000 newfile.txt',
+            );
+            expect(result!.xy).toBe('A.');
+            expect(result!.path).toBe('newfile.txt');
         });
 
         it('parses a deleted entry', () => {
-            if (!parseGitStatusLine('1 D. N... 0000 0000 100644 <sha><sha><sha> deletedfile.txt')) {
-                throw new Error('parseGitStatusLine failed to parse a deleted entry');
-            }
+            const result = parseGitStatusLine(
+                '1 .D N... 0000 0000 100644 0000000000000000000000000000000000000000 0000000000000000000000000000000000000000 removed.ts',
+            );
+            expect(result!.xy).toBe('.D');
+            expect(result!.path).toBe('removed.ts');
         });
     });
 
     describe('porcelain v2 renamed/copied (2 ...)', () => {
         it('parses a renamed file with origPath', () => {
-            if (!parseGitStatusLine('2 RM N... 0000 0000 100644 <sha><sha><sha> new.txt\told.txt')) {
-                throw new Error('parseGitStatusLine failed to parse a renamed file with origPath');
-            }
+            const result = parseGitStatusLine(
+                '2 RM N... 0000 0000 100644 0000000000000000000000000000000000000000 0000000000000000000000000000000000000000 R100 new.ts\told.ts',
+            );
+            expect(result!.key).toBe('2');
+            expect(result!.xy).toBe('RM');
+            expect(result!.path).toBe('new.ts');
+            expect(result!.origPath).toBe('old.ts');
+            expect(result!.text).toBe('RM old.ts -> new.ts');
         });
 
-        it('parses a renamed file without tab separator', () => {
-            if (!parseGitStatusLine('2 RM N... 0000 0000 100644 <sha><sha><sha> new.txt')) {
-                throw new Error('parseGitStatusLine failed to parse a renamed file without tab separator');
-            }
+        it('parses a renamed file without tab separator in text', () => {
+            const result = parseGitStatusLine(
+                '2 RM N... 0000 0000 100644 0000000000000000000000000000000000000000 0000000000000000000000000000000000000000 R050 renamed.ts',
+            );
+            expect(result!.key).toBe('2');
+            expect(result!.path).toBe('renamed.ts');
+            expect(result!.origPath).toBeUndefined();
         });
     });
 
     describe('porcelain v2 unmerged (u ...)', () => {
-        it('parses a merge conflict (UU)', () => {
-            if (!parseGitStatusLine('u UU N... 0000 0000 100644 <sha><sha><sha> conflicted.txt')) {
-                throw new Error('parseGitStatusLine failed to parse a merge conflict (UU)');
-            }
+        it('parses a merge conflict UU via v1 fallback', () => {
+            const result = parseGitStatusLine('UU conflict.ts');
+            expect(result!.key).toBe('u');
+            expect(result!.xy).toBe('UU');
+            expect(result!.path).toBe('conflict.ts');
+        });
+
+        it('parses a merge conflict AA', () => {
+            const result = parseGitStatusLine('AA file.ts');
+            expect(result!.key).toBe('u');
+            expect(result!.xy).toBe('AA');
         });
     });
 
     describe('porcelain v2 untracked (? ...)', () => {
         it('parses an untracked file', () => {
-            if (!parseGitStatusLine('? newfile.txt')) {
-                throw new Error('parseGitStatusLine failed to parse an untracked file');
-            }
+            const result = parseGitStatusLine('? newfile.txt');
+            expect(result).toEqual({
+                key: '?',
+                xy: '??',
+                path: 'newfile.txt',
+                text: '?? newfile.txt',
+            });
         });
     });
 
     describe('porcelain v2 ignored (! ...)', () => {
         it('parses an ignored file', () => {
-            if (!parseGitStatusLine('! ignored.log')) {
-                throw new Error('parseGitStatusLine failed to parse an ignored file');
-            }
+            const result = parseGitStatusLine('! node_modules/something');
+            expect(result!.key).toBe('!');
+            expect(result!.xy).toBe('!!');
+            expect(result!.path).toBe('node_modules/something');
+        });
+    });
+
+    describe('branch header', () => {
+        it('returns null for a branch header line', () => {
+            expect(parseGitStatusLine('# branch.head main')).toBeNull();
         });
     });
 
     describe('porcelain v1 fallback', () => {
         it("parses v1 ordinary changed: 'M  file.txt'", () => {
-            if (!parseGitStatusLine('M  file.txt')) {
-                throw new Error('parseGitStatusLine failed to parse a v1 ordinary changed entry');
-            }
+            const result = parseGitStatusLine('M  file.txt');
+            expect(result!.key).toBe('1');
+            expect(result!.xy).toBe('M ');
+            expect(result!.path).toBe('file.txt');
         });
 
         it("parses v1 untracked: '?? file.txt'", () => {
-            if (!parseGitStatusLine('?? file.txt')) {
-                throw new Error('parseGitStatusLine failed to parse a v1 untracked entry');
-            }
+            const result = parseGitStatusLine('?? file.txt');
+            expect(result!.key).toBe('?');
+            expect(result!.xy).toBe('??');
         });
 
         it("parses v1 ignored: '!! file.txt'", () => {
-            if (!parseGitStatusLine('!! file.txt')) {
-                throw new Error('parseGitStatusLine failed to parse a v1 ignored entry');
-            }
+            const result = parseGitStatusLine('!! file.txt');
+            expect(result!.key).toBe('!');
+            expect(result!.xy).toBe('!!');
         });
 
         it('parses v1 unmerged code', () => {
-            if (!parseGitStatusLine('UU file.txt')) {
-                throw new Error('parseGitStatusLine failed to parse a v1 unmerged entry');
-            }
+            const result = parseGitStatusLine('AA conflict.txt');
+            expect(result!.key).toBe('u');
+            expect(result!.xy).toBe('AA');
+            expect(result!.path).toBe('conflict.txt');
         });
     });
 
-    describe('non-status lines', () => {
-        it('returns null for a branch header line', () => {
-            if (parseGitStatusLine('# branch.head main') !== null) {
-                throw new Error('parseGitStatusLine incorrectly parsed a branch header line');
-            }
-        });
-
+    describe('edge cases', () => {
         it('returns null for an empty string', () => {
-            if (parseGitStatusLine('') !== null) {
-                throw new Error('parseGitStatusLine incorrectly parsed an empty string');
-            }
+            expect(parseGitStatusLine('')).toBeNull();
         });
 
-        it('returns null for a string that is too short', () => {
-            if (parseGitStatusLine('ab') !== null) {
-                throw new Error('parseGitStatusLine incorrectly parsed a string that is too short');
-            }
+        it('returns null for a string shorter than 3 characters', () => {
+            expect(parseGitStatusLine('ab')).toBeNull();
+        });
+
+        it('returns null for a whitespace-only line shorter than 3 chars', () => {
+            expect(parseGitStatusLine('  ')).toBeNull();
         });
     });
 });
@@ -122,45 +146,23 @@ describe('parseGitStatusLine', () => {
 // --------------------------------------------------------------------------
 
 describe('isStagedFromXYStatus', () => {
-    it("returns true for 'M.'", () => {
-        if (!isStagedFromXYStatus('M.')) {
-            throw new Error("isStagedFromXYStatus failed for 'M.'");
-        }
+    it("returns true when the first char is a letter (not '.' or ' ')", () => {
+        expect(isStagedFromXYStatus('M.')).toBe(true);
+        expect(isStagedFromXYStatus('MM')).toBe(true);
+        expect(isStagedFromXYStatus('A.')).toBe(true);
+        expect(isStagedFromXYStatus('D.')).toBe(true);
+        expect(isStagedFromXYStatus('R.')).toBe(true);
     });
-    it("returns true for 'MM'", () => {
-        if (!isStagedFromXYStatus('MM')) {
-            throw new Error("isStagedFromXYStatus failed for 'MM'");
-        }
+
+    it("returns false when the first char is '.'", () => {
+        expect(isStagedFromXYStatus('.M')).toBe(false);
+        expect(isStagedFromXYStatus('.D')).toBe(false);
+        expect(isStagedFromXYStatus('..')).toBe(false);
     });
-    it("returns true for 'A.'", () => {
-        if (!isStagedFromXYStatus('A.')) {
-            throw new Error("isStagedFromXYStatus failed for 'A.'");
-        }
-    });
-    it("returns true for 'D.'", () => {
-        if (!isStagedFromXYStatus('D.')) {
-            throw new Error("isStagedFromXYStatus failed for 'D.'");
-        }
-    });
-    it("returns false for '.M'", () => {
-        if (isStagedFromXYStatus('.M')) {
-            throw new Error("isStagedFromXYStatus incorrectly returned true for '.M'");
-        }
-    });
-    it("returns false for '??'", () => {
-        if (isStagedFromXYStatus('??')) {
-            throw new Error("isStagedFromXYStatus incorrectly returned true for '??'");
-        }
-    });
-    it("returns false for '!!'", () => {
-        if (isStagedFromXYStatus('!!')) {
-            throw new Error("isStagedFromXYStatus incorrectly returned true for '!!'");
-        }
-    });
-    it("returns false for '  ' (spaces)", () => {
-        if (isStagedFromXYStatus('  ')) {
-            throw new Error("isStagedFromXYStatus incorrectly returned true for '  '");
-        }
+
+    it("returns false for untracked '??' or space", () => {
+        expect(isStagedFromXYStatus('??')).toBe(false);
+        expect(isStagedFromXYStatus('  ')).toBe(false);
     });
 });
 
@@ -169,30 +171,16 @@ describe('isStagedFromXYStatus', () => {
 // --------------------------------------------------------------------------
 
 describe('hasUnstagedFromXYStatus', () => {
-    it("returns true for '.M'", () => {
-        if (!hasUnstagedFromXYStatus('.M')) {
-            throw new Error("hasUnstagedFromXYStatus failed for '.M'");
-        }
+    it("returns true when the second char is a letter (not '.' or ' ')", () => {
+        expect(hasUnstagedFromXYStatus('.M')).toBe(true);
+        expect(hasUnstagedFromXYStatus('MM')).toBe(true);
+        expect(hasUnstagedFromXYStatus('?A')).toBe(true);
     });
-    it("returns true for 'MM'", () => {
-        if (!hasUnstagedFromXYStatus('MM')) {
-            throw new Error("hasUnstagedFromXYStatus failed for 'MM'");
-        }
-    });
-    it("returns false for 'M.'", () => {
-        if (hasUnstagedFromXYStatus('M.')) {
-            throw new Error("hasUnstagedFromXYStatus incorrectly returned true for 'M.'");
-        }
-    });
-    it("returns false for '..'", () => {
-        if (hasUnstagedFromXYStatus('..')) {
-            throw new Error("hasUnstagedFromXYStatus incorrectly returned true for '..'");
-        }
-    });
-    it("returns false for '  ' (spaces)", () => {
-        if (hasUnstagedFromXYStatus('  ')) {
-            throw new Error("hasUnstagedFromXYStatus incorrectly returned true for '  '");
-        }
+
+    it("returns false when the second char is '.' or ' '", () => {
+        expect(hasUnstagedFromXYStatus('M.')).toBe(false);
+        expect(hasUnstagedFromXYStatus('..')).toBe(false);
+        expect(hasUnstagedFromXYStatus('  ')).toBe(false);
     });
 });
 
@@ -200,41 +188,32 @@ describe('hasUnstagedFromXYStatus', () => {
 // escapeHtml
 // --------------------------------------------------------------------------
 
-// might be a little overkill, but im gonna be sad if this one day breaks
 describe('escapeHtml', () => {
     it('escapes & as &amp;', () => {
-        if (escapeHtml('&') !== '&amp;') {
-            throw new Error('escapeHtml failed to escape &');
-        }
+        expect(escapeHtml('a & b')).toBe('a &amp; b');
     });
+
     it('escapes < as &lt;', () => {
-        if (escapeHtml('<') !== '&lt;') {
-            throw new Error('escapeHtml failed to escape <');
-        }
+        expect(escapeHtml('<div>')).toBe('&lt;div&gt;');
     });
+
     it('escapes > as &gt;', () => {
-        if (escapeHtml('>') !== '&gt;') {
-            throw new Error('escapeHtml failed to escape >');
-        }
+        expect(escapeHtml('</div>')).toBe('&lt;/div&gt;');
     });
+
     it('escapes " as &quot;', () => {
-        if (escapeHtml('"') !== '&quot;') {
-            throw new Error('escapeHtml failed to escape "');
-        }
+        expect(escapeHtml('say "hello"')).toBe('say &quot;hello&quot;');
     });
+
     it("escapes ' as &#39;", () => {
-        if (escapeHtml("'") !== '&#39;') {
-            throw new Error("escapeHtml failed to escape '");
-        }
+        expect(escapeHtml("it's ok")).toBe('it&#39;s ok');
     });
+
     it('returns the same string when nothing needs escaping', () => {
-        if (escapeHtml('Hello, World!') !== 'Hello, World!') {
-            throw new Error("escapeHtml incorrectly modified a string that didn't need escaping");
-        }
+        expect(escapeHtml('plain text 123')).toBe('plain text 123');
     });
+
     it('handles an empty string', () => {
-        if (escapeHtml('') !== '') {
-            throw new Error('escapeHtml failed to handle an empty string');
-        }
+        expect(escapeHtml('')).toBe('');
     });
 });
