@@ -445,10 +445,10 @@ func TestGitBranch_create_switch_and_delete(t *testing.T) {
 		t.Fatalf("MkdirTemp remote: %v", err)
 	}
 	defer os.RemoveAll(remoteDir)
-	exec.Command("git", "-C", remoteDir, "init", "--bare").Run()
-	exec.Command("git", "-C", repo, "remote", "add", "origin", remoteDir).Run()
+	runGit(t, remoteDir, "init", "--bare")
+	runGit(t, repo, "remote", "add", "origin", remoteDir)
 	// Push the initial branch so ls-remote --symref can find origin/HEAD.
-	exec.Command("git", "-C", repo, "push", "origin", "HEAD").Run()
+	runGit(t, repo, "push", "origin", "HEAD")
 
 	// Create and switch to a new branch.
 	if err := SwitchGitBranch(repo, "feature-x"); err != nil {
@@ -514,7 +514,6 @@ func TestGitBranch_create_from_existing(t *testing.T) {
 		t.Fatalf("switch to existing feat: %v", err)
 	}
 }
-
 // --------------------------------------------------------------------------
 // Parse functions integration: using real git cat-file output
 // --------------------------------------------------------------------------
