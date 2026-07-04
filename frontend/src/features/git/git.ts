@@ -229,8 +229,12 @@ function renderSvg(extension: string): string {
 	};
 
 	let icon = svgMap[extension.toLowerCase()] || '';
-	if (!icon && extension.endsWith("/")) {
-		icon = FolderIcon;
+	if (!icon) {
+		if (extension.endsWith("/")) {
+			icon = FolderIcon;
+		} else if (extension === "prettierrc") {
+			icon = PrettierIcon;
+		}
 	}
 	return `<img height=20 src="${icon}" alt="" class="file-icon">`;
 }
