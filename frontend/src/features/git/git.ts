@@ -233,6 +233,7 @@ export function renderSvg(filePath: string): string {
         "_test.go": GoFuchsiaIcon,
         ".gitignore": GitIcon,
         "tsconfig.json": TsOfficialIcon,
+		"prettier.config.js": PrettierIcon,
     };
 
     for (const key in specialCases) {
@@ -247,6 +248,9 @@ export function renderSvg(filePath: string): string {
         const dotfileMap: Record<string, string> = {
             ".prettierrc": PrettierIcon,
             ".prettier.config.js": PrettierIcon,
+			".prettierrc.js": PrettierIcon,
+			".prettierrc.json": PrettierIcon,
+			".prettierrc.yaml": PrettierIcon,
             ".eslintrc": EslintIcon,
             ".eslintrc.js": EslintIcon,
             ".eslintrc.json": EslintIcon,
