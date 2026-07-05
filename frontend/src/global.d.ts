@@ -1,3 +1,5 @@
+import type { ThemeName } from "./app/main";
+
 export {};
 
 declare global {
@@ -7,7 +9,7 @@ declare global {
 		openRecentRepository: (repoPath: string) => Promise<void>;
 		openSettings: () => void;
 		closeSettings: () => void;
-		selectTheme: (themeName: "aurora" | "midnight") => void;
+		selectTheme: (themeName: ThemeName) => void;
 		clearRecentRepositories: () => void;
 		removeRecentRepository: (repoPath: string) => void;
 		setMaxRecentRepositories: (value: number) => void;

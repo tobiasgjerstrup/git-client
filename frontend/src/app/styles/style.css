@@ -172,6 +172,94 @@ html[data-theme="midnight"] {
 	--theme-shadow-modal: rgba(0, 0, 0, 0.4);
 }
 
+html[data-theme="purple"] {
+    --theme-text: #edf0ff;
+    --theme-text-strong: #f6f8ff;
+    --theme-text-muted: rgba(237, 240, 255, 0.68);
+    --theme-text-subtle: rgba(237, 240, 255, 0.56);
+    --theme-text-faint: rgba(237, 240, 255, 0.5);
+    --theme-text-placeholder: rgba(237, 240, 255, 0.48);
+    --theme-text-disabled: rgba(237, 240, 255, 0.46);
+    --theme-text-on-primary: #12101a;
+    --theme-text-on-danger: #1e1930;
+    --theme-text-info: #cdb8ff;
+    --theme-text-success: #93d7b0;
+    --theme-text-success-strong: #87df8d;
+    --theme-text-warning: #ffd38a;
+    --theme-text-danger: #ffc4c4;
+    --theme-text-danger-strong: #ff9696;
+    --theme-text-danger-alt: #93d7b0;
+    --theme-text-danger-alt-strong: #d16969;
+    --theme-text-accent-soft: #e8ddff;
+    --theme-state-text: #f4f7ff;
+
+    --theme-page-top-left: rgba(124, 58, 237, 0.18);
+    --theme-page-top-right: rgba(159, 103, 255, 0.14);
+    --theme-page-start: #12101a;
+    --theme-page-mid: #1e1930;
+    --theme-page-end: #1a1528;
+
+    --theme-button-bg: rgba(255, 255, 255, 0.08);
+    --theme-button-hover-bg: rgba(255, 255, 255, 0.14);
+    --theme-button-secondary-bg: rgba(255, 255, 255, 0.06);
+    --theme-accent-start: #9f67ff;
+    --theme-accent-end: #7c3aed;
+    --theme-accent-hover-start: #b78aff;
+    --theme-accent-hover-end: #9f67ff;
+    --theme-danger-start: #ff7a9a;
+    --theme-danger-end: #d94973;
+    --theme-input-bg: rgba(18, 14, 34, 0.76);
+    --theme-input-bg-focus: rgba(26, 20, 48, 0.94);
+
+    --theme-surface-card-start: rgba(30, 25, 48, 0.96);
+    --theme-surface-card-end: rgba(22, 18, 34, 0.96);
+    --theme-surface-card-border: rgba(255, 255, 255, 0.08);
+    --theme-surface-card-shadow: rgba(0, 0, 0, 0.4);
+    --theme-surface-muted: rgba(255, 255, 255, 0.05);
+    --theme-surface-muted-strong: rgba(255, 255, 255, 0.06);
+    --theme-surface-muted-weak: rgba(255, 255, 255, 0.03);
+    --theme-surface-inset: rgba(255, 255, 255, 0.03);
+    --theme-surface-card: rgba(22, 18, 34, 0.6);
+    --theme-surface-card-hover: rgba(38, 30, 60, 0.88);
+    --theme-surface-card-current: rgba(159, 103, 255, 0.1);
+    --theme-surface-card-dim: rgba(18, 14, 34, 0.76);
+    --theme-surface-card-dim-focus: rgba(26, 20, 48, 0.94);
+    --theme-surface-danger: rgba(255, 122, 154, 0.16);
+    --theme-surface-danger-hover: rgba(255, 122, 154, 0.24);
+    --theme-surface-selection: rgba(124, 58, 237, 0.14);
+    --theme-surface-modal: rgba(10, 8, 20, 0.72);
+    --theme-surface-modal-card-start: #251c40;
+    --theme-surface-modal-card-end: #1a1528;
+    --theme-surface-graphite: #12101a;
+
+    --theme-border-default: rgba(255, 255, 255, 0.09);
+    --theme-border-soft: rgba(255, 255, 255, 0.06);
+    --theme-border-medium: rgba(255, 255, 255, 0.08);
+    --theme-border-strong: rgba(255, 255, 255, 0.12);
+    --theme-border-button: rgba(255, 255, 255, 0.14);
+    --theme-border-button-hover: rgba(255, 255, 255, 0.24);
+    --theme-border-disabled: rgba(255, 255, 255, 0.08);
+    --theme-border-primary: rgba(159, 103, 255, 0.48);
+    --theme-border-primary-hover: rgba(255, 255, 255, 0.16);
+    --theme-border-danger: rgba(255, 132, 164, 0.42);
+    --theme-border-danger-soft: rgba(255, 122, 154, 0.22);
+    --theme-border-danger-hover: rgba(255, 122, 154, 0.34);
+    --theme-border-info: rgba(159, 103, 255, 0.34);
+    --theme-border-focus: #9f67ff;
+    --theme-border-focus-outline: rgba(159, 103, 255, 0.78);
+    --theme-focus-ring: rgba(159, 103, 255, 0.12);
+    --theme-border-focus-ring: rgba(159, 103, 255, 0.2);
+    --theme-border-accent: rgba(159, 103, 255, 0.34);
+
+    --theme-scrollbar-track: #182131;
+    --theme-scrollbar-thumb: #3a2a60;
+    --theme-scrollbar-thumb-hover: #4c1d95;
+
+    --theme-shadow-primary: rgba(124, 58, 237, 0.28);
+    --theme-shadow-modal: rgba(0, 0, 0, 0.4);
+}
+
+
 html {
 	background:
 		radial-gradient(circle at top left, var(--theme-page-top-left), transparent 28%),
