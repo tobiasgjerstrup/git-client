@@ -187,7 +187,7 @@ function renderChangeEntry(entry: GitChangeEntry): string {
 				<span class="diff-file-status ${entry.statusClass}">${escapeHtml(entry.label)}</span>
 				<h3 class="diff-file-header">
 					<button type="button" class="diff-file-toggle" onclick="event.stopPropagation(); toggleDiff(this.closest('.diff-file-entry').querySelector('.diff-file-header'))">
-						${escapeHtml(entry.path)} ${renderSvg(entry.path.split('.').pop() || 'file')}
+						${escapeHtml(entry.path)} ${renderSvg(entry.path)}
 					</button>
 				</h3>
 			</div>
@@ -210,33 +210,87 @@ import TsIcon from "../../assets/images/icons/file_type_ts.svg";
 import EsbuildIcon from "../../assets/images/icons/file_type_esbuild.svg";
 import EslintIcon from "../../assets/images/icons/file_type_eslint.svg";
 import SvgIcon from "../../assets/images/icons/file_type_svg.svg";
-function renderSvg(extension: string): string {
-	// ! Some of these are wrong. Like prettier files arent actually *.prettier so...
-	// TODO: FIX
-	const svgMap: Record<string, string> = {
-		go: GoIcon,
-		css: CssIcon,
-		html: HtmlIcon,
-		js: JsIcon,
-		json: JsonIcon,
-		php: PhpIcon,
-		prettier: PrettierIcon,
-		prisma: PrismaIcon,
-		ts: TsIcon,
-		esbuild: EsbuildIcon,
-		eslint: EslintIcon,
-		svg: SvgIcon,
-	};
+import TsOfficialIcon from "../../assets/images/icons/file_type_typescript_official.svg"
+import GitIcon from "../../assets/images/icons/file_type_git.svg"
+import GoFuchsiaIcon from "../../assets/images/icons/file_type_go_fuchsia.svg"
+import GoGopherIcon from "../../assets/images/icons/file_type_go_gopher.svg"
+import ImageIcon from "../../assets/images/icons/file_type_image.svg"
+import MarkdownIcon from "../../assets/images/icons/file_type_markdown.svg"
+import JsTestIcon from "../../assets/images/icons/file_type_testjs.svg"
+import TsTestIcon from "../../assets/images/icons/file_type_testts.svg"
+import FileIcon from "../../assets/images/icons/default_file.svg"
 
-	let icon = svgMap[extension.toLowerCase()] || '';
-	if (!icon) {
-		if (extension.endsWith("/")) {
-			icon = FolderIcon;
-		} else if (extension === "prettierrc") {
-			icon = PrettierIcon;
-		}
-	}
-	return `<img height=20 src="${icon}" alt="" class="file-icon">`;
+export function renderSvg(filePath: string): string {
+    const lower = filePath.toLowerCase();
+
+    // --- 1. Special‑case rules (checked first) ---
+    const specialCases: Record<string, string> = {
+        ".test.js": JsTestIcon,
+        ".spec.js": JsTestIcon,
+        ".test.ts": TsTestIcon,
+        ".spec.ts": TsTestIcon,
+        "go.mod": GoGopherIcon,
+        "_test.go": GoFuchsiaIcon,
+        ".gitignore": GitIcon,
+        "tsconfig.json": TsOfficialIcon,
+    };
+
+    for (const key in specialCases) {
+        if (lower.endsWith(key)) {
+            return `<img height="20" src="${specialCases[key]}" class="file-icon">`;
+        }
+    }
+
+    // --- 2. Dotfile detection ---
+    const baseName = lower.split("/").pop()!;
+    if (baseName.startsWith(".")) {
+        const dotfileMap: Record<string, string> = {
+            ".prettierrc": PrettierIcon,
+            ".prettier.config.js": PrettierIcon,
+            ".eslintrc": EslintIcon,
+            ".eslintrc.js": EslintIcon,
+            ".eslintrc.json": EslintIcon,
+        };
+        if (dotfileMap[baseName]) {
+            return `<img height="20" src="${dotfileMap[baseName]}" class="file-icon">`;
+        }
+    }
+
+    // --- 3. Extension detection ---
+    const extension = baseName.includes(".") ? baseName.split(".").pop()! : "";
+
+    const svgMap: Record<string, string> = {
+        go: GoIcon,
+        css: CssIcon,
+        html: HtmlIcon,
+        js: JsIcon,
+        json: JsonIcon,
+        php: PhpIcon,
+        prettier: PrettierIcon,
+        prisma: PrismaIcon,
+        ts: TsIcon,
+        esbuild: EsbuildIcon,
+        eslint: EslintIcon,
+        svg: SvgIcon,
+        png: ImageIcon,
+        jpg: ImageIcon,
+        jpeg: ImageIcon,
+        gif: ImageIcon,
+        webp: ImageIcon,
+        md: MarkdownIcon,
+    };
+
+    if (svgMap[extension]) {
+        return `<img height="20" src="${svgMap[extension]}" class="file-icon">`;
+    }
+
+    // --- 4. Folder fallback ---
+    if (filePath.endsWith("/")) {
+        return `<img height="20" src="${FolderIcon}" class="file-icon">`;
+    }
+
+    // --- 5. Default fallback ---
+    return `<img height="20" src="${FileIcon}" class="file-icon">`;
 }
 
 function renderStageButton(actionPath: string, entryKey: string): string {

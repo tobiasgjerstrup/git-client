@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseGitStatusLine, isStagedFromXYStatus, hasUnstagedFromXYStatus, escapeHtml } from './git';
+import { parseGitStatusLine, isStagedFromXYStatus, hasUnstagedFromXYStatus, escapeHtml, renderSvg } from './git';
 
 // --------------------------------------------------------------------------
 // parseGitStatusLine
@@ -216,4 +216,36 @@ describe('escapeHtml', () => {
     it('handles an empty string', () => {
         expect(escapeHtml('')).toBe('');
     });
+});
+
+// --------------------------------------------------------------------------
+// renderSvg
+// --------------------------------------------------------------------------
+
+describe('renderSvg', () => {
+	it('returns go icon', () => {
+		const svg = renderSvg('path/to/file/code.go');
+		expect(svg).toContain('<img'); // It should be an actual renderable html element
+		expect(svg).toContain('src="/src/assets/images/icons/file_type_go.svg"');
+	});
+	it('returns typescript test icon', () => {
+		const svg = renderSvg('path/to/file/code.test.ts');
+		expect(svg).toContain('<img');
+		expect(svg).toContain('src="/src/assets/images/icons/file_type_testts.svg"');
+	});
+	it('returns prettier icon for .prettierrc', () => {
+		const svg = renderSvg('path/to/file/.prettierrc');
+		expect(svg).toContain('<img');
+		expect(svg).toContain('src="/src/assets/images/icons/file_type_prettier.svg"');
+	});
+	it('returns folder icon for directories', () => {
+		const svg = renderSvg('path/to/directory/');
+		expect(svg).toContain('<img');
+		expect(svg).toContain('src="/src/assets/images/icons/default_folder.svg"');
+	});
+	it('returns default icon for unknown file type', () => {
+		const svg = renderSvg('path/to/file/unknownfile.xyzijk');
+		expect(svg).toContain('<img');
+		expect(svg).toContain('src="/src/assets/images/icons/default_file.svg"');
+	});
 });
