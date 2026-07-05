@@ -32,7 +32,7 @@ import {
 
 export let openedFolder: string | null = null;
 
-type ThemeName = "aurora" | "midnight";
+type ThemeName = "aurora" | "midnight" | "purple";
 type FrontendLogLevel = "debug" | "info" | "warn" | "error";
 
 const themeStorageKey = "git-client-theme";
@@ -521,6 +521,9 @@ function initializeTheme() {
 	const storedTheme = window.localStorage.getItem(themeStorageKey);
 	if (storedTheme === "midnight") {
 		applyTheme("midnight");
+		return;
+	} else if (storedTheme === "purple") {
+		applyTheme("purple");
 		return;
 	}
 

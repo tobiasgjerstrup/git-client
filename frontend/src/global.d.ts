@@ -7,7 +7,7 @@ declare global {
 		openRecentRepository: (repoPath: string) => Promise<void>;
 		openSettings: () => void;
 		closeSettings: () => void;
-		selectTheme: (themeName: "aurora" | "midnight") => void;
+		selectTheme: (themeName: "aurora" | "midnight" | "purple") => void;
 		clearRecentRepositories: () => void;
 		removeRecentRepository: (repoPath: string) => void;
 		setMaxRecentRepositories: (value: number) => void;

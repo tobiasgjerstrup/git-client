@@ -1,6 +1,6 @@
 import type { RecentRepository } from "../recent/recentRepositories";
 
-type ThemeName = "aurora" | "midnight";
+type ThemeName = "aurora" | "midnight" | "purple";
 type FrontendLogLevel = "debug" | "info" | "warn" | "error";
 
 type ViewRenderContext = {
@@ -80,13 +80,13 @@ export function renderSettingsContent(context: ViewRenderContext): string {
 			<button type="button" class="${context.frontendLogMinimumLevel === "error" ? "button-primary" : "button-secondary"}" onclick="setFrontendLogMinimumLevel('error')">Error</button>
 		</div>
 	</div>
-
 	<div class="settings-grid">
 		<div class="settings-card">
 			<div class="settings-label">Theme</div>
 			<div class="settings-row">
 				<button type="button" class="${context.activeTheme === "aurora" ? "button-primary" : "button-secondary"}" onclick="selectTheme('aurora')">Aurora</button>
 				<button type="button" class="${context.activeTheme === "midnight" ? "button-primary" : "button-secondary"}" onclick="selectTheme('midnight')">Midnight</button>
+				<button type="button" class="${context.activeTheme === "purple" ? "button-primary" : "button-secondary"}" onclick="selectTheme('purple')">Purple</button>
 			</div>
 		</div>
 
