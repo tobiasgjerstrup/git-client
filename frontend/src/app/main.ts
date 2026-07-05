@@ -32,7 +32,7 @@ import {
 
 export let openedFolder: string | null = null;
 
-type ThemeName = "aurora" | "midnight" | "purple";
+export type ThemeName = "aurora" | "midnight" | "purple";
 type FrontendLogLevel = "debug" | "info" | "warn" | "error";
 
 const themeStorageKey = "git-client-theme";

@@ -1,6 +1,6 @@
+import type { ThemeName } from "../../app/main";
 import type { RecentRepository } from "../recent/recentRepositories";
 
-type ThemeName = "aurora" | "midnight" | "purple";
 type FrontendLogLevel = "debug" | "info" | "warn" | "error";
 
 type ViewRenderContext = {
