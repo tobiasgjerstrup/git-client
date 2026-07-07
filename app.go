@@ -45,6 +45,7 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) shutdown(ctx context.Context) {
 	git.SetLogger(nil)
 	a.gitService.Close()
+	git.CleanupGitCommand()
 }
 
 func (a *App) PickFolder() string {
@@ -59,6 +60,10 @@ func (a *App) PickFolder() string {
 
 func (a *App) SetRepositoryPath(path string) {
 	a.repoPath = path
+}
+
+func (a *App) SetGitCommand(command string) {
+	git.SetGitCommand(command)
 }
 
 func (a *App) RunGitStatus() (*git.GitStatusResult, error) {

@@ -15,6 +15,62 @@ import (
 
 const gitPathPairSeparator = "\t"
 
+var gitCommand = "git"
+var gitCommandArgs []string
+var gitLauncherPath string
+
+func SetGitCommand(command string) {
+	if command == "" {
+		return
+	}
+	gitCommand = command
+	gitCommandArgs = nil
+
+	if _, err := exec.LookPath(command); err == nil {
+		return
+	}
+	if ps1Path, err := exec.LookPath(command + ".ps1"); err == nil {
+		gitCommand = "powershell.exe"
+		gitCommandArgs = []string{"-NoProfile", "-File", ps1Path}
+		return
+	}
+	if cmdPath, err := exec.LookPath(command + ".cmd"); err == nil {
+		gitCommand = cmdPath
+		return
+	}
+	if batPath, err := exec.LookPath(command + ".bat"); err == nil {
+		gitCommand = batPath
+		return
+	}
+
+	cleanupGitLauncher()
+
+	f, err := os.CreateTemp("", "git-client-*-launcher.ps1")
+	if err != nil {
+		return
+	}
+	launcher := fmt.Sprintf("& %s @args\n", command)
+	if _, err := f.WriteString(launcher); err != nil {
+		f.Close()
+		return
+	}
+	f.Close()
+	gitLauncherPath = f.Name()
+	gitCommand = "powershell.exe"
+	gitCommandArgs = []string{"-File", gitLauncherPath}
+}
+
+func cleanupGitLauncher() {
+	if gitLauncherPath != "" {
+		os.Remove(gitLauncherPath)
+		gitLauncherPath = ""
+	}
+}
+
+func CleanupGitCommand() {
+	cleanupGitLauncher()
+}
+
 type GitStatusResult struct {
 	Files           []string `json:"files"`
 	BranchName      string   `json:"branchName"`
@@ -648,8 +704,9 @@ func runGitForRepo(repoPath string, args ...string) (string, error) {
 		return "", fmt.Errorf("no repository selected")
 	}
 
-	commandArgs := append([]string{"-C", repoPath}, args...)
-	out, err := runCommand("git", commandArgs...)
+	commandArgs := append(gitCommandArgs, "-C", repoPath)
+	commandArgs = append(commandArgs, args...)
+	out, err := runCommand(gitCommand, commandArgs...)
 	if err != nil {
 		return "", err
 	}

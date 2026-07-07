@@ -66,6 +66,10 @@ export function RunGitStatus() {
   return window['go']['main']['App']['RunGitStatus']();
 }
 
+export function SetGitCommand(arg1) {
+  return window['go']['main']['App']['SetGitCommand'](arg1);
+}
+
 export function SetRepositoryPath(arg1) {
   return window['go']['main']['App']['SetRepositoryPath'](arg1);
 }
