@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,20 +16,33 @@ import (
 
 const gitPathPairSeparator = "\t"
 
-var gitCommand = "git"
-var gitCommandArgs []string
-var gitLauncherPath string
+var (
+	gitCommand      = "git"
+	gitCommandArgs  []string
+	gitLauncherPath string
+	gitCommandMu    sync.RWMutex
+)
 
 func SetGitCommand(command string) {
 	if command == "" {
 		return
 	}
+	gitCommandMu.Lock()
+	defer gitCommandMu.Unlock()
+
+	cleanupGitLauncherLocked()
+
 	gitCommand = command
 	gitCommandArgs = nil
 
 	if _, err := exec.LookPath(command); err == nil {
 		return
 	}
+
+	if runtime.GOOS != "windows" {
+		return
+	}
+
 	if ps1Path, err := exec.LookPath(command + ".ps1"); err == nil {
 		gitCommand = "powershell.exe"
 		gitCommandArgs = []string{"-NoProfile", "-File", ps1Path}
@@ -42,8 +56,6 @@ func SetGitCommand(command string) {
 		gitCommand = batPath
 		return
 	}
-
-	cleanupGitLauncher()
 
 	f, err := os.CreateTemp("", "git-client-*-launcher.ps1")
 	if err != nil {
@@ -60,7 +72,7 @@ func SetGitCommand(command string) {
 	gitCommandArgs = []string{"-File", gitLauncherPath}
 }
 
-func cleanupGitLauncher() {
+func cleanupGitLauncherLocked() {
 	if gitLauncherPath != "" {
 		os.Remove(gitLauncherPath)
 		gitLauncherPath = ""
@@ -68,7 +80,9 @@ func cleanupGitLauncher() {
 }
 
 func CleanupGitCommand() {
-	cleanupGitLauncher()
+	gitCommandMu.Lock()
+	defer gitCommandMu.Unlock()
+	cleanupGitLauncherLocked()
 }
 
 type GitStatusResult struct {
@@ -704,9 +718,14 @@ func runGitForRepo(repoPath string, args ...string) (string, error) {
 		return "", fmt.Errorf("no repository selected")
 	}
 
-	commandArgs := append(gitCommandArgs, "-C", repoPath)
+	gitCommandMu.RLock()
+	cmd := gitCommand
+	cmdArgs := gitCommandArgs
+	gitCommandMu.RUnlock()
+
+	commandArgs := append(cmdArgs, "-C", repoPath)
 	commandArgs = append(commandArgs, args...)
-	out, err := runCommand(gitCommand, commandArgs...)
+	out, err := runCommand(cmd, commandArgs...)
 	if err != nil {
 		return "", err
 	}

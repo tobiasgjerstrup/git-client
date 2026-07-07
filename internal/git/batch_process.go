@@ -69,8 +69,13 @@ func (bp *BatchProcess) Start(ctx context.Context, repoPath string) error {
 
 	bp.ctx, bp.cancel = context.WithCancel(ctx)
 
-	allArgs := append(gitCommandArgs, "-C", repoPath, "cat-file", "--batch")
-	bp.cmd = exec.CommandContext(bp.ctx, gitCommand, allArgs...)
+	gitCommandMu.RLock()
+	cmd := gitCommand
+	cmdArgs := gitCommandArgs
+	gitCommandMu.RUnlock()
+
+	allArgs := append(cmdArgs, "-C", repoPath, "cat-file", "--batch")
+	bp.cmd = exec.CommandContext(bp.ctx, cmd, allArgs...)
 	bp.cmd.SysProcAttr = newSysProcAttr()
 
 	var err error
