@@ -17,23 +17,20 @@ import (
 const gitPathPairSeparator = "\t"
 
 var (
-	gitCommand      = "git"
-	gitCommandArgs  []string
-	gitLauncherPath string
-	gitCommandMu    sync.RWMutex
+	gitCommand            = "git"
+	gitCommandArgs        []string
+	gitLauncherPath       string
+
+	gitRemoteCommand      = "git"
+	gitRemoteCommandArgs  []string
+	gitRemoteLauncherPath string
+
+	gitCommandMu sync.RWMutex
 )
 
-func SetGitCommand(command string) {
-	if command == "" {
-		return
-	}
-	gitCommandMu.Lock()
-	defer gitCommandMu.Unlock()
-
-	cleanupGitLauncherLocked()
-
-	gitCommand = command
-	gitCommandArgs = nil
+func resolveGitCommand(command string) (exe string, args []string, launcherPath string) {
+	exe = command
+	args = nil
 
 	if _, err := exec.LookPath(command); err == nil {
 		return
@@ -44,16 +41,16 @@ func SetGitCommand(command string) {
 	}
 
 	if ps1Path, err := exec.LookPath(command + ".ps1"); err == nil {
-		gitCommand = "powershell.exe"
-		gitCommandArgs = []string{"-NoProfile", "-File", ps1Path}
+		exe = "powershell.exe"
+		args = []string{"-NoProfile", "-File", ps1Path}
 		return
 	}
 	if cmdPath, err := exec.LookPath(command + ".cmd"); err == nil {
-		gitCommand = cmdPath
+		exe = cmdPath
 		return
 	}
 	if batPath, err := exec.LookPath(command + ".bat"); err == nil {
-		gitCommand = batPath
+		exe = batPath
 		return
 	}
 
@@ -67,22 +64,59 @@ func SetGitCommand(command string) {
 		return
 	}
 	f.Close()
-	gitLauncherPath = f.Name()
-	gitCommand = "powershell.exe"
-	gitCommandArgs = []string{"-File", gitLauncherPath}
+	launcherPath = f.Name()
+	exe = "powershell.exe"
+	args = []string{"-File", launcherPath}
+	return
 }
 
-func cleanupGitLauncherLocked() {
+func SetGitCommand(command string) {
+	if command == "" {
+		return
+	}
+	gitCommandMu.Lock()
+	defer gitCommandMu.Unlock()
+
 	if gitLauncherPath != "" {
 		os.Remove(gitLauncherPath)
 		gitLauncherPath = ""
 	}
+
+	exe, args, launcher := resolveGitCommand(command)
+	gitCommand = exe
+	gitCommandArgs = args
+	gitLauncherPath = launcher
+}
+
+func SetGitRemoteCommand(command string) {
+	if command == "" {
+		return
+	}
+	gitCommandMu.Lock()
+	defer gitCommandMu.Unlock()
+
+	if gitRemoteLauncherPath != "" {
+		os.Remove(gitRemoteLauncherPath)
+		gitRemoteLauncherPath = ""
+	}
+
+	exe, args, launcher := resolveGitCommand(command)
+	gitRemoteCommand = exe
+	gitRemoteCommandArgs = args
+	gitRemoteLauncherPath = launcher
 }
 
 func CleanupGitCommand() {
 	gitCommandMu.Lock()
 	defer gitCommandMu.Unlock()
-	cleanupGitLauncherLocked()
+	if gitLauncherPath != "" {
+		os.Remove(gitLauncherPath)
+		gitLauncherPath = ""
+	}
+	if gitRemoteLauncherPath != "" {
+		os.Remove(gitRemoteLauncherPath)
+		gitRemoteLauncherPath = ""
+	}
 }
 
 type GitStatusResult struct {
@@ -451,13 +485,13 @@ func DeleteGitBranch(repoPath string, branchName string, force bool) error {
 }
 
 func PushGitChanges(repoPath string) error {
-	_, err := runGitForRepo(repoPath, "push")
+	_, err := runGitRemoteForRepo(repoPath, "push")
 	if err == nil {
 		return nil
 	}
 
 	if strings.Contains(err.Error(), "has no upstream branch.") {
-		_, err = runGitForRepo(repoPath, "push", "--set-upstream", "origin", "HEAD")
+		_, err = runGitRemoteForRepo(repoPath, "push", "--set-upstream", "origin", "HEAD")
 		if err != nil {
 			Errorf("Error pushing with upstream: %v", err)
 			return err
@@ -469,7 +503,7 @@ func PushGitChanges(repoPath string) error {
 }
 
 func PullGitChanges(repoPath string) error {
-	_, err := runGitForRepo(repoPath, "pull")
+	_, err := runGitRemoteForRepo(repoPath, "pull")
 	if err != nil {
 		return err
 	}
@@ -653,11 +687,11 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 }
 
 func GitFetch(repoPath string) (string, error) {
-	return runGitForRepo(repoPath, "fetch")
+	return runGitRemoteForRepo(repoPath, "fetch")
 }
 
 func GitPrune(repoPath string) (string, error) {
-	return runGitForRepo(repoPath, "fetch", "--prune")
+	return runGitRemoteForRepo(repoPath, "fetch", "--prune")
 }
 
 func parsePorcelainV2FileLine(line string) (string, bool) {
@@ -733,12 +767,32 @@ func runGitForRepo(repoPath string, args ...string) (string, error) {
 	return out, nil
 }
 
+func runGitRemoteForRepo(repoPath string, args ...string) (string, error) {
+	if repoPath == "" {
+		return "", fmt.Errorf("no repository selected")
+	}
+
+	gitCommandMu.RLock()
+	cmd := gitRemoteCommand
+	cmdArgs := gitRemoteCommandArgs
+	gitCommandMu.RUnlock()
+
+	commandArgs := append(cmdArgs, "-C", repoPath)
+	commandArgs = append(commandArgs, args...)
+	out, err := runCommand(cmd, commandArgs...)
+	if err != nil {
+		return "", err
+	}
+
+	return out, nil
+}
+
 func getDefaultBranch(repoPath string) (string, error) {
 	if branch, ok := defaultBranchCache[repoPath]; ok {
 		return branch, nil
 	}
 
-	out, err := runGitForRepo(repoPath,
+	out, err := runGitRemoteForRepo(repoPath,
 		"ls-remote", "--symref", "origin", "HEAD",
 	)
 	if err != nil {

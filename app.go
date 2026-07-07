@@ -66,6 +66,10 @@ func (a *App) SetGitCommand(command string) {
 	git.SetGitCommand(command)
 }
 
+func (a *App) SetGitRemoteCommand(command string) {
+	git.SetGitRemoteCommand(command)
+}
+
 func (a *App) RunGitStatus() (*git.GitStatusResult, error) {
 	result, err := a.gitService.GetStatus(a.repoPath)
 	a.logBackendError("RunGitStatus", err)

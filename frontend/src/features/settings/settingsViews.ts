@@ -14,6 +14,7 @@ type ViewRenderContext = {
 	maxMaxRecentRepositories: number;
 	maxRecentRepositories: number;
 	gitCommand: string;
+	gitRemoteCommand: string;
 };
 
 export function renderWelcomeShell(context: ViewRenderContext): string {
@@ -112,9 +113,9 @@ export function renderSettingsContent(context: ViewRenderContext): string {
 	</div>
 
 	<div class="settings-card">
-		<div class="settings-label">Git Command</div>
+		<div class="settings-label">Git Command (Local)</div>
 		<div class="settings-row">
-			<label for="GitCommandInput">Custom git executable</label>
+			<label for="GitCommandInput">Custom git executable for status, diff, commit, branch</label>
 			<input
 				id="GitCommandInput"
 				type="text"
@@ -123,7 +124,20 @@ export function renderSettingsContent(context: ViewRenderContext): string {
 				onchange="setGitCommand(this.value)"
 			>
 		</div>
-		<div class="welcome-copy">Use a custom wrapper (e.g. <code>git-token</code>) instead of the default <code>git</code> binary.</div>
+	</div>
+
+	<div class="settings-card">
+		<div class="settings-label">Git Command (Remote)</div>
+		<div class="settings-row">
+			<label for="GitRemoteCommandInput">Custom git executable for fetch, pull, push</label>
+			<input
+				id="GitRemoteCommandInput"
+				type="text"
+				placeholder="git"
+				value="${escapeHtml(context.gitRemoteCommand)}"
+				onchange="setGitRemoteCommand(this.value)"
+			>
+		</div>
 	</div>
 
 	<div class="settings-card">
