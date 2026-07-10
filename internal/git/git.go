@@ -2,7 +2,6 @@ package git
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,15 +14,18 @@ import (
 )
 
 const gitPathPairSeparator = "\t"
+const maxUntrackedFileSize = 512 * 1024
 
 var (
 	gitCommand            = "git"
 	gitCommandArgs        []string
 	gitLauncherPath       string
+	gitCommandOriginal    = "git"
 
 	gitRemoteCommand      = "git"
 	gitRemoteCommandArgs  []string
 	gitRemoteLauncherPath string
+	gitRemoteCommandOriginal = "git"
 
 	gitCommandMu sync.RWMutex
 )
@@ -82,6 +84,7 @@ func SetGitCommand(command string) {
 		gitLauncherPath = ""
 	}
 
+	gitCommandOriginal = command
 	exe, args, launcher := resolveGitCommand(command)
 	gitCommand = exe
 	gitCommandArgs = args
@@ -100,6 +103,7 @@ func SetGitRemoteCommand(command string) {
 		gitRemoteLauncherPath = ""
 	}
 
+	gitRemoteCommandOriginal = command
 	exe, args, launcher := resolveGitCommand(command)
 	gitRemoteCommand = exe
 	gitRemoteCommandArgs = args
@@ -212,21 +216,37 @@ func GitDiff(repoPath string) (*GitDiffResult, error) {
 		}
 
 		abs := filepath.Join(repoPath, line)
-		data, err := os.ReadFile(abs)
+		info, err := os.Stat(abs)
 		if err != nil {
 			continue
 		}
 
-		diff := fmt.Sprintf(
+		header := fmt.Sprintf(
 			"diff --git a/%s b/%s\nnew file mode 100644\n--- /dev/null\n+++ b/%s\n",
 			line, line, line,
 		)
 
+		var diff string
 		added := 0
-		scanner := bufio.NewScanner(bytes.NewReader(data))
-		for scanner.Scan() {
-			diff += "+" + scanner.Text() + "\n"
-			added++
+
+		if info.Size() <= maxUntrackedFileSize {
+			f, err := os.Open(abs)
+			if err != nil {
+				continue
+			}
+			var sb strings.Builder
+			sb.WriteString(header)
+			scanner := bufio.NewScanner(f)
+			for scanner.Scan() {
+				sb.WriteByte('+')
+				sb.WriteString(scanner.Text())
+				sb.WriteByte('\n')
+				added++
+			}
+			f.Close()
+			diff = sb.String()
+		} else {
+			diff = header
 		}
 
 		result.Files = append(result.Files, GitDiffFile{
@@ -250,44 +270,54 @@ func GitDiffStaged(repoPath string) (*GitDiffResult, error) {
 }
 
 func parseDiffOutput(out string) (*GitDiffResult, error) {
-
-	lines := strings.Split(string(out), "\n")
+	lines := strings.Split(out, "\n")
 	files := []GitDiffFile{}
-	file := GitDiffFile{}
+	var currentPath string
+	var currentDiff strings.Builder
+	var currentAdded, currentRemoved int
+
+	flushCurrent := func() {
+		if currentPath != "" {
+			files = append(files, GitDiffFile{
+				Path:         currentPath,
+				Diff:         currentDiff.String(),
+				LinesAdded:   currentAdded,
+				LinesRemoved: currentRemoved,
+			})
+			currentDiff.Reset()
+			currentPath = ""
+			currentAdded = 0
+			currentRemoved = 0
+		}
+	}
+
 	for _, line := range lines {
 		line = strings.TrimSuffix(line, "\r")
 		if line == "" {
 			continue
 		}
 		if strings.HasPrefix(line, "diff --git ") {
-			// push the previous file if exists
-			if file.Path != "" {
-				files = append(files, file)
-				file = GitDiffFile{}
-			}
+			flushCurrent()
 
-			// extract file path from line like: diff --git a/file.txt b/file.txt
 			rest := strings.TrimPrefix(line, "diff --git ")
 			idx := strings.LastIndex(rest, " b/")
-			file.Path = rest[idx+3:]
-			file.Path = strings.Trim(file.Path, "\"")
+			currentPath = rest[idx+3:]
+			currentPath = strings.Trim(currentPath, "\"")
 			continue
 		}
-		if file.Path != "" {
-			file.Diff += line + "\n"
+		if currentPath != "" {
+			currentDiff.WriteString(line)
+			currentDiff.WriteByte('\n')
 			if strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
-				file.LinesAdded++
+				currentAdded++
 				continue
 			} else if strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---") {
-				file.LinesRemoved++
+				currentRemoved++
 				continue
 			}
 		}
 	}
-	// push the last file if exists
-	if file.Path != "" {
-		files = append(files, file)
-	}
+	flushCurrent()
 
 	return &GitDiffResult{
 		Files: files,
@@ -411,7 +441,7 @@ func ContinueGitMerge(repoPath string) error {
 }
 
 func isMergeInProgress(repoPath string) bool {
-	_, err := runGitForRepo(repoPath, "rev-parse", "--verify", "MERGE_HEAD")
+	_, err := os.Stat(filepath.Join(repoPath, ".git", "MERGE_HEAD"))
 	return err == nil
 }
 
@@ -732,18 +762,17 @@ func parsePorcelainV2FileLine(line string) (string, bool) {
 
 func runCommand(name string, args ...string) (string, error) {
 	start := time.Now()
-	defer func() {
-		Debugf("Command finished in %v", time.Since(start))
-	}()
 
 	cmd := exec.Command(name, args...)
 	cmd.SysProcAttr = newSysProcAttr()
 
 	out, err := cmd.CombinedOutput()
-	Debugf("Ran command: %s %s", name, strings.Join(args, " "))
 	if err != nil {
-		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
+		exitErr := fmt.Errorf("Ran command in %v, but it failed: %s %s %w: %s", time.Since(start), name, strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+		Errorf("%v", exitErr)
+		return "", exitErr
 	}
+	Debugf("Ran command in %v: %s %s", time.Since(start), name, strings.Join(args, " "))
 	return string(out), nil
 }
 
@@ -759,6 +788,7 @@ func runGitForRepo(repoPath string, args ...string) (string, error) {
 
 	commandArgs := append(cmdArgs, "-C", repoPath)
 	commandArgs = append(commandArgs, args...)
+	// Debugf("Running local git [%s]: %s %s", original, cmd, strings.Join(commandArgs, " "))
 	out, err := runCommand(cmd, commandArgs...)
 	if err != nil {
 		return "", err
@@ -779,6 +809,7 @@ func runGitRemoteForRepo(repoPath string, args ...string) (string, error) {
 
 	commandArgs := append(cmdArgs, "-C", repoPath)
 	commandArgs = append(commandArgs, args...)
+	// Debugf("Running remote git [%s]: %s %s", original, cmd, strings.Join(commandArgs, " "))
 	out, err := runCommand(cmd, commandArgs...)
 	if err != nil {
 		return "", err
