@@ -37,8 +37,12 @@ type FrontendLogLevel = "debug" | "info" | "warn" | "error";
 
 const themeStorageKey = "git-client-theme";
 const consoleVisibilityStorageKey = "git-client-console-visible";
+const gitCommandStorageKey = "git-client-git-command";
+const gitRemoteCommandStorageKey = "git-client-git-remote-command";
 let activeTheme: ThemeName = "aurora";
 let isFrontendConsoleVisible = false;
+let gitCommand = "git";
+let gitRemoteCommand = "git";
 
 let settingsModalOpen = false;
 let gitSelectionKeyListenerBound = false;
@@ -51,6 +55,7 @@ const modalManager = new ModalManager({
 
 initializeTheme();
 initializeConsoleVisibility();
+initializeGitCommand();
 initializeFrontendConsole();
 
 window.pickFolder = async function () {
@@ -119,6 +124,18 @@ window.setFrontendConsoleEnabled = function (enabled: boolean) {
 window.setFrontendLogMinimumLevel = function (level: FrontendLogLevel) {
 	setFrontendLogMinimumLevel(level);
 	updateSettingsModal();
+}
+
+window.setGitCommand = function (command: string) {
+	gitCommand = command || "git";
+	window.localStorage.setItem(gitCommandStorageKey, gitCommand);
+	window.go.main.App.SetGitCommand(gitCommand);
+}
+
+window.setGitRemoteCommand = function (command: string) {
+	gitRemoteCommand = command || "git";
+	window.localStorage.setItem(gitRemoteCommandStorageKey, gitRemoteCommand);
+	window.go.main.App.SetGitRemoteCommand(gitRemoteCommand);
 }
 
 window.clearFrontendLogs = function () {
@@ -487,6 +504,8 @@ function getViewRenderContext() {
 		minMaxRecentRepositories: MIN_MAX_RECENT_REPOSITORIES,
 		maxMaxRecentRepositories: MAX_MAX_RECENT_REPOSITORIES,
 		maxRecentRepositories: getMaxRecentRepositories(),
+		gitCommand,
+		gitRemoteCommand,
 	};
 }
 
@@ -532,6 +551,20 @@ function initializeTheme() {
 
 function initializeConsoleVisibility() {
 	isFrontendConsoleVisible = window.localStorage.getItem(consoleVisibilityStorageKey) === "1";
+}
+
+function initializeGitCommand() {
+	const stored = window.localStorage.getItem(gitCommandStorageKey);
+	if (stored) {
+		gitCommand = stored;
+	}
+	window.go.main.App.SetGitCommand(gitCommand);
+
+	const storedRemote = window.localStorage.getItem(gitRemoteCommandStorageKey);
+	if (storedRemote) {
+		gitRemoteCommand = storedRemote;
+	}
+	window.go.main.App.SetGitRemoteCommand(gitRemoteCommand);
 }
 
 function syncFrontendConsoleVisibility() {
@@ -745,6 +778,8 @@ declare global {
 		setMaxRecentRepositories: (value: number) => void;
 		setFrontendConsoleEnabled: (enabled: boolean) => void;
 		setFrontendLogMinimumLevel: (level: FrontendLogLevel) => void;
+		setGitCommand: (command: string) => void;
+		setGitRemoteCommand: (command: string) => void;
 		clearFrontendLogs: () => void;
 		toggleLogConsole: () => void;
     }

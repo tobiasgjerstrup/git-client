@@ -34,6 +34,10 @@ export function ResolveGitConflict(arg1:string,arg2:string):Promise<void>;
 
 export function RunGitStatus():Promise<git.GitStatusResult>;
 
+export function SetGitCommand(arg1:string):Promise<void>;
+
+export function SetGitRemoteCommand(arg1:string):Promise<void>;
+
 export function SetRepositoryPath(arg1:string):Promise<void>;
 
 export function StageGitFile(arg1:string):Promise<string>;
