@@ -216,37 +216,64 @@ func GitDiff(repoPath string) (*GitDiffResult, error) {
 		}
 
 		abs := filepath.Join(repoPath, line)
-		info, err := os.Stat(abs)
+		info, err := os.Lstat(abs)
 		if err != nil {
 			continue
 		}
 
-		header := fmt.Sprintf(
-			"diff --git a/%s b/%s\nnew file mode 100644\n--- /dev/null\n+++ b/%s\n",
-			line, line, line,
-		)
+		mode := info.Mode()
+		// Skip special files (devices, sockets, fifos, etc.)
+		if !mode.IsRegular() && mode&os.ModeSymlink == 0 {
+			continue
+		}
 
+		var header string
 		var diff string
 		added := 0
 
-		if info.Size() <= maxUntrackedFileSize {
-			f, err := os.Open(abs)
+		if mode&os.ModeSymlink != 0 {
+			// Handle symlink
+			target, err := os.Readlink(abs)
 			if err != nil {
 				continue
 			}
-			var sb strings.Builder
-			sb.WriteString(header)
-			scanner := bufio.NewScanner(f)
-			for scanner.Scan() {
-				sb.WriteByte('+')
-				sb.WriteString(scanner.Text())
-				sb.WriteByte('\n')
-				added++
-			}
-			f.Close()
-			diff = sb.String()
+			header = fmt.Sprintf(
+				"diff --git a/%s b/%s\nnew file mode 120000\n--- /dev/null\n+++ b/%s\n",
+				line, line, line,
+			)
+			diff = header + "+" + target + "\n"
+			added = 1
 		} else {
-			diff = header
+			// Handle regular file
+			header = fmt.Sprintf(
+				"diff --git a/%s b/%s\nnew file mode 100644\n--- /dev/null\n+++ b/%s\n",
+				line, line, line,
+			)
+
+			if info.Size() <= maxUntrackedFileSize {
+				f, err := os.Open(abs)
+				if err != nil {
+					continue
+				}
+				var sb strings.Builder
+				sb.WriteString(header)
+				scanner := bufio.NewScanner(f)
+				buf := make([]byte, 0, 64*1024)
+				scanner.Buffer(buf, 1024*1024)
+				for scanner.Scan() {
+					sb.WriteByte('+')
+					sb.WriteString(scanner.Text())
+					sb.WriteByte('\n')
+					added++
+				}
+				f.Close()
+				if err := scanner.Err(); err != nil {
+					continue
+				}
+				diff = sb.String()
+			} else {
+				diff = header
+			}
 		}
 
 		result.Files = append(result.Files, GitDiffFile{
@@ -275,6 +302,7 @@ func parseDiffOutput(out string) (*GitDiffResult, error) {
 	var currentPath string
 	var currentDiff strings.Builder
 	var currentAdded, currentRemoved int
+	var inHunk bool
 
 	flushCurrent := func() {
 		if currentPath != "" {
@@ -288,6 +316,7 @@ func parseDiffOutput(out string) (*GitDiffResult, error) {
 			currentPath = ""
 			currentAdded = 0
 			currentRemoved = 0
+			inHunk = false
 		}
 	}
 
@@ -301,19 +330,41 @@ func parseDiffOutput(out string) (*GitDiffResult, error) {
 
 			rest := strings.TrimPrefix(line, "diff --git ")
 			idx := strings.LastIndex(rest, " b/")
-			currentPath = rest[idx+3:]
-			currentPath = strings.Trim(currentPath, "\"")
+			if idx == -1 {
+				continue
+			}
+			bPath := rest[idx+3:]
+
+			// Handle Git-quoted paths
+			if strings.HasPrefix(bPath, "\"") && strings.HasSuffix(bPath, "\"") {
+				// Git-quoted path, need to unquote
+				quoted := bPath
+				if unquoted, err := strconv.Unquote(quoted); err == nil {
+					currentPath = unquoted
+				} else {
+					// Fallback: just strip quotes
+					currentPath = strings.Trim(bPath, "\"")
+				}
+			} else {
+				currentPath = bPath
+			}
 			continue
 		}
 		if currentPath != "" {
 			currentDiff.WriteString(line)
 			currentDiff.WriteByte('\n')
-			if strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
-				currentAdded++
+			if strings.HasPrefix(line, "@@") {
+				inHunk = true
 				continue
-			} else if strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---") {
-				currentRemoved++
-				continue
+			}
+			if inHunk {
+				if strings.HasPrefix(line, "+") {
+					currentAdded++
+					continue
+				} else if strings.HasPrefix(line, "-") {
+					currentRemoved++
+					continue
+				}
 			}
 		}
 	}
@@ -441,7 +492,15 @@ func ContinueGitMerge(repoPath string) error {
 }
 
 func isMergeInProgress(repoPath string) bool {
-	_, err := os.Stat(filepath.Join(repoPath, ".git", "MERGE_HEAD"))
+	out, err := runGitForRepo(repoPath, "rev-parse", "--git-path", "MERGE_HEAD")
+	if err != nil {
+		return false
+	}
+	mergeHeadPath := strings.TrimSpace(out)
+	if !filepath.IsAbs(mergeHeadPath) {
+		mergeHeadPath = filepath.Join(repoPath, mergeHeadPath)
+	}
+	_, err = os.Stat(mergeHeadPath)
 	return err == nil
 }
 
