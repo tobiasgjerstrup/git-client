@@ -98,3 +98,8 @@ or
 ```bash
 wails build
 ```
+
+If you are running into issues where you dont have the expected webkit version you can use -tags to use a different version of webkit
+```bash
+-tags webkit2_41
+```
