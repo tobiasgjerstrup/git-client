@@ -529,8 +529,12 @@ func ArchiveGitBranch(repoPath string, branchName string, deleteRemote bool) err
 		return fmt.Errorf("failed to push archived branch %s: %w", archiveName, err)
 	}
 
-	if _, err := runGitForRepo(repoPath, "branch", "-m", archiveName); err != nil {
+	if _, err := runGitForRepo(repoPath, "branch", "-m", branchName, archiveName); err != nil {
 		return fmt.Errorf("failed to rename branch to %s: %w", archiveName, err)
+	}
+
+	if _, err := runGitForRepo(repoPath, "branch", "-u", "origin/"+archiveName); err != nil {
+		return fmt.Errorf("failed to set upstream for %s: %w", archiveName, err)
 	}
 
 	if deleteRemote {
@@ -547,7 +551,7 @@ func ArchiveRemoteGitBranch(repoPath string, remoteBranchName string, deleteRemo
 
 	archiveName := "archive/" + localName
 
-	if _, err := runGitForRepo(repoPath, "fetch", "origin", localName); err != nil {
+	if _, err := runGitRemoteForRepo(repoPath, "fetch", "origin", localName); err != nil {
 		return fmt.Errorf("failed to fetch remote branch %s: %w", remoteBranchName, err)
 	}
 
