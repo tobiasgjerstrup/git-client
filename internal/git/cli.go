@@ -58,6 +58,14 @@ func (c *GitCLI) DeleteBranch(repoPath, branch string, force bool) error {
 	return DeleteGitBranch(repoPath, branch, force)
 }
 
+func (c *GitCLI) ArchiveBranch(repoPath, branch string, deleteRemote bool) error {
+	return ArchiveGitBranch(repoPath, branch, deleteRemote)
+}
+
+func (c *GitCLI) ArchiveRemoteBranch(repoPath, branch string, deleteRemote bool) error {
+	return ArchiveRemoteGitBranch(repoPath, branch, deleteRemote)
+}
+
 func (c *GitCLI) Push(repoPath string) error {
 	return PushGitChanges(repoPath)
 }

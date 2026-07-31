@@ -55,8 +55,15 @@ export interface GitBranch {
 
 let commits: GitCommit[] = [];
 let branches: GitBranch[] = [];
+let showArchivedBranches = false;
 let currentBranchName: string = "";
 
+/**
+ * Escapes HTML-sensitive characters in a string.
+ *
+ * @param value - The string to escape
+ * @returns The escaped string
+ */
 export function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, "&amp;")
@@ -319,6 +326,9 @@ export async function gitStatus() {
 	document.getElementById("BranchName")!.innerText = currentBranchName || "No repository selected";
 }
 
+/**
+ * Retrieves and displays the repository's commit history, or an empty-state message when no commits are available.
+ */
 export async function getGitCommits() {
 	commits = await window.go.main.App.GetCommitHistory() as GitCommit[];
 	if (commits.length === 0) {
@@ -336,6 +346,92 @@ export async function getGitCommits() {
 	document.getElementById("GitCommits")!.innerHTML = commitsHtml;
 }
 
+/**
+ * Renders a branch card with its synchronization status and available actions.
+ *
+ * @param branch - The branch to display.
+ * @param allBranches - All branches used to determine local synchronization status.
+ * @param isArchived - Whether the branch is displayed in the archived section.
+ * @returns HTML markup for the branch card.
+ */
+function renderBranchCard(branch: GitBranch, allBranches: GitBranch[], isArchived?: boolean) {
+	const branchKind = branch.remote ? "Remote" : "Local";
+	const kindClass = branch.remote ? "remote" : "local";
+	const isCurrentBranch = !branch.remote && branch.name === currentBranchName;
+	const matchingRemoteBranch = !branch.remote ? allBranches.find(candidate => candidate.remote && candidate.name === `origin/${branch.name}`) : undefined;
+	const isUnsyncedLocalBranch = !branch.remote && (!matchingRemoteBranch || matchingRemoteBranch.commitId !== branch.commitId);
+	const cardClass = isCurrentBranch ? `${kindClass} current` : kindClass;
+	const cardAttrs = isCurrentBranch
+		? ""
+		: ` onclick="promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, ${branch.remote})" oncontextmenu="event.preventDefault(); toggleBranchContextMenu(this)"`;
+	const actionHint = isCurrentBranch
+		? `<span class="branch-card-hint current">Current branch</span>`
+		: `<details class="branch-menu-dropdown" onclick="event.stopPropagation()">
+			<summary class="branch-menu-trigger" title="Branch options">⋯</summary>
+			<div class="branch-menu-dropdown-menu surface-card">
+				${isArchived
+					? branch.remote
+						? `<button type="button" class="branch-menu-item" onclick="event.stopPropagation(); this.closest('.branch-menu-dropdown').open = false; promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, true)">Create local</button>`
+						: `<button type="button" class="branch-menu-item" onclick="event.stopPropagation(); this.closest('.branch-menu-dropdown').open = false; promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, false)">Switch</button>
+						<button type="button" class="branch-menu-item branch-menu-item-danger" onclick="event.stopPropagation(); this.closest('.branch-menu-dropdown').open = false; promptDeleteBranch(${escapeHtml(JSON.stringify(branch.name))}, ${isUnsyncedLocalBranch})">Delete</button>`
+					: branch.remote
+						? `<button type="button" class="branch-menu-item" onclick="event.stopPropagation(); this.closest('.branch-menu-dropdown').open = false; promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, true)">Create local</button>
+						<button type="button" class="branch-menu-item" onclick="event.stopPropagation(); this.closest('.branch-menu-dropdown').open = false; promptArchiveBranch(${escapeHtml(JSON.stringify(branch.name))}, true)">Archive</button>`
+						: `<button type="button" class="branch-menu-item" onclick="event.stopPropagation(); this.closest('.branch-menu-dropdown').open = false; promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, false)">Switch</button>
+						<button type="button" class="branch-menu-item" onclick="event.stopPropagation(); this.closest('.branch-menu-dropdown').open = false; promptArchiveBranch(${escapeHtml(JSON.stringify(branch.name))})">Archive</button>
+						<button type="button" class="branch-menu-item branch-menu-item-danger" onclick="event.stopPropagation(); this.closest('.branch-menu-dropdown').open = false; promptDeleteBranch(${escapeHtml(JSON.stringify(branch.name))}, ${isUnsyncedLocalBranch})">Delete</button>`
+				}
+			</div>
+		</details>`;
+	return `<article class="branch-card ${cardClass}"${cardAttrs}>
+		<div class="branch-card-top">
+			<span class="branch-name">${escapeHtml(branch.name)}</span>
+			<span class="branch-kind">${branchKind}</span>
+		</div>
+		<div class="branch-card-bottom">
+			<span class="branch-delta">↑ ${branch.commitsAhead}</span>
+			<span class="branch-delta">↓ ${branch.commitsBehind}</span>
+			${actionHint}
+		</div>
+	</article>`;
+}
+
+/**
+ * Determines whether a branch name identifies an archived branch.
+ *
+ * @param name - The branch name to examine
+ * @returns `true` if the name starts with `archive/` or `origin/archive/`, `false` otherwise.
+ */
+function isArchivedBranch(name: string): boolean {
+	return name.startsWith("archive/") || name.startsWith("origin/archive/");
+}
+
+/**
+ * Toggles the visibility of archived branches and updates the toggle control label.
+ */
+export function toggleArchivedBranches() {
+	showArchivedBranches = !showArchivedBranches;
+
+	const listEl = document.querySelector(".archived-branches-list") as HTMLDivElement | null;
+	const toggleEl = document.querySelector(".archived-branches-toggle") as HTMLButtonElement | null;
+	if (listEl) {
+		if (showArchivedBranches) {
+			listEl.removeAttribute("hidden");
+		} else {
+			listEl.setAttribute("hidden", "");
+		}
+	}
+	if (toggleEl) {
+		const archivedCount = listEl ? listEl.children.length : 0;
+		toggleEl.textContent = showArchivedBranches ? "Hide archived branches" : `Show archived branches (${archivedCount})`;
+	}
+}
+
+/**
+ * Retrieves and displays local and remote Git branches, including optionally visible archived branches.
+ *
+ * Highlights push and pull controls when the current branch is ahead of or behind its remote counterpart.
+ */
 export async function getGitBranches() {
 	branches = await window.go.main.App.GetGitBranches() as GitBranch[];
 	if (branches.length === 0) {
@@ -343,33 +439,22 @@ export async function getGitBranches() {
 		return;
 	}
 
-	const branchesHtml = branches.map(branch => {
-		const branchKind = branch.remote ? "Remote" : "Local";
-		const kindClass = branch.remote ? "remote" : "local";
-		const isCurrentBranch = !branch.remote && branch.name === currentBranchName;
-		const matchingRemoteBranch = !branch.remote ? branches.find(candidate => candidate.remote && candidate.name === `origin/${branch.name}`) : undefined;
-		const isUnsyncedLocalBranch = !branch.remote && (!matchingRemoteBranch || matchingRemoteBranch.commitId !== branch.commitId);
-		const cardClass = isCurrentBranch ? `${kindClass} current` : kindClass;
-		const cardAction = isCurrentBranch
-			? ""
-			: ` onclick="promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, ${branch.remote})"`;
-		const actionHint = branch.remote
-			? `<button type="button" class="branch-switch-trigger" onclick="event.stopPropagation(); promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, true)">Create local</button>`
-			: isCurrentBranch
-				? `<span class="branch-card-hint current">Current branch</span>`
-				: `<div class="branch-card-actions"><button type="button" class="branch-switch-trigger" onclick="event.stopPropagation(); promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, false)">Switch</button><button type="button" class="branch-delete-trigger" onclick="event.stopPropagation(); promptDeleteBranch(${escapeHtml(JSON.stringify(branch.name))}, ${isUnsyncedLocalBranch})">Delete</button></div>`;
-		return `<article class="branch-card ${cardClass}"${cardAction}>
-			<div class="branch-card-top">
-				<span class="branch-name">${escapeHtml(branch.name)}</span>
-				<span class="branch-kind">${branchKind}</span>
+	const regularBranches = branches.filter(b => !isArchivedBranch(b.name));
+	const archivedBranches = branches.filter(b => isArchivedBranch(b.name));
+
+	let branchesHtml = regularBranches.map(b => renderBranchCard(b, branches)).join("");
+
+	if (archivedBranches.length > 0) {
+		branchesHtml += `<div class="archived-branches-section">
+			<button type="button" class="archived-branches-toggle" onclick="toggleArchivedBranches()">
+				${showArchivedBranches ? "Hide archived branches" : `Show archived branches (${archivedBranches.length})`}
+			</button>
+			<div class="archived-branches-list"${showArchivedBranches ? "" : " hidden"}>
+				${archivedBranches.map(b => renderBranchCard(b, branches, true)).join("")}
 			</div>
-			<div class="branch-card-bottom">
-				<span class="branch-delta">↑ ${branch.commitsAhead}</span>
-				<span class="branch-delta">↓ ${branch.commitsBehind}</span>
-				${actionHint}
-			</div>
-		</article>`;
-	}).join("");
+		</div>`;
+	}
+
 	document.getElementById("GitBranches")!.innerHTML = branchesHtml;
 
 	const pushButton = document.getElementById("PushButton");

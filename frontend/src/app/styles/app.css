@@ -344,30 +344,109 @@
 	color: var(--theme-text-success);
 }
 
-.branch-switch-trigger {
-	padding: 6px 10px;
-	font-size: 0.78rem;
+.branch-menu-dropdown {
+	position: relative;
 	margin-left: auto;
+	z-index: 1200;
 }
 
-.branch-card-actions {
+.branch-menu-dropdown summary {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: var(--theme-text-info);
+	font-size: 1.1rem;
+	font-weight: 800;
+	line-height: 1;
+	border-radius: 6px;
+	cursor: pointer;
+	list-style: none;
+	user-select: none;
+	transition: background-color 0.18s ease;
+}
+
+.branch-menu-dropdown summary:hover {
+	background: var(--theme-surface-muted-strong);
+}
+
+.branch-menu-dropdown summary::-webkit-details-marker {
+	display: none;
+}
+
+.branch-menu-dropdown-menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 0;
+	z-index: 1201;
+	min-width: 160px;
+	padding: 6px;
 	display: flex;
-	gap: 8px;
-	margin-left: auto;
-	flex-wrap: wrap;
+	flex-direction: column;
+	gap: 2px;
+	border-radius: 14px;
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
 }
 
-.branch-delete-trigger {
-	padding: 6px 10px;
-	font-size: 0.78rem;
-	background: var(--theme-surface-danger);
-	border-color: var(--theme-border-danger-soft);
+.branch-menu-item {
+	display: block;
+	width: 100%;
+	padding: 8px 14px;
+	border: none;
+	border-radius: 10px;
+	background: transparent;
+	color: var(--theme-text);
+	font-size: 0.84rem;
+	font-weight: 600;
+	text-align: left;
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+.branch-menu-item:hover {
+	background: var(--theme-surface-muted-strong);
+}
+
+.branch-menu-item-danger {
 	color: var(--theme-text-danger);
 }
 
-.branch-delete-trigger:hover {
-	background: var(--theme-surface-danger-hover);
-	border-color: var(--theme-border-danger-hover);
+.branch-menu-item-danger:hover {
+	background: var(--theme-surface-danger);
+}
+
+.archived-branches-section {
+	margin-top: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.archived-branches-toggle {
+	padding: 8px 14px;
+	border: 1px dashed var(--theme-border-medium);
+	border-radius: 12px;
+	background: transparent;
+	color: var(--theme-text-info);
+	font-size: 0.78rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+.archived-branches-toggle:hover {
+	border-color: var(--theme-border-accent);
+	color: var(--theme-text);
+}
+
+.archived-branches-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
 }
 
 .commit-card {
