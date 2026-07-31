@@ -18,6 +18,12 @@ type ViewRenderContext = {
 	archiveMethod: ArchiveMethod;
 };
 
+/**
+ * Generates the welcome-page HTML with repository actions, recent repositories, and an optional settings modal.
+ *
+ * @param context - The view state used to populate the welcome page and settings modal
+ * @returns The rendered welcome-page HTML
+ */
 export function renderWelcomeShell(context: ViewRenderContext): string {
 	const recentRepositoriesHtml = renderRecentRepositoriesHtml(context);
 
@@ -45,6 +51,12 @@ export function renderWelcomeShell(context: ViewRenderContext): string {
 	</section>`;
 }
 
+/**
+ * Renders the settings panel with controls for logs, theme, repository storage, branch archiving, Git commands, and recent repositories.
+ *
+ * @param context - The current settings and repository state used to populate the panel.
+ * @returns The settings panel HTML.
+ */
 export function renderSettingsContent(context: ViewRenderContext): string {
 	const recentRepositoriesHtml = context.recentRepositories.length > 0
 		? context.recentRepositories.map((repository) => `

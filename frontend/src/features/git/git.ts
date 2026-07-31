@@ -58,6 +58,12 @@ let branches: GitBranch[] = [];
 let showArchivedBranches = false;
 let currentBranchName: string = "";
 
+/**
+ * Escapes HTML-sensitive characters in a string.
+ *
+ * @param value - The string to escape
+ * @returns The escaped string
+ */
 export function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, "&amp;")
@@ -320,6 +326,9 @@ export async function gitStatus() {
 	document.getElementById("BranchName")!.innerText = currentBranchName || "No repository selected";
 }
 
+/**
+ * Retrieves and displays the repository's commit history, or an empty-state message when no commits are available.
+ */
 export async function getGitCommits() {
 	commits = await window.go.main.App.GetCommitHistory() as GitCommit[];
 	if (commits.length === 0) {
@@ -337,6 +346,14 @@ export async function getGitCommits() {
 	document.getElementById("GitCommits")!.innerHTML = commitsHtml;
 }
 
+/**
+ * Renders a branch card with its synchronization status and available actions.
+ *
+ * @param branch - The branch to display.
+ * @param allBranches - All branches used to determine local synchronization status.
+ * @param isArchived - Whether the branch is displayed in the archived section.
+ * @returns HTML markup for the branch card.
+ */
 function renderBranchCard(branch: GitBranch, allBranches: GitBranch[], isArchived?: boolean) {
 	const branchKind = branch.remote ? "Remote" : "Local";
 	const kindClass = branch.remote ? "remote" : "local";
@@ -379,10 +396,19 @@ function renderBranchCard(branch: GitBranch, allBranches: GitBranch[], isArchive
 	</article>`;
 }
 
+/**
+ * Determines whether a branch name identifies an archived branch.
+ *
+ * @param name - The branch name to examine
+ * @returns `true` if the name starts with `archive/` or `origin/archive/`, `false` otherwise.
+ */
 function isArchivedBranch(name: string): boolean {
 	return name.startsWith("archive/") || name.startsWith("origin/archive/");
 }
 
+/**
+ * Toggles the visibility of archived branches and updates the toggle control label.
+ */
 export function toggleArchivedBranches() {
 	showArchivedBranches = !showArchivedBranches;
 
@@ -401,6 +427,11 @@ export function toggleArchivedBranches() {
 	}
 }
 
+/**
+ * Retrieves and displays local and remote Git branches, including optionally visible archived branches.
+ *
+ * Highlights push and pull controls when the current branch is ahead of or behind its remote counterpart.
+ */
 export async function getGitBranches() {
 	branches = await window.go.main.App.GetGitBranches() as GitBranch[];
 	if (branches.length === 0) {
