@@ -318,16 +318,12 @@ window.confirmArchiveBranch = async function () {
 	const { branchName, deleteRemote, remote } = state;
 	modalManager.closeBranchArchiveConfirm();
 
-	try {
-		if (remote) {
-			await window.go.main.App.ArchiveRemoteGitBranch(branchName, deleteRemote);
-		} else {
-			await window.go.main.App.ArchiveGitBranch(branchName, deleteRemote);
-		}
-		await window.refresh();
-	} catch (error) {
-		throw error;
+	if (remote) {
+		await window.go.main.App.ArchiveRemoteGitBranch(branchName, deleteRemote);
+	} else {
+		await window.go.main.App.ArchiveGitBranch(branchName, deleteRemote);
 	}
+	await window.refresh();
 }
 
 window.cancelArchiveBranch = function () {
@@ -789,6 +785,7 @@ function handleDropdownKeydown(event: KeyboardEvent) {
 		event.preventDefault();
 		event.stopImmediatePropagation();
 		openBranchDropdown.open = false;
+		openBranchDropdown.querySelector("summary")?.focus({ preventScroll: true });
 	}
 }
 

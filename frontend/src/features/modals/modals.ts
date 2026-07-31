@@ -136,7 +136,7 @@ export class ModalManager {
 	openBranchArchiveConfirm(branchName: string, deleteRemote: boolean, remote?: boolean) {
 		this.branchArchiveConfirmModalState = {
 			branchName,
-			archiveName: "archive/" + branchName,
+			archiveName: remote ? "archive/" + toLocalBranchName(branchName) : "archive/" + branchName,
 			deleteRemote,
 			remote: !!remote,
 		};
