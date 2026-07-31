@@ -495,6 +495,8 @@ func isMissingBranchSwitchError(err error) bool {
 		strings.Contains(msg, "cannot find")
 }
 
+// DeleteGitBranch deletes the specified branch, refusing to delete the currently checked-out branch.
+// When force is true, the branch is deleted even if it has unmerged changes.
 func DeleteGitBranch(repoPath string, branchName string, force bool) error {
 	currentBranch, err := runGitForRepo(repoPath, "branch", "--show-current")
 	if err != nil {
@@ -514,6 +516,7 @@ func DeleteGitBranch(repoPath string, branchName string, force bool) error {
 	return err
 }
 
+// ArchiveGitBranch archives a local branch under the archive/ namespace, renames the local branch, and optionally deletes the original remote branch.
 func ArchiveGitBranch(repoPath string, branchName string, deleteRemote bool) error {
 	currentBranch, err := runGitForRepo(repoPath, "branch", "--show-current")
 	if err != nil {
@@ -542,6 +545,9 @@ func ArchiveGitBranch(repoPath string, branchName string, deleteRemote bool) err
 	return nil
 }
 
+// ArchiveRemoteGitBranch copies a remote branch to the archive namespace and optionally deletes the original remote branch.
+// The remoteBranchName may include the "origin/" prefix.
+// It returns an error if fetching, archiving, or deleting the branch fails.
 func ArchiveRemoteGitBranch(repoPath string, remoteBranchName string, deleteRemote bool) error {
 	localName := strings.TrimPrefix(remoteBranchName, "origin/")
 
@@ -564,6 +570,8 @@ func ArchiveRemoteGitBranch(repoPath string, remoteBranchName string, deleteRemo
 	return nil
 }
 
+// PushGitChanges pushes the repository's changes to its configured remote.
+// If the current branch has no upstream, it sets the branch to track origin and retries the push.
 func PushGitChanges(repoPath string) error {
 	_, err := runGitRemoteForRepo(repoPath, "push")
 	if err == nil {

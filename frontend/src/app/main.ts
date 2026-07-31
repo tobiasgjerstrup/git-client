@@ -501,6 +501,9 @@ import appHtml from '../app.html?raw';
 import branchPanelHtml from '../panels/branchPanel.html?raw';
 import commitPanelHtml from '../panels/commitPanel.html?raw';
 
+/**
+ * Loads the application interface and synchronizes its initial workspace state.
+ */
 function loadHtml() {
 	document.querySelector('#app')!.innerHTML = appHtml;
 	document.getElementById('BranchPanel')!.innerHTML = branchPanelHtml;
@@ -548,6 +551,11 @@ function updateSettingsModal() {
 	}
 }
 
+/**
+ * Builds the state required to render the application views.
+ *
+ * @returns The current repository, workspace, settings, logging, Git, and archive configuration.
+ */
 function getViewRenderContext() {
 	const recentRepositories = getRecentRepositories();
 	return {
@@ -610,6 +618,9 @@ function initializeConsoleVisibility() {
 	isFrontendConsoleVisible = window.localStorage.getItem(consoleVisibilityStorageKey) === "1";
 }
 
+/**
+ * Loads persisted Git command settings and applies them to the backend.
+ */
 function initializeGitCommand() {
 	const stored = window.localStorage.getItem(gitCommandStorageKey);
 	if (stored) {
@@ -624,6 +635,9 @@ function initializeGitCommand() {
 	window.go.main.App.SetGitRemoteCommand(gitRemoteCommand);
 }
 
+/**
+ * Loads the persisted branch archive method into the active archive configuration.
+ */
 function initializeArchiveMethod() {
 	const stored = window.localStorage.getItem(archiveMethodStorageKey);
 	if (stored === "folder" || stored === "folder-no-delete" || stored === "none") {
@@ -631,6 +645,9 @@ function initializeArchiveMethod() {
 	}
 }
 
+/**
+ * Updates the log console panel visibility to match the current frontend console setting.
+ */
 function syncFrontendConsoleVisibility() {
 	const panel = document.getElementById("LogConsolePanel");
 	if (!panel) {
@@ -732,6 +749,9 @@ async function runGitAction(
 	}
 }
 
+/**
+ * Ensures the Git selection keyboard listener is registered once.
+ */
 function ensureGitSelectionKeyListener() {
 	if (gitSelectionKeyListenerBound) {
 		return;
@@ -740,6 +760,9 @@ function ensureGitSelectionKeyListener() {
 	document.addEventListener("keydown", handleGitSelectionKeydown);
 	gitSelectionKeyListenerBound = true;
 }
+/**
+ * Installs the document listeners used to close open dropdowns when needed.
+ */
 function ensureDropdownListeners() {
 	if (dropdownListenerBound) {
 		return;
@@ -750,6 +773,11 @@ function ensureDropdownListeners() {
 	dropdownListenerBound = true;
 }
 
+/**
+ * Closes open repository and branch dropdowns when a click occurs outside them.
+ *
+ * @param event - The mouse event used to identify the clicked element
+ */
 function handleDropdownClickOutside(event: MouseEvent) {
 	const target = event.target as Node | null;
 
@@ -766,6 +794,11 @@ function handleDropdownClickOutside(event: MouseEvent) {
 	}
 }
 
+/**
+ * Closes the open repository or branch dropdown when the Escape key is pressed.
+ *
+ * @param event - The keyboard event to handle
+ */
 function handleDropdownKeydown(event: KeyboardEvent) {
 	if (event.key !== "Escape") {
 		return;
@@ -789,6 +822,11 @@ function handleDropdownKeydown(event: KeyboardEvent) {
 	}
 }
 
+/**
+ * Retrieves the recent repositories dropdown element.
+ *
+ * @returns The recent repositories dropdown, or `null` if it is not present.
+ */
 function getRecentRepositoriesDropdown() {
 	return document.querySelector(".recent-repositories-dropdown") as HTMLDetailsElement | null;
 }
