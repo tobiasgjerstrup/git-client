@@ -153,6 +153,12 @@ func (a *App) DeleteGitBranch(branchName string, force bool) error {
 	return err
 }
 
+func (a *App) ArchiveGitBranch(branchName string, deleteRemote bool) error {
+	err := a.gitService.ArchiveBranch(a.repoPath, branchName, deleteRemote)
+	a.logBackendError("ArchiveGitBranch", err)
+	return err
+}
+
 func (a *App) PushGitChanges() error {
 	err := a.gitService.Push(a.repoPath)
 	return err

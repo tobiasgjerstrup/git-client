@@ -4,6 +4,8 @@ import {git} from '../models';
 
 export function AbortMerge():Promise<void>;
 
+export function ArchiveGitBranch(arg1:string,arg2:boolean):Promise<void>;
+
 export function CommitGitChanges(arg1:string):Promise<void>;
 
 export function ContinueMerge():Promise<void>;

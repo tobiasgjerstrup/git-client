@@ -13,6 +13,16 @@ type BranchDeleteModalState = {
 	forceDelete: boolean;
 } | null;
 
+type BranchArchiveInfoModalState = {
+	branchName: string;
+} | null;
+
+type BranchArchiveConfirmModalState = {
+	branchName: string;
+	archiveName: string;
+	deleteRemote: boolean;
+} | null;
+
 type ModalManagerOptions = {
 	isSettingsModalOpen: () => boolean;
 	closeSettingsModal: () => void;
@@ -22,6 +32,8 @@ export class ModalManager {
 	private discardModalState: DiscardModalState = null;
 	private branchSwitchModalState: BranchSwitchModalState = null;
 	private branchDeleteModalState: BranchDeleteModalState = null;
+	private branchArchiveInfoModalState: BranchArchiveInfoModalState = null;
+	private branchArchiveConfirmModalState: BranchArchiveConfirmModalState = null;
 	private modalKeyListenerBound = false;
 
 	constructor(private readonly options: ModalManagerOptions) {}
@@ -39,6 +51,8 @@ export class ModalManager {
 		this.updateDiscardModal(isAnyGitActionPending);
 		this.updateBranchSwitchModal();
 		this.updateBranchDeleteModal();
+		this.updateBranchArchiveInfoModal();
+		this.updateBranchArchiveConfirmModal();
 	}
 
 	hasActiveModal() {
@@ -98,6 +112,38 @@ export class ModalManager {
 	closeBranchDelete() {
 		this.branchDeleteModalState = null;
 		this.updateBranchDeleteModal();
+	}
+
+	getBranchArchiveInfoModalState() {
+		return this.branchArchiveInfoModalState;
+	}
+
+	openBranchArchiveInfo(branchName: string) {
+		this.branchArchiveInfoModalState = { branchName };
+		this.updateBranchArchiveInfoModal();
+	}
+
+	closeBranchArchiveInfo() {
+		this.branchArchiveInfoModalState = null;
+		this.updateBranchArchiveInfoModal();
+	}
+
+	getBranchArchiveConfirmModalState() {
+		return this.branchArchiveConfirmModalState;
+	}
+
+	openBranchArchiveConfirm(branchName: string, deleteRemote: boolean) {
+		this.branchArchiveConfirmModalState = {
+			branchName,
+			archiveName: "archive/" + branchName,
+			deleteRemote,
+		};
+		this.updateBranchArchiveConfirmModal();
+	}
+
+	closeBranchArchiveConfirm() {
+		this.branchArchiveConfirmModalState = null;
+		this.updateBranchArchiveConfirmModal();
 	}
 
 	private updateDiscardModal(isAnyGitActionPending: (filePath: string) => boolean) {
@@ -220,6 +266,57 @@ export class ModalManager {
 		}
 	}
 
+	private updateBranchArchiveInfoModal() {
+		const modal = document.getElementById("BranchArchiveInfoModal");
+		if (!modal) {
+			return;
+		}
+
+		if (this.branchArchiveInfoModalState) {
+			modal.removeAttribute("hidden");
+			this.focusModalInitialTarget("BranchArchiveInfoModal", "#BranchArchiveInfoSettingsButton");
+		} else {
+			modal.setAttribute("hidden", "");
+		}
+	}
+
+	private updateBranchArchiveConfirmModal() {
+		const modal = document.getElementById("BranchArchiveModal");
+		if (!modal) {
+			return;
+		}
+
+		const copyEl = document.getElementById("BranchArchiveModalCopy");
+		const descriptionEl = document.getElementById("BranchArchiveModalDescription");
+		const confirmButton = document.getElementById("ConfirmArchiveBranchButton") as HTMLButtonElement | null;
+		if (this.branchArchiveConfirmModalState) {
+			modal.removeAttribute("hidden");
+			if (copyEl) {
+				copyEl.textContent = this.branchArchiveConfirmModalState.deleteRemote
+					? `This will rename "${this.branchArchiveConfirmModalState.branchName}" to "${this.branchArchiveConfirmModalState.archiveName}", push the archived branch to origin, and delete "${this.branchArchiveConfirmModalState.branchName}" from the remote.`
+					: `This will rename "${this.branchArchiveConfirmModalState.branchName}" to "${this.branchArchiveConfirmModalState.archiveName}" and push the archived branch to origin. The original branch will remain on the remote.`;
+			}
+			if (descriptionEl) {
+				descriptionEl.textContent = `${this.branchArchiveConfirmModalState.branchName} -> ${this.branchArchiveConfirmModalState.archiveName}`;
+			}
+			if (confirmButton) {
+				confirmButton.disabled = false;
+			}
+			this.focusModalInitialTarget("BranchArchiveModal", "#ConfirmArchiveBranchButton");
+		} else {
+			modal.setAttribute("hidden", "");
+			if (copyEl) {
+				copyEl.textContent = "";
+			}
+			if (descriptionEl) {
+				descriptionEl.textContent = "";
+			}
+			if (confirmButton) {
+				confirmButton.disabled = false;
+			}
+		}
+	}
+
 	private handleModalKeydown = (event: KeyboardEvent) => {
 		const activeModal = this.getActiveModal();
 		if (!activeModal) {
@@ -280,6 +377,20 @@ export class ModalManager {
 			return;
 		}
 
+		if (this.branchArchiveInfoModalState) {
+			event.preventDefault();
+			event.stopImmediatePropagation();
+			this.closeBranchArchiveInfo();
+			return;
+		}
+
+		if (this.branchArchiveConfirmModalState) {
+			event.preventDefault();
+			event.stopImmediatePropagation();
+			this.closeBranchArchiveConfirm();
+			return;
+		}
+
 		if (this.options.isSettingsModalOpen()) {
 			event.preventDefault();
 			event.stopImmediatePropagation();
@@ -298,6 +409,14 @@ export class ModalManager {
 
 		if (this.branchDeleteModalState) {
 			return document.getElementById("BranchDeleteModal") as HTMLElement | null;
+		}
+
+		if (this.branchArchiveInfoModalState) {
+			return document.getElementById("BranchArchiveInfoModal") as HTMLElement | null;
+		}
+
+		if (this.branchArchiveConfirmModalState) {
+			return document.getElementById("BranchArchiveModal") as HTMLElement | null;
 		}
 
 		if (this.options.isSettingsModalOpen()) {

@@ -33,20 +33,23 @@ import {
 export let openedFolder: string | null = null;
 
 export type ThemeName = "aurora" | "midnight" | "purple";
+export type ArchiveMethod = "none" | "folder" | "folder-no-delete";
 type FrontendLogLevel = "debug" | "info" | "warn" | "error";
 
 const themeStorageKey = "git-client-theme";
 const consoleVisibilityStorageKey = "git-client-console-visible";
 const gitCommandStorageKey = "git-client-git-command";
 const gitRemoteCommandStorageKey = "git-client-git-remote-command";
+const archiveMethodStorageKey = "git-client-archive-method";
 let activeTheme: ThemeName = "aurora";
 let isFrontendConsoleVisible = false;
 let gitCommand = "git";
 let gitRemoteCommand = "git";
+let activeArchiveMethod: ArchiveMethod = "none";
 
 let settingsModalOpen = false;
 let gitSelectionKeyListenerBound = false;
-let recentRepositoriesDropdownListenerBound = false;
+let dropdownListenerBound = false;
 
 const modalManager = new ModalManager({
 	isSettingsModalOpen: () => settingsModalOpen,
@@ -56,6 +59,7 @@ const modalManager = new ModalManager({
 initializeTheme();
 initializeConsoleVisibility();
 initializeGitCommand();
+initializeArchiveMethod();
 initializeFrontendConsole();
 
 window.pickFolder = async function () {
@@ -136,6 +140,12 @@ window.setGitRemoteCommand = function (command: string) {
 	gitRemoteCommand = command || "git";
 	window.localStorage.setItem(gitRemoteCommandStorageKey, gitRemoteCommand);
 	window.go.main.App.SetGitRemoteCommand(gitRemoteCommand);
+}
+
+window.setArchiveMethod = function (method: ArchiveMethod) {
+	activeArchiveMethod = method;
+	window.localStorage.setItem(archiveMethodStorageKey, method);
+	updateSettingsModal();
 }
 
 window.clearFrontendLogs = function () {
@@ -288,6 +298,50 @@ window.confirmDeleteBranch = async function () {
 
 window.cancelDeleteBranch = function () {
 	modalManager.closeBranchDelete();
+}
+
+window.promptArchiveBranch = function (branchName: string) {
+	if (activeArchiveMethod === "none") {
+		modalManager.openBranchArchiveInfo(branchName);
+		return;
+	}
+
+	modalManager.openBranchArchiveConfirm(branchName, activeArchiveMethod === "folder");
+}
+
+window.confirmArchiveBranch = async function () {
+	const state = modalManager.getBranchArchiveConfirmModalState();
+	if (!state) {
+		return;
+	}
+
+	const { branchName, deleteRemote } = state;
+	modalManager.closeBranchArchiveConfirm();
+
+	try {
+		await window.go.main.App.ArchiveGitBranch(branchName, deleteRemote);
+		await window.refresh();
+	} catch (error) {
+		throw error;
+	}
+}
+
+window.cancelArchiveBranch = function () {
+	modalManager.closeBranchArchiveInfo();
+	modalManager.closeBranchArchiveConfirm();
+}
+
+window.toggleBranchContextMenu = function (cardEl: HTMLElement) {
+	const clickedDropdown = cardEl.querySelector('.branch-menu-dropdown') as HTMLDetailsElement | null;
+	const openDropdowns = document.querySelectorAll<HTMLDetailsElement>(".branch-menu-dropdown[open]");
+	for (const dropdown of openDropdowns) {
+		if (dropdown !== clickedDropdown) {
+			dropdown.open = false;
+		}
+	}
+	if (clickedDropdown) {
+		clickedDropdown.open = !clickedDropdown.open;
+	}
 }
 
 /*
@@ -451,7 +505,7 @@ function loadHtml() {
 	document.getElementById('CommitPanel')!.innerHTML = commitPanelHtml;
 	updateWorkspaceHeader();
 	syncRecentRepositoriesPanel();
-	ensureRecentRepositoriesDropdownListener();
+	ensureDropdownListeners();
 	modalManager.ensureKeyListener();
 	ensureGitSelectionKeyListener();
 	updateSettingsModal();
@@ -506,6 +560,7 @@ function getViewRenderContext() {
 		maxRecentRepositories: getMaxRecentRepositories(),
 		gitCommand,
 		gitRemoteCommand,
+		archiveMethod: activeArchiveMethod,
 	};
 }
 
@@ -565,6 +620,13 @@ function initializeGitCommand() {
 		gitRemoteCommand = storedRemote;
 	}
 	window.go.main.App.SetGitRemoteCommand(gitRemoteCommand);
+}
+
+function initializeArchiveMethod() {
+	const stored = window.localStorage.getItem(archiveMethodStorageKey);
+	if (stored === "folder" || stored === "folder-no-delete" || stored === "none") {
+		activeArchiveMethod = stored;
+	}
 }
 
 function syncFrontendConsoleVisibility() {
@@ -676,44 +738,52 @@ function ensureGitSelectionKeyListener() {
 	document.addEventListener("keydown", handleGitSelectionKeydown);
 	gitSelectionKeyListenerBound = true;
 }
-function ensureRecentRepositoriesDropdownListener() {
-	if (recentRepositoriesDropdownListenerBound) {
+function ensureDropdownListeners() {
+	if (dropdownListenerBound) {
 		return;
 	}
 
-	document.addEventListener("click", handleRecentRepositoriesDropdownClick, true);
-	document.addEventListener("keydown", handleRecentRepositoriesDropdownKeydown, true);
-	recentRepositoriesDropdownListenerBound = true;
+	document.addEventListener("click", handleDropdownClickOutside, true);
+	document.addEventListener("keydown", handleDropdownKeydown, true);
+	dropdownListenerBound = true;
 }
 
-function handleRecentRepositoriesDropdownClick(event: MouseEvent) {
-	const dropdown = getRecentRepositoriesDropdown();
-	if (!dropdown || !dropdown.open) {
-		return;
-	}
-
+function handleDropdownClickOutside(event: MouseEvent) {
 	const target = event.target as Node | null;
-	if (target && dropdown.contains(target)) {
-		return;
+
+	const reposDropdown = getRecentRepositoriesDropdown();
+	if (reposDropdown && reposDropdown.open && target && !reposDropdown.contains(target)) {
+		reposDropdown.open = false;
 	}
 
-	dropdown.open = false;
+	const openBranchDropdowns = document.querySelectorAll<HTMLDetailsElement>(".branch-menu-dropdown[open]");
+	for (const dropdown of openBranchDropdowns) {
+		if (target && !dropdown.contains(target)) {
+			dropdown.open = false;
+		}
+	}
 }
 
-function handleRecentRepositoriesDropdownKeydown(event: KeyboardEvent) {
+function handleDropdownKeydown(event: KeyboardEvent) {
 	if (event.key !== "Escape") {
 		return;
 	}
 
-	const dropdown = getRecentRepositoriesDropdown();
-	if (!dropdown || !dropdown.open || modalManager.hasActiveModal()) {
+	const reposDropdown = getRecentRepositoriesDropdown();
+	if (reposDropdown && reposDropdown.open && !modalManager.hasActiveModal()) {
+		event.preventDefault();
+		event.stopImmediatePropagation();
+		reposDropdown.open = false;
+		reposDropdown.querySelector("summary")?.focus({ preventScroll: true });
 		return;
 	}
 
-	event.preventDefault();
-	event.stopImmediatePropagation();
-	dropdown.open = false;
-	dropdown.querySelector("summary")?.focus({ preventScroll: true });
+	const openBranchDropdown = document.querySelector<HTMLDetailsElement>(".branch-menu-dropdown[open]");
+	if (openBranchDropdown && !modalManager.hasActiveModal()) {
+		event.preventDefault();
+		event.stopImmediatePropagation();
+		openBranchDropdown.open = false;
+	}
 }
 
 function getRecentRepositoriesDropdown() {
@@ -763,6 +833,10 @@ declare global {
 		promptDeleteBranch: (branchName: string, forceDelete?: boolean) => void;
 		confirmDeleteBranch: () => Promise<void>;
 		cancelDeleteBranch: () => void;
+		promptArchiveBranch: (branchName: string) => void;
+		confirmArchiveBranch: () => Promise<void>;
+		cancelArchiveBranch: () => void;
+		toggleBranchContextMenu: (cardEl: HTMLElement) => void;
 		selectGitChange: (event: MouseEvent, key: string) => void;
 		stageSelectedGitFiles: () => Promise<void>;
 		unstageSelectedGitFiles: () => Promise<void>;
@@ -780,6 +854,7 @@ declare global {
 		setFrontendLogMinimumLevel: (level: FrontendLogLevel) => void;
 		setGitCommand: (command: string) => void;
 		setGitRemoteCommand: (command: string) => void;
+		setArchiveMethod: (method: ArchiveMethod) => void;
 		clearFrontendLogs: () => void;
 		toggleLogConsole: () => void;
     }

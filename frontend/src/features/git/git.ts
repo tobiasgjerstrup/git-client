@@ -350,15 +350,23 @@ export async function getGitBranches() {
 		const matchingRemoteBranch = !branch.remote ? branches.find(candidate => candidate.remote && candidate.name === `origin/${branch.name}`) : undefined;
 		const isUnsyncedLocalBranch = !branch.remote && (!matchingRemoteBranch || matchingRemoteBranch.commitId !== branch.commitId);
 		const cardClass = isCurrentBranch ? `${kindClass} current` : kindClass;
-		const cardAction = isCurrentBranch
+		const cardAttrs = isCurrentBranch
 			? ""
-			: ` onclick="promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, ${branch.remote})"`;
-		const actionHint = branch.remote
-			? `<button type="button" class="branch-switch-trigger" onclick="event.stopPropagation(); promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, true)">Create local</button>`
-			: isCurrentBranch
-				? `<span class="branch-card-hint current">Current branch</span>`
-				: `<div class="branch-card-actions"><button type="button" class="branch-switch-trigger" onclick="event.stopPropagation(); promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, false)">Switch</button><button type="button" class="branch-delete-trigger" onclick="event.stopPropagation(); promptDeleteBranch(${escapeHtml(JSON.stringify(branch.name))}, ${isUnsyncedLocalBranch})">Delete</button></div>`;
-		return `<article class="branch-card ${cardClass}"${cardAction}>
+			: ` onclick="promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, ${branch.remote})" oncontextmenu="event.preventDefault(); toggleBranchContextMenu(this)"`;
+		const actionHint = isCurrentBranch
+			? `<span class="branch-card-hint current">Current branch</span>`
+			: `<details class="branch-menu-dropdown" onclick="event.stopPropagation()">
+				<summary class="branch-menu-trigger" title="Branch options">⋯</summary>
+				<div class="branch-menu-dropdown-menu surface-card">
+					${branch.remote
+						? `<button type="button" class="branch-menu-item" onclick="event.stopPropagation(); this.closest('.branch-menu-dropdown').open = false; promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, true)">Create local</button>`
+						: `<button type="button" class="branch-menu-item" onclick="event.stopPropagation(); this.closest('.branch-menu-dropdown').open = false; promptBranchSwitch(${escapeHtml(JSON.stringify(branch.name))}, false)">Switch</button>
+						<button type="button" class="branch-menu-item" onclick="event.stopPropagation(); this.closest('.branch-menu-dropdown').open = false; promptArchiveBranch(${escapeHtml(JSON.stringify(branch.name))})">Archive</button>
+						<button type="button" class="branch-menu-item branch-menu-item-danger" onclick="event.stopPropagation(); this.closest('.branch-menu-dropdown').open = false; promptDeleteBranch(${escapeHtml(JSON.stringify(branch.name))}, ${isUnsyncedLocalBranch})">Delete</button>`
+					}
+				</div>
+			</details>`;
+		return `<article class="branch-card ${cardClass}"${cardAttrs}>
 			<div class="branch-card-top">
 				<span class="branch-name">${escapeHtml(branch.name)}</span>
 				<span class="branch-kind">${branchKind}</span>

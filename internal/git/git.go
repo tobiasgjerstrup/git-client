@@ -514,6 +514,38 @@ func DeleteGitBranch(repoPath string, branchName string, force bool) error {
 	return err
 }
 
+func ArchiveGitBranch(repoPath string, branchName string, deleteRemote bool) error {
+	currentBranch, err := runGitForRepo(repoPath, "branch", "--show-current")
+	if err != nil {
+		return err
+	}
+
+	if strings.TrimSpace(currentBranch) == branchName {
+		return fmt.Errorf("cannot archive the current branch")
+	}
+
+	if _, err := runGitForRepo(repoPath, "switch", branchName); err != nil {
+		return fmt.Errorf("failed to checkout branch %s: %w", branchName, err)
+	}
+
+	archiveName := "archive/" + branchName
+	if _, err := runGitForRepo(repoPath, "branch", "-m", archiveName); err != nil {
+		return fmt.Errorf("failed to rename branch to %s: %w", archiveName, err)
+	}
+
+	if _, err := runGitRemoteForRepo(repoPath, "push", "origin", archiveName); err != nil {
+		return fmt.Errorf("failed to push archived branch %s: %w", archiveName, err)
+	}
+
+	if deleteRemote {
+		if _, err := runGitRemoteForRepo(repoPath, "push", "origin", "--delete", branchName); err != nil {
+			return fmt.Errorf("failed to delete remote branch %s: %w", branchName, err)
+		}
+	}
+
+	return nil
+}
+
 func PushGitChanges(repoPath string) error {
 	_, err := runGitRemoteForRepo(repoPath, "push")
 	if err == nil {

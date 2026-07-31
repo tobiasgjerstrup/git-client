@@ -1,4 +1,4 @@
-import type { ThemeName } from "../../app/main";
+import type { ArchiveMethod, ThemeName } from "../../app/main";
 import type { RecentRepository } from "../recent/recentRepositories";
 
 type FrontendLogLevel = "debug" | "info" | "warn" | "error";
@@ -15,6 +15,7 @@ type ViewRenderContext = {
 	maxRecentRepositories: number;
 	gitCommand: string;
 	gitRemoteCommand: string;
+	archiveMethod: ArchiveMethod;
 };
 
 export function renderWelcomeShell(context: ViewRenderContext): string {
@@ -109,6 +110,16 @@ export function renderSettingsContent(context: ViewRenderContext): string {
 					onchange="setMaxRecentRepositories(Number(this.value))"
 				>
 			</div>
+		</div>
+	</div>
+
+	<div class="settings-card">
+		<div class="settings-label">Archive Method</div>
+		<div class="settings-row">
+			<span>Branch archiving behavior</span>
+			<button type="button" class="${context.archiveMethod === "none" ? "button-primary" : "button-secondary"}" onclick="setArchiveMethod('none')" title="No archive action will be performed. Clicking the Archive button will show a reminder to configure an archive method.">None</button>
+			<button type="button" class="${context.archiveMethod === "folder" ? "button-primary" : "button-secondary"}" onclick="setArchiveMethod('folder')" title="Renames the branch to archive/&lt;branch&gt;, pushes the renamed branch to origin, and deletes the original branch from the remote.">Archive Folder</button>
+			<button type="button" class="${context.archiveMethod === "folder-no-delete" ? "button-primary" : "button-secondary"}" onclick="setArchiveMethod('folder-no-delete')" title="Renames the branch to archive/&lt;branch&gt; and pushes the renamed branch to origin, but keeps the original branch on the remote.">Archive Folder Without Deletion</button>
 		</div>
 	</div>
 
