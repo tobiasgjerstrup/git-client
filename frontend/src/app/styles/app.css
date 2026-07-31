@@ -419,6 +419,36 @@
 	background: var(--theme-surface-danger);
 }
 
+.archived-branches-section {
+	margin-top: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.archived-branches-toggle {
+	padding: 8px 14px;
+	border: 1px dashed var(--theme-border-medium);
+	border-radius: 12px;
+	background: transparent;
+	color: var(--theme-text-info);
+	font-size: 0.78rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+.archived-branches-toggle:hover {
+	border-color: var(--theme-border-accent);
+	color: var(--theme-text);
+}
+
+.archived-branches-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
 .commit-card {
 	padding: 16px;
 	display: flex;

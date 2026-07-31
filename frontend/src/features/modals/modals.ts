@@ -21,6 +21,7 @@ type BranchArchiveConfirmModalState = {
 	branchName: string;
 	archiveName: string;
 	deleteRemote: boolean;
+	remote: boolean;
 } | null;
 
 type ModalManagerOptions = {
@@ -132,11 +133,12 @@ export class ModalManager {
 		return this.branchArchiveConfirmModalState;
 	}
 
-	openBranchArchiveConfirm(branchName: string, deleteRemote: boolean) {
+	openBranchArchiveConfirm(branchName: string, deleteRemote: boolean, remote?: boolean) {
 		this.branchArchiveConfirmModalState = {
 			branchName,
 			archiveName: "archive/" + branchName,
 			deleteRemote,
+			remote: !!remote,
 		};
 		this.updateBranchArchiveConfirmModal();
 	}
@@ -292,9 +294,16 @@ export class ModalManager {
 		if (this.branchArchiveConfirmModalState) {
 			modal.removeAttribute("hidden");
 			if (copyEl) {
-				copyEl.textContent = this.branchArchiveConfirmModalState.deleteRemote
-					? `This will rename "${this.branchArchiveConfirmModalState.branchName}" to "${this.branchArchiveConfirmModalState.archiveName}", push the archived branch to origin, and delete "${this.branchArchiveConfirmModalState.branchName}" from the remote.`
-					: `This will rename "${this.branchArchiveConfirmModalState.branchName}" to "${this.branchArchiveConfirmModalState.archiveName}" and push the archived branch to origin. The original branch will remain on the remote.`;
+				const state = this.branchArchiveConfirmModalState;
+				if (state.remote) {
+					copyEl.textContent = state.deleteRemote
+						? `This will push "${state.archiveName}" to origin from "${state.branchName}" and delete "${state.branchName}" from the remote.`
+						: `This will push "${state.archiveName}" to origin from "${state.branchName}". The original remote branch will remain.`;
+				} else {
+					copyEl.textContent = state.deleteRemote
+						? `This will rename "${state.branchName}" to "${state.archiveName}", push the archived branch to origin, and delete "${state.branchName}" from the remote.`
+						: `This will rename "${state.branchName}" to "${state.archiveName}" and push the archived branch to origin. The original branch will remain on the remote.`;
+				}
 			}
 			if (descriptionEl) {
 				descriptionEl.textContent = `${this.branchArchiveConfirmModalState.branchName} -> ${this.branchArchiveConfirmModalState.archiveName}`;

@@ -2,7 +2,7 @@ import './styles/style.css';
 import './styles/app.css';
 import './styles/defaults.css';
 
-import { getGitBranches, getGitCommits, gitDiff, gitFetch } from '../features/git/git';
+import { getGitBranches, getGitCommits, gitDiff, gitFetch, toggleArchivedBranches } from '../features/git/git';
 import { beginGitAction, endGitAction, isAnyGitActionPending } from '../features/git/gitActionState';
 import { getGitSelectionTargets, handleGitSelectionClick, handleGitSelectionKeydown, type GitSelectionAction } from '../features/git/gitSelectionState';
 import {
@@ -300,13 +300,13 @@ window.cancelDeleteBranch = function () {
 	modalManager.closeBranchDelete();
 }
 
-window.promptArchiveBranch = function (branchName: string) {
+window.promptArchiveBranch = function (branchName: string, isRemote?: boolean) {
 	if (activeArchiveMethod === "none") {
 		modalManager.openBranchArchiveInfo(branchName);
 		return;
 	}
 
-	modalManager.openBranchArchiveConfirm(branchName, activeArchiveMethod === "folder");
+	modalManager.openBranchArchiveConfirm(branchName, activeArchiveMethod === "folder", isRemote);
 }
 
 window.confirmArchiveBranch = async function () {
@@ -315,11 +315,15 @@ window.confirmArchiveBranch = async function () {
 		return;
 	}
 
-	const { branchName, deleteRemote } = state;
+	const { branchName, deleteRemote, remote } = state;
 	modalManager.closeBranchArchiveConfirm();
 
 	try {
-		await window.go.main.App.ArchiveGitBranch(branchName, deleteRemote);
+		if (remote) {
+			await window.go.main.App.ArchiveRemoteGitBranch(branchName, deleteRemote);
+		} else {
+			await window.go.main.App.ArchiveGitBranch(branchName, deleteRemote);
+		}
 		await window.refresh();
 	} catch (error) {
 		throw error;
@@ -343,6 +347,8 @@ window.toggleBranchContextMenu = function (cardEl: HTMLElement) {
 		clickedDropdown.open = !clickedDropdown.open;
 	}
 }
+
+window.toggleArchivedBranches = toggleArchivedBranches;
 
 /*
 window.refresh = async function () {
@@ -833,10 +839,11 @@ declare global {
 		promptDeleteBranch: (branchName: string, forceDelete?: boolean) => void;
 		confirmDeleteBranch: () => Promise<void>;
 		cancelDeleteBranch: () => void;
-		promptArchiveBranch: (branchName: string) => void;
+		promptArchiveBranch: (branchName: string, isRemote?: boolean) => void;
 		confirmArchiveBranch: () => Promise<void>;
 		cancelArchiveBranch: () => void;
 		toggleBranchContextMenu: (cardEl: HTMLElement) => void;
+		toggleArchivedBranches: () => void;
 		selectGitChange: (event: MouseEvent, key: string) => void;
 		stageSelectedGitFiles: () => Promise<void>;
 		unstageSelectedGitFiles: () => Promise<void>;

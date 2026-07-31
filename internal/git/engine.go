@@ -175,6 +175,10 @@ func (e *GitEngine) ArchiveBranch(repoPath, branch string, deleteRemote bool) er
 	return e.cli.ArchiveBranch(repoPath, branch, deleteRemote)
 }
 
+func (e *GitEngine) ArchiveRemoteBranch(repoPath, branch string, deleteRemote bool) error {
+	return e.cli.ArchiveRemoteBranch(repoPath, branch, deleteRemote)
+}
+
 func (e *GitEngine) Push(repoPath string) error {
 	return e.cli.Push(repoPath)
 }

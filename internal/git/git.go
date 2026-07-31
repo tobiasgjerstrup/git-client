@@ -546,6 +546,28 @@ func ArchiveGitBranch(repoPath string, branchName string, deleteRemote bool) err
 	return nil
 }
 
+func ArchiveRemoteGitBranch(repoPath string, remoteBranchName string, deleteRemote bool) error {
+	localName := strings.TrimPrefix(remoteBranchName, "origin/")
+
+	archiveName := "archive/" + localName
+
+	if _, err := runGitForRepo(repoPath, "fetch", "origin", localName); err != nil {
+		return fmt.Errorf("failed to fetch remote branch %s: %w", remoteBranchName, err)
+	}
+
+	if _, err := runGitRemoteForRepo(repoPath, "push", "origin", "origin/"+localName+":refs/heads/"+archiveName); err != nil {
+		return fmt.Errorf("failed to push archived branch %s: %w", archiveName, err)
+	}
+
+	if deleteRemote {
+		if _, err := runGitRemoteForRepo(repoPath, "push", "origin", "--delete", localName); err != nil {
+			return fmt.Errorf("failed to delete remote branch %s: %w", localName, err)
+		}
+	}
+
+	return nil
+}
+
 func PushGitChanges(repoPath string) error {
 	_, err := runGitRemoteForRepo(repoPath, "push")
 	if err == nil {

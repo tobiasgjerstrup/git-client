@@ -19,6 +19,7 @@ type GitService interface {
 	SwitchBranch(repoPath, branch string) error
 	DeleteBranch(repoPath, branch string, force bool) error
 	ArchiveBranch(repoPath, branch string, deleteRemote bool) error
+	ArchiveRemoteBranch(repoPath, branch string, deleteRemote bool) error
 	Push(repoPath string) error
 	Pull(repoPath string) error
 	Fetch(repoPath string) (string, error)

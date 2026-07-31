@@ -10,6 +10,10 @@ export function ArchiveGitBranch(arg1, arg2) {
   return window['go']['main']['App']['ArchiveGitBranch'](arg1, arg2);
 }
 
+export function ArchiveRemoteGitBranch(arg1, arg2) {
+  return window['go']['main']['App']['ArchiveRemoteGitBranch'](arg1, arg2);
+}
+
 export function CommitGitChanges(arg1) {
   return window['go']['main']['App']['CommitGitChanges'](arg1);
 }
