@@ -28,6 +28,8 @@ var (
 	gitRemoteCommandOriginal = "git"
 
 	gitCommandMu sync.RWMutex
+
+	maxStageFileSize int64
 )
 
 func resolveGitCommand(command string) (exe string, args []string, launcherPath string) {
@@ -108,6 +110,10 @@ func SetGitRemoteCommand(command string) {
 	gitRemoteCommand = exe
 	gitRemoteCommandArgs = args
 	gitRemoteLauncherPath = launcher
+}
+
+func SetMaxStageFileSize(size int64) {
+	maxStageFileSize = size
 }
 
 func CleanupGitCommand() {
@@ -386,6 +392,19 @@ func DiscardGitFile(repoPath string, filePath string) (string, error) {
 
 func StageGitFile(repoPath string, filePath string) (string, error) {
 	paths := splitGitActionPaths(filePath)
+	if maxStageFileSize > 0 {
+		for _, path := range paths {
+			absPath := filepath.Join(repoPath, path)
+			info, err := os.Stat(absPath)
+			if err != nil {
+				continue
+			}
+			if info.Size() > maxStageFileSize {
+				return "", fmt.Errorf("File %s is %s; exceeds max stage file size of %s",
+					path, formatBytes(info.Size()), formatBytes(maxStageFileSize))
+			}
+		}
+	}
 	args := append([]string{"add", "--all", "--"}, paths...)
 	return runGitForRepo(repoPath, args...)
 }
@@ -923,3 +942,16 @@ func getDefaultBranch(repoPath string) (string, error) {
 	return "", fmt.Errorf("default branch not found")
 }
 */
+
+func formatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.2f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}

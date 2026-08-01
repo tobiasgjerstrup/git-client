@@ -16,6 +16,7 @@ type ViewRenderContext = {
 	gitCommand: string;
 	gitRemoteCommand: string;
 	archiveMethod: ArchiveMethod;
+	maxStageFileSizeMb: number;
 };
 
 /**
@@ -122,6 +123,21 @@ export function renderSettingsContent(context: ViewRenderContext): string {
 					onchange="setMaxRecentRepositories(Number(this.value))"
 				>
 			</div>
+		</div>
+	</div>
+
+	<div class="settings-card">
+		<div class="settings-label">Staging</div>
+		<div class="settings-row">
+			<label for="MaxStageFileSizeInput">Max stage file size (MB, 0 = disabled)</label>
+			<input
+				id="MaxStageFileSizeInput"
+				type="number"
+				min="0"
+				step="1"
+				value="${context.maxStageFileSizeMb}"
+				onchange="setMaxStageFileSize(Number(this.value))"
+			>
 		</div>
 	</div>
 
