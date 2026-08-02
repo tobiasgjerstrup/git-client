@@ -41,11 +41,13 @@ const consoleVisibilityStorageKey = "git-client-console-visible";
 const gitCommandStorageKey = "git-client-git-command";
 const gitRemoteCommandStorageKey = "git-client-git-remote-command";
 const archiveMethodStorageKey = "git-client-archive-method";
+const maxStageFileSizeStorageKey = "git-client-max-stage-file-size";
 let activeTheme: ThemeName = "aurora";
 let isFrontendConsoleVisible = false;
 let gitCommand = "git";
 let gitRemoteCommand = "git";
 let activeArchiveMethod: ArchiveMethod = "none";
+let maxStageFileSizeMb = 0;
 
 let settingsModalOpen = false;
 let gitSelectionKeyListenerBound = false;
@@ -60,6 +62,7 @@ initializeTheme();
 initializeConsoleVisibility();
 initializeGitCommand();
 initializeArchiveMethod();
+initializeMaxStageFileSize();
 initializeFrontendConsole();
 
 window.pickFolder = async function () {
@@ -145,6 +148,13 @@ window.setGitRemoteCommand = function (command: string) {
 window.setArchiveMethod = function (method: ArchiveMethod) {
 	activeArchiveMethod = method;
 	window.localStorage.setItem(archiveMethodStorageKey, method);
+	updateSettingsModal();
+}
+
+window.setMaxStageFileSize = function (mb: number) {
+	maxStageFileSizeMb = normalizeMaxStageFileSizeMb(mb);
+	window.localStorage.setItem(maxStageFileSizeStorageKey, String(maxStageFileSizeMb));
+	window.go.main.App.SetMaxStageFileSize(Math.round(maxStageFileSizeMb * 1024 * 1024));
 	updateSettingsModal();
 }
 
@@ -437,6 +447,10 @@ window.pushGitChanges = async function () {
 		await window.go.main.App.PushGitChanges();
 	} catch (error) {
 		const message = toErrorMessage(error);
+		if (isLargeFilePushError(message)) {
+			window.alert("Push rejected: Some files exceed GitHub's file size limits.\n\nFiles larger than 100 MB are not allowed. Files over 50 MB trigger warnings.\n\nConsider Git LFS or reduce file sizes.");
+			return;
+		}
 		if (isNonFastForwardPushError(message)) {
 			const shouldPull = window.confirm("Push was rejected because your branch is behind origin. Pull now to integrate remote changes?");
 			if (shouldPull) {
@@ -571,6 +585,7 @@ function getViewRenderContext() {
 		gitCommand,
 		gitRemoteCommand,
 		archiveMethod: activeArchiveMethod,
+		maxStageFileSizeMb,
 	};
 }
 
@@ -645,6 +660,25 @@ function initializeArchiveMethod() {
 	}
 }
 
+function normalizeMaxStageFileSizeMb(value: number): number {
+	if (!Number.isSafeInteger(value) || value < 0) {
+		return 0;
+	}
+	return value;
+}
+
+function initializeMaxStageFileSize() {
+	const stored = window.localStorage.getItem(maxStageFileSizeStorageKey);
+	if (stored) {
+		const parsed = Number(stored);
+		maxStageFileSizeMb = normalizeMaxStageFileSizeMb(Number.isSafeInteger(parsed) ? parsed : NaN);
+		if (!Number.isSafeInteger(parsed) || parsed < 0) {
+			window.localStorage.setItem(maxStageFileSizeStorageKey, "0");
+		}
+		window.go.main.App.SetMaxStageFileSize(Math.round(maxStageFileSizeMb * 1024 * 1024));
+	}
+}
+
 /**
  * Updates the log console panel visibility to match the current frontend console setting.
  */
@@ -679,6 +713,15 @@ function toErrorMessage(error: unknown): string {
 function isNonFastForwardPushError(errorMessage: string): boolean {
 	const message = errorMessage.toLowerCase();
 	return message.includes("non-fast-forward") || message.includes("failed to push some refs");
+}
+
+function isLargeFilePushError(errorMessage: string): boolean {
+	const message = errorMessage.toLowerCase();
+	return message.includes("gh001") && (message.includes("larger than github") || message.includes("exceeds github"));
+}
+
+function isStageFileSizeError(errorMessage: string): boolean {
+	return errorMessage.toLowerCase().includes("exceeds max stage file size");
 }
 
 function isMergeConflictError(errorMessage: string): boolean {
@@ -742,6 +785,11 @@ async function runGitAction(
 	}
 
 	if (actionError) {
+		const message = toErrorMessage(actionError);
+		if (isStageFileSizeError(message)) {
+			window.alert(message + "\n\nYou can adjust or disable this limit in the Staging section of Settings.");
+			return;
+		}
 		throw actionError;
 	}
 	if (refreshError) {
@@ -897,6 +945,7 @@ declare global {
 		setGitCommand: (command: string) => void;
 		setGitRemoteCommand: (command: string) => void;
 		setArchiveMethod: (method: ArchiveMethod) => void;
+		setMaxStageFileSize: (mb: number) => void;
 		clearFrontendLogs: () => void;
 		toggleLogConsole: () => void;
     }

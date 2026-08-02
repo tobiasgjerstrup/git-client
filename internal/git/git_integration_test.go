@@ -595,3 +595,184 @@ func TestRealTree_roundtrip_through_ParseTree(t *testing.T) {
 		t.Errorf("README.md not found in tree: %+v", entries)
 	}
 }
+
+// --------------------------------------------------------------------------
+// StageGitFile size enforcement
+// --------------------------------------------------------------------------
+
+func TestStageGitFile_LimitDisabled_stagesNormally(t *testing.T) {
+	SetMaxStageFileSize(0)
+	repo, cleanup := setupTestRepo(t)
+	defer cleanup()
+
+	path := filepath.Join(repo, "normal.txt")
+	if err := os.WriteFile(path, []byte("hello"), 0644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	_, err := StageGitFile(repo, "normal.txt")
+	if err != nil {
+		t.Fatalf("StageGitFile with limit 0: %v", err)
+	}
+
+	status, err := GitStatus(repo)
+	if err != nil {
+		t.Fatalf("GitStatus: %v", err)
+	}
+	if !containsStaged(status, "normal.txt") {
+		t.Fatal("normal.txt should be staged when limit is 0")
+	}
+}
+
+func TestStageGitFile_underLimit_stagesNormally(t *testing.T) {
+	SetMaxStageFileSize(1024 * 1024) // 1 MB
+	repo, cleanup := setupTestRepo(t)
+	defer cleanup()
+
+	path := filepath.Join(repo, "small.txt")
+	if err := os.WriteFile(path, []byte("small file"), 0644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	_, err := StageGitFile(repo, "small.txt")
+	if err != nil {
+		t.Fatalf("StageGitFile under limit: %v", err)
+	}
+
+	status, err := GitStatus(repo)
+	if err != nil {
+		t.Fatalf("GitStatus: %v", err)
+	}
+	if !containsStaged(status, "small.txt") {
+		t.Fatal("small.txt should be staged when under limit")
+	}
+}
+
+func TestStageGitFile_exceedsLimit_rejectsAndUnstages(t *testing.T) {
+	SetMaxStageFileSize(10) // 10 bytes
+	repo, cleanup := setupTestRepo(t)
+	defer cleanup()
+
+	path := filepath.Join(repo, "big.txt")
+	if err := os.WriteFile(path, []byte("this file exceeds 10 bytes"), 0644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	_, err := StageGitFile(repo, "big.txt")
+	if err == nil {
+		t.Fatal("expected error for file exceeding limit, got nil")
+	}
+	if !strings.Contains(err.Error(), "exceeds max stage file size") {
+		t.Errorf("error should contain 'exceeds max stage file size', got: %v", err)
+	}
+
+	status, err := GitStatus(repo)
+	if err != nil {
+		t.Fatalf("GitStatus: %v", err)
+	}
+	if containsStaged(status, "big.txt") {
+		t.Fatal("big.txt should NOT be staged after rejection")
+	}
+}
+
+func TestStageGitFile_multiplePaths_rejectsAllIfOneExceeds(t *testing.T) {
+	SetMaxStageFileSize(10)
+	repo, cleanup := setupTestRepo(t)
+	defer cleanup()
+
+	small := filepath.Join(repo, "small.txt")
+	big := filepath.Join(repo, "big.txt")
+	os.WriteFile(small, []byte("ok"), 0644)
+	os.WriteFile(big, []byte("this is too large"), 0644)
+
+	_, err := StageGitFile(repo, "small.txt\tbig.txt")
+	if err == nil {
+		t.Fatal("expected error when one file exceeds limit")
+	}
+	if !strings.Contains(err.Error(), "exceeds max stage file size") {
+		t.Errorf("error should contain 'exceeds max stage file size', got: %v", err)
+	}
+
+	status, _ := GitStatus(repo)
+	if containsStaged(status, "small.txt") {
+		t.Fatal("small.txt should NOT be staged when batch is rejected")
+	}
+	if containsStaged(status, "big.txt") {
+		t.Fatal("big.txt should NOT be staged when batch is rejected")
+	}
+}
+
+func TestStageGitFile_deletedPath_stagesNormally(t *testing.T) {
+	SetMaxStageFileSize(10)
+	repo, cleanup := setupTestRepo(t)
+	defer cleanup()
+
+	// Delete a tracked file and stage the deletion
+	os.Remove(filepath.Join(repo, "README.md"))
+
+	_, err := StageGitFile(repo, "README.md")
+	if err != nil {
+		t.Fatalf("StageGitFile for deletion: %v", err)
+	}
+
+	status, err := GitStatus(repo)
+	if err != nil {
+		t.Fatalf("GitStatus: %v", err)
+	}
+	if !containsStaged(status, "README.md") {
+		t.Fatal("README.md deletion should be staged")
+	}
+}
+
+func TestStageGitFile_exactlyAtLimit_stagesNormally(t *testing.T) {
+	content := []byte("1234567890")
+	SetMaxStageFileSize(int64(len(content))) // exactly the file size
+	repo, cleanup := setupTestRepo(t)
+	defer cleanup()
+
+	path := filepath.Join(repo, "exact.txt")
+	if err := os.WriteFile(path, content, 0644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	_, err := StageGitFile(repo, "exact.txt")
+	if err != nil {
+		t.Fatalf("StageGitFile at exact limit: %v", err)
+	}
+}
+
+func TestStageGitFile_nonRegularFile_rejected(t *testing.T) {
+	SetMaxStageFileSize(0)
+	repo, cleanup := setupTestRepo(t)
+	defer cleanup()
+
+	dir := filepath.Join(repo, "subdir")
+	if err := os.Mkdir(dir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	_, err := StageGitFile(repo, "subdir")
+	if err == nil {
+		t.Fatal("expected error for directory")
+	}
+	if !strings.Contains(err.Error(), "non-regular file") {
+		t.Errorf("error should mention non-regular file, got: %v", err)
+	}
+}
+
+func containsStaged(status *GitStatusResult, path string) bool {
+	for _, f := range status.Files {
+		if len(f) < 3 {
+			continue
+		}
+		xy := f[:2]
+		if xy[0] == '.' || xy[0] == ' ' || xy[0] == '?' || xy[0] == '!' {
+			continue
+		}
+		filePath := strings.TrimSpace(f[2:])
+		if filePath == path {
+			return true
+		}
+	}
+	return false
+}

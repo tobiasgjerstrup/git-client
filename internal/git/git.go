@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -28,6 +29,8 @@ var (
 	gitRemoteCommandOriginal = "git"
 
 	gitCommandMu sync.RWMutex
+
+	maxStageFileSize atomic.Int64
 )
 
 func resolveGitCommand(command string) (exe string, args []string, launcherPath string) {
@@ -108,6 +111,13 @@ func SetGitRemoteCommand(command string) {
 	gitRemoteCommand = exe
 	gitRemoteCommandArgs = args
 	gitRemoteLauncherPath = launcher
+}
+
+func SetMaxStageFileSize(size int64) {
+	if size < 0 {
+		size = 0
+	}
+	maxStageFileSize.Store(size)
 }
 
 func CleanupGitCommand() {
@@ -386,8 +396,79 @@ func DiscardGitFile(repoPath string, filePath string) (string, error) {
 
 func StageGitFile(repoPath string, filePath string) (string, error) {
 	paths := splitGitActionPaths(filePath)
+	if len(paths) == 0 {
+		return "", fmt.Errorf("no file path provided for staging")
+	}
+
+	for _, path := range paths {
+		absPath := filepath.Join(repoPath, path)
+		info, err := os.Lstat(absPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return "", fmt.Errorf("cannot access %s: %w", path, err)
+		}
+		if !info.Mode().IsRegular() {
+			return "", fmt.Errorf("cannot stage non-regular file: %s", path)
+		}
+	}
+
 	args := append([]string{"add", "--all", "--"}, paths...)
-	return runGitForRepo(repoPath, args...)
+	_, err := runGitForRepo(repoPath, args...)
+	if err != nil {
+		return "", err
+	}
+
+	limit := maxStageFileSize.Load()
+	if limit <= 0 {
+		return "", nil
+	}
+
+	for _, path := range paths {
+		size, err := getStagedBlobSize(repoPath, path)
+		if err != nil {
+			for _, p := range paths {
+				runGitForRepo(repoPath, "reset", "HEAD", "--", p)
+			}
+			return "", fmt.Errorf("could not verify staged file size for %s: %w", path, err)
+		}
+		if size > limit {
+			for _, p := range paths {
+				runGitForRepo(repoPath, "reset", "HEAD", "--", p)
+			}
+			return "", fmt.Errorf("File %s is %s; exceeds max stage file size of %s",
+				path, formatBytes(size), formatBytes(limit))
+		}
+	}
+
+	return "", nil
+}
+
+func getStagedBlobSize(repoPath, path string) (int64, error) {
+	out, err := runGitForRepo(repoPath, "ls-files", "--stage", "--", path)
+	if err != nil {
+		return 0, err
+	}
+	out = strings.TrimSpace(out)
+	if out == "" {
+		return 0, nil
+	}
+	fields := strings.Fields(out)
+	if len(fields) < 2 {
+		return 0, fmt.Errorf("unexpected ls-files output: %s", out)
+	}
+	hash := fields[1]
+
+	out, err = runGitForRepo(repoPath, "cat-file", "-s", hash)
+	if err != nil {
+		return 0, err
+	}
+	size, err := strconv.ParseInt(strings.TrimSpace(out), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid cat-file -s output: %s", out)
+	}
+	return size, nil
 }
 
 func ResolveGitConflict(repoPath string, filePath string, strategy string) error {
@@ -923,3 +1004,16 @@ func getDefaultBranch(repoPath string) (string, error) {
 	return "", fmt.Errorf("default branch not found")
 }
 */
+
+func formatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.2f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}

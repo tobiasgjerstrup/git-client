@@ -70,6 +70,10 @@ func (a *App) SetGitRemoteCommand(command string) {
 	git.SetGitRemoteCommand(command)
 }
 
+func (a *App) SetMaxStageFileSize(size int64) {
+	git.SetMaxStageFileSize(size)
+}
+
 func (a *App) RunGitStatus() (*git.GitStatusResult, error) {
 	result, err := a.gitService.GetStatus(a.repoPath)
 	a.logBackendError("RunGitStatus", err)

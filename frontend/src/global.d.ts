@@ -14,6 +14,7 @@ declare global {
 		removeRecentRepository: (repoPath: string) => void;
 		setMaxRecentRepositories: (value: number) => void;
 		setFrontendConsoleEnabled: (enabled: boolean) => void;
+		setMaxStageFileSize: (mb: number) => void;
 		setFrontendLogMinimumLevel: (level: "debug" | "info" | "warn" | "error") => void;
 		stageGitFile: (filePath: string, changeKey?: string) => Promise<void>;
 		unstageGitFile: (filePath: string, changeKey?: string) => Promise<void>;
