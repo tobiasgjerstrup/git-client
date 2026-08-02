@@ -152,7 +152,7 @@ window.setArchiveMethod = function (method: ArchiveMethod) {
 }
 
 window.setMaxStageFileSize = function (mb: number) {
-	maxStageFileSizeMb = mb < 0 ? 0 : mb;
+	maxStageFileSizeMb = normalizeMaxStageFileSizeMb(mb);
 	window.localStorage.setItem(maxStageFileSizeStorageKey, String(maxStageFileSizeMb));
 	window.go.main.App.SetMaxStageFileSize(Math.round(maxStageFileSizeMb * 1024 * 1024));
 	updateSettingsModal();
@@ -660,14 +660,22 @@ function initializeArchiveMethod() {
 	}
 }
 
+function normalizeMaxStageFileSizeMb(value: number): number {
+	if (!Number.isSafeInteger(value) || value < 0) {
+		return 0;
+	}
+	return value;
+}
+
 function initializeMaxStageFileSize() {
 	const stored = window.localStorage.getItem(maxStageFileSizeStorageKey);
 	if (stored) {
-		const parsed = parseInt(stored, 10);
-		if (Number.isFinite(parsed) && parsed >= 0) {
-			maxStageFileSizeMb = parsed;
-			window.go.main.App.SetMaxStageFileSize(Math.round(maxStageFileSizeMb * 1024 * 1024));
+		const parsed = Number(stored);
+		maxStageFileSizeMb = normalizeMaxStageFileSizeMb(Number.isSafeInteger(parsed) ? parsed : NaN);
+		if (!Number.isSafeInteger(parsed) || parsed < 0) {
+			window.localStorage.setItem(maxStageFileSizeStorageKey, "0");
 		}
+		window.go.main.App.SetMaxStageFileSize(Math.round(maxStageFileSizeMb * 1024 * 1024));
 	}
 }
 
@@ -709,7 +717,7 @@ function isNonFastForwardPushError(errorMessage: string): boolean {
 
 function isLargeFilePushError(errorMessage: string): boolean {
 	const message = errorMessage.toLowerCase();
-	return message.includes("gh001") || message.includes("pre-receive hook declined");
+	return message.includes("gh001") && (message.includes("larger than github") || message.includes("exceeds github"));
 }
 
 function isStageFileSizeError(errorMessage: string): boolean {
