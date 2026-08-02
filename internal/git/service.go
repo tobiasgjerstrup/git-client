@@ -35,10 +35,12 @@ type GitService interface {
 var _ GitService = (*GitEngine)(nil)
 var _ GitService = (*GitCLI)(nil)
 
+// NewGitService creates a GitService backed by the GitEngine, with optional batching.
 func NewGitService(ctx context.Context, opts EngineOptions) GitService {
 	return NewGitEngine(ctx, opts)
 }
 
+// NewGitServiceCLIOnly creates a GitService that always executes git commands directly.
 func NewGitServiceCLIOnly() GitService {
 	return &GitCLI{}
 }

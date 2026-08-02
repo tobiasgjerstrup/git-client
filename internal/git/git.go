@@ -18,14 +18,14 @@ const gitPathPairSeparator = "\t"
 const maxUntrackedFileSize = 512 * 1024
 
 var (
-	gitCommand            = "git"
-	gitCommandArgs        []string
-	gitLauncherPath       string
-	gitCommandOriginal    = "git"
+	gitCommand         = "git"
+	gitCommandArgs     []string
+	gitLauncherPath    string
+	gitCommandOriginal = "git"
 
-	gitRemoteCommand      = "git"
-	gitRemoteCommandArgs  []string
-	gitRemoteLauncherPath string
+	gitRemoteCommand         = "git"
+	gitRemoteCommandArgs     []string
+	gitRemoteLauncherPath    string
 	gitRemoteCommandOriginal = "git"
 
 	gitCommandMu sync.RWMutex
@@ -33,6 +33,8 @@ var (
 	maxStageFileSize atomic.Int64
 )
 
+// resolveGitCommand maps a configured command name to an executable path and startup args.
+// On Windows this may create a PowerShell launcher wrapper if the requested command is a script.
 func resolveGitCommand(command string) (exe string, args []string, launcherPath string) {
 	exe = command
 	args = nil
@@ -75,6 +77,7 @@ func resolveGitCommand(command string) (exe string, args []string, launcherPath 
 	return
 }
 
+// SetGitCommand updates the local git executable used for normal repository operations.
 func SetGitCommand(command string) {
 	if command == "" {
 		return
@@ -94,6 +97,7 @@ func SetGitCommand(command string) {
 	gitLauncherPath = launcher
 }
 
+// SetGitRemoteCommand updates the git executable used for remote-only commands such as fetch and push.
 func SetGitRemoteCommand(command string) {
 	if command == "" {
 		return
@@ -113,6 +117,7 @@ func SetGitRemoteCommand(command string) {
 	gitRemoteLauncherPath = launcher
 }
 
+// SetMaxStageFileSize sets the maximum allowed size for files to stage.
 func SetMaxStageFileSize(size int64) {
 	if size < 0 {
 		size = 0
@@ -120,6 +125,7 @@ func SetMaxStageFileSize(size int64) {
 	maxStageFileSize.Store(size)
 }
 
+// CleanupGitCommand removes any temporary git launcher scripts that were created.
 func CleanupGitCommand() {
 	gitCommandMu.Lock()
 	defer gitCommandMu.Unlock()
@@ -167,6 +173,7 @@ type GitBranch struct {
 
 var defaultBranchCache = make(map[string]string)
 
+// GitStatus returns the current working tree status and branch metadata for the repository.
 func GitStatus(repoPath string) (*GitStatusResult, error) {
 	out, err := runGitForRepo(repoPath, "status", "--porcelain=v2", "--branch")
 	if err != nil {
@@ -202,6 +209,7 @@ func GitStatus(repoPath string) (*GitStatusResult, error) {
 	}, nil
 }
 
+// GitDiff returns the unstaged diff for the repository, including untracked file contents when available.
 func GitDiff(repoPath string) (*GitDiffResult, error) {
 	out, err := runGitForRepo(repoPath, "--no-pager", "diff")
 	if err != nil {
@@ -270,6 +278,7 @@ func GitDiff(repoPath string) (*GitDiffResult, error) {
 	return result, nil
 }
 
+// GitDiffStaged returns the staged diff for the repository.
 func GitDiffStaged(repoPath string) (*GitDiffResult, error) {
 	out, err := runGitForRepo(repoPath, "--no-pager", "diff", "--cached")
 	if err != nil {
@@ -279,6 +288,7 @@ func GitDiffStaged(repoPath string) (*GitDiffResult, error) {
 	return parseDiffOutput(out)
 }
 
+// parseDiffOutput converts raw git diff output into a structured GitDiffResult.
 func parseDiffOutput(out string) (*GitDiffResult, error) {
 	lines := strings.Split(out, "\n")
 	files := []GitDiffFile{}
@@ -334,6 +344,7 @@ func parseDiffOutput(out string) (*GitDiffResult, error) {
 	}, nil
 }
 
+// GetCommitHistory returns the list of recent commits for the repository.
 func GetCommitHistory(repoPath string) (*[]Commit, error) {
 	out, err := runGitForRepo(repoPath, "log", "--max-count=100", "--pretty=format:%H|%an|%ad|%s", "--date=iso")
 	if err != nil {
@@ -359,6 +370,8 @@ func GetCommitHistory(repoPath string) (*[]Commit, error) {
 	return &commits, nil
 }
 
+// DiscardGitFile restores a file to the current HEAD state or removes untracked files.
+// DiscardGitFile restores a file to HEAD or removes an untracked file from the working tree.
 func DiscardGitFile(repoPath string, filePath string) (string, error) {
 	paths := splitGitActionPaths(filePath)
 	if isRenameDiscardPayload(repoPath, paths) {
@@ -394,6 +407,7 @@ func DiscardGitFile(repoPath string, filePath string) (string, error) {
 	return "", nil
 }
 
+// StageGitFile stages the specified file paths in the repository index.
 func StageGitFile(repoPath string, filePath string) (string, error) {
 	paths := splitGitActionPaths(filePath)
 	if len(paths) == 0 {
@@ -445,6 +459,7 @@ func StageGitFile(repoPath string, filePath string) (string, error) {
 	return "", nil
 }
 
+// getStagedBlobSize returns the size of the blob object for a staged file.
 func getStagedBlobSize(repoPath, path string) (int64, error) {
 	out, err := runGitForRepo(repoPath, "ls-files", "--stage", "--", path)
 	if err != nil {
@@ -471,6 +486,7 @@ func getStagedBlobSize(repoPath, path string) (int64, error) {
 	return size, nil
 }
 
+// ResolveGitConflict resolves a merge conflict by checking out one side and staging the file.
 func ResolveGitConflict(repoPath string, filePath string, strategy string) error {
 	paths := splitGitActionPaths(filePath)
 	if len(paths) == 0 {
@@ -499,6 +515,7 @@ func ResolveGitConflict(repoPath string, filePath string, strategy string) error
 	return nil
 }
 
+// AbortGitMerge aborts an active merge and resets repository state.
 func AbortGitMerge(repoPath string) error {
 	if !isMergeInProgress(repoPath) {
 		return fmt.Errorf("no merge in progress")
@@ -512,6 +529,7 @@ func AbortGitMerge(repoPath string) error {
 	return err
 }
 
+// ContinueGitMerge completes the merge by committing when conflicts are resolved.
 func ContinueGitMerge(repoPath string) error {
 	if !isMergeInProgress(repoPath) {
 		return fmt.Errorf("no merge in progress")
@@ -521,11 +539,13 @@ func ContinueGitMerge(repoPath string) error {
 	return err
 }
 
+// isMergeInProgress returns true when a merge is currently in progress in the repository.
 func isMergeInProgress(repoPath string) bool {
 	_, err := os.Stat(filepath.Join(repoPath, ".git", "MERGE_HEAD"))
 	return err == nil
 }
 
+// CommitGitChanges creates a commit in the repository with the specified message.
 func CommitGitChanges(repoPath string, message string) error {
 	_, err := runGitForRepo(repoPath, "commit", "-m", message)
 	if err != nil {
@@ -534,6 +554,7 @@ func CommitGitChanges(repoPath string, message string) error {
 	return nil
 }
 
+// SwitchGitBranch checks out the given branch and creates a local tracking branch from origin if needed.
 func SwitchGitBranch(repoPath string, branchName string) error {
 	// Attempt to switch to branch
 	_, err := runGitForRepo(repoPath, "switch", branchName)
@@ -563,6 +584,7 @@ func SwitchGitBranch(repoPath string, branchName string) error {
 	return nil
 }
 
+// isMissingBranchSwitchError detects whether a branch switch failed because the requested branch does not exist.
 func isMissingBranchSwitchError(err error) bool {
 	if err == nil {
 		return false
@@ -675,6 +697,7 @@ func PushGitChanges(repoPath string) error {
 	return err
 }
 
+// PullGitChanges fetches and merges remote updates into the current branch.
 func PullGitChanges(repoPath string) error {
 	_, err := runGitRemoteForRepo(repoPath, "pull")
 	if err != nil {
@@ -683,12 +706,14 @@ func PullGitChanges(repoPath string) error {
 	return nil
 }
 
+// UnstageGitFile removes the specified path from the staging index.
 func UnstageGitFile(repoPath string, filePath string) (string, error) {
 	paths := splitGitActionPaths(filePath)
 	args := append([]string{"restore", "--staged", "--"}, paths...)
 	return runGitForRepo(repoPath, args...)
 }
 
+// splitGitActionPaths parses an action path string into one or more Git paths.
 func splitGitActionPaths(filePath string) []string {
 	parts := strings.Split(filePath, gitPathPairSeparator)
 	paths := make([]string, 0, len(parts))
@@ -705,6 +730,7 @@ func splitGitActionPaths(filePath string) []string {
 	return paths
 }
 
+// isRenameDiscardPayload detects whether a discard operation targets a renamed file pair.
 func isRenameDiscardPayload(repoPath string, paths []string) bool {
 	if len(paths) != 2 {
 		return false
@@ -729,6 +755,7 @@ func isRenameDiscardPayload(repoPath string, paths []string) bool {
 	return lines == 1 && strings.HasPrefix(strings.TrimSpace(out), "2 ")
 }
 
+// GetGitBranches returns local and remote branch metadata for the repository.
 func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 	var wg sync.WaitGroup
 	wg.Add(3)
@@ -859,14 +886,18 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 	return &orderedBranches, nil
 }
 
+// GitFetch executes a git fetch against the repository's configured remote.
 func GitFetch(repoPath string) (string, error) {
 	return runGitRemoteForRepo(repoPath, "fetch")
 }
 
+// GitPrune executes git fetch --prune to remove stale remote-tracking references.
 func GitPrune(repoPath string) (string, error) {
 	return runGitRemoteForRepo(repoPath, "fetch", "--prune")
 }
 
+// parsePorcelainV2FileLine parses a porcelain v2 status line and returns
+// the file path plus a success flag.
 func parsePorcelainV2FileLine(line string) (string, bool) {
 	switch {
 	case strings.HasPrefix(line, "1 "):
@@ -903,6 +934,7 @@ func parsePorcelainV2FileLine(line string) (string, bool) {
 	}
 }
 
+// runCommand executes a system command and returns its combined standard output and error.
 func runCommand(name string, args ...string) (string, error) {
 	start := time.Now()
 
@@ -919,6 +951,7 @@ func runCommand(name string, args ...string) (string, error) {
 	return string(out), nil
 }
 
+// runGitForRepo executes git with the configured local command against the specified repository.
 func runGitForRepo(repoPath string, args ...string) (string, error) {
 	if repoPath == "" {
 		return "", fmt.Errorf("no repository selected")
@@ -940,6 +973,7 @@ func runGitForRepo(repoPath string, args ...string) (string, error) {
 	return out, nil
 }
 
+// runGitRemoteForRepo executes git with the configured remote command against the specified repository.
 func runGitRemoteForRepo(repoPath string, args ...string) (string, error) {
 	if repoPath == "" {
 		return "", fmt.Errorf("no repository selected")
@@ -961,6 +995,7 @@ func runGitRemoteForRepo(repoPath string, args ...string) (string, error) {
 	return out, nil
 }
 
+// getDefaultBranch resolves the repository's default branch name from origin HEAD.
 func getDefaultBranch(repoPath string) (string, error) {
 	if branch, ok := defaultBranchCache[repoPath]; ok {
 		return branch, nil
@@ -1005,6 +1040,7 @@ func getDefaultBranch(repoPath string) (string, error) {
 }
 */
 
+// formatBytes formats a size in bytes into a human-readable string.
 func formatBytes(bytes int64) string {
 	const unit = 1024
 	if bytes < unit {

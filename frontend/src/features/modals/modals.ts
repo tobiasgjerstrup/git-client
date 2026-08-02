@@ -39,6 +39,9 @@ export class ModalManager {
 
 	constructor(private readonly options: ModalManagerOptions) {}
 
+	/**
+	 * Ensures the modal keyboard listener is attached exactly once.
+	 */
 	ensureKeyListener() {
 		if (this.modalKeyListenerBound) {
 			return;
@@ -48,6 +51,11 @@ export class ModalManager {
 		this.modalKeyListenerBound = true;
 	}
 
+	/**
+	 * Refreshes the current modal visibility and content state.
+	 *
+	 * @param isAnyGitActionPending - Function to decide whether discard actions should be disabled.
+	 */
 	refreshModals(isAnyGitActionPending: (filePath: string) => boolean) {
 		this.updateDiscardModal(isAnyGitActionPending);
 		this.updateBranchSwitchModal();
@@ -56,28 +64,54 @@ export class ModalManager {
 		this.updateBranchArchiveConfirmModal();
 	}
 
+	/**
+	 * Returns whether any modal is currently active.
+	 */
 	hasActiveModal() {
 		return !!this.getActiveModal();
 	}
 
+	/**
+	 * Retrieves the current discard modal state.
+	 */
 	getDiscardModalState() {
 		return this.discardModalState;
 	}
 
+	/**
+	 * Opens the discard confirmation modal for the given items.
+	 *
+	 * @param items - The list of files and descriptions to discard.
+	 * @param isAnyGitActionPending - Function used to disable the confirm button when needed.
+	 */
 	openDiscard(items: { filePath: string; description: string }[], isAnyGitActionPending: (filePath: string) => boolean) {
 		this.discardModalState = { items };
 		this.updateDiscardModal(isAnyGitActionPending);
 	}
 
+	/**
+	 * Closes the discard confirmation modal.
+	 *
+	 * @param isAnyGitActionPending - Function used to reset confirm button state.
+	 */
 	closeDiscard(isAnyGitActionPending: (filePath: string) => boolean) {
 		this.discardModalState = null;
 		this.updateDiscardModal(isAnyGitActionPending);
 	}
 
+	/**
+	 * Retrieves the current branch switch modal state.
+	 */
 	getBranchSwitchModalState() {
 		return this.branchSwitchModalState;
 	}
 
+	/**
+	 * Opens the branch switch confirmation modal.
+	 *
+	 * @param branchName - The branch to switch to.
+	 * @param isRemote - Whether the branch is a remote branch.
+	 */
 	openBranchSwitch(branchName: string, isRemote?: boolean) {
 		this.branchSwitchModalState = isRemote
 			? {
@@ -93,15 +127,27 @@ export class ModalManager {
 		this.updateBranchSwitchModal();
 	}
 
+	/**
+	 * Closes the branch switch modal.
+	 */
 	closeBranchSwitch() {
 		this.branchSwitchModalState = null;
 		this.updateBranchSwitchModal();
 	}
 
+	/**
+	 * Retrieves the current branch delete modal state.
+	 */
 	getBranchDeleteModalState() {
 		return this.branchDeleteModalState;
 	}
 
+	/**
+	 * Opens the branch delete confirmation modal.
+	 *
+	 * @param branchName - The branch to delete.
+	 * @param forceDelete - Whether deletion should be forced.
+	 */
 	openBranchDelete(branchName: string, forceDelete?: boolean) {
 		this.branchDeleteModalState = {
 			branchName,
@@ -110,11 +156,17 @@ export class ModalManager {
 		this.updateBranchDeleteModal();
 	}
 
+	/**
+	 * Closes the branch delete confirmation modal.
+	 */
 	closeBranchDelete() {
 		this.branchDeleteModalState = null;
 		this.updateBranchDeleteModal();
 	}
 
+	/**
+	 * Retrieves the current branch archive info modal state.
+	 */
 	getBranchArchiveInfoModalState() {
 		return this.branchArchiveInfoModalState;
 	}
@@ -124,15 +176,28 @@ export class ModalManager {
 		this.updateBranchArchiveInfoModal();
 	}
 
+	/**
+	 * Closes the branch archive info modal.
+	 */
 	closeBranchArchiveInfo() {
 		this.branchArchiveInfoModalState = null;
 		this.updateBranchArchiveInfoModal();
 	}
 
+	/**
+	 * Retrieves the current branch archive confirm modal state.
+	 */
 	getBranchArchiveConfirmModalState() {
 		return this.branchArchiveConfirmModalState;
 	}
 
+	/**
+	 * Opens the branch archive confirmation modal.
+	 *
+	 * @param branchName - The branch to archive.
+	 * @param deleteRemote - Whether to delete the original branch after archiving.
+	 * @param remote - Whether the target branch is remote.
+	 */
 	openBranchArchiveConfirm(branchName: string, deleteRemote: boolean, remote?: boolean) {
 		this.branchArchiveConfirmModalState = {
 			branchName,
@@ -143,11 +208,19 @@ export class ModalManager {
 		this.updateBranchArchiveConfirmModal();
 	}
 
+	/**
+	 * Closes the branch archive confirmation modal.
+	 */
 	closeBranchArchiveConfirm() {
 		this.branchArchiveConfirmModalState = null;
 		this.updateBranchArchiveConfirmModal();
 	}
 
+	/**
+	 * Updates discard modal visibility and button state.
+	 *
+	 * @param isAnyGitActionPending - Function to determine whether discard is allowed.
+	 */
 	private updateDiscardModal(isAnyGitActionPending: (filePath: string) => boolean) {
 		const modal = document.getElementById("DiscardModal");
 		if (!modal) {
@@ -174,6 +247,9 @@ export class ModalManager {
 		}
 	}
 
+	/**
+	 * Updates the branch switch modal contents and visibility.
+	 */
 	private updateBranchSwitchModal() {
 		const modal = document.getElementById("BranchSwitchModal");
 		if (!modal) {
@@ -222,6 +298,9 @@ export class ModalManager {
 		}
 	}
 
+	/**
+	 * Updates the branch delete modal contents and visibility.
+	 */
 	private updateBranchDeleteModal() {
 		const modal = document.getElementById("BranchDeleteModal");
 		if (!modal) {
@@ -268,6 +347,9 @@ export class ModalManager {
 		}
 	}
 
+	/**
+	 * Updates the branch archive info modal visibility.
+	 */
 	private updateBranchArchiveInfoModal() {
 		const modal = document.getElementById("BranchArchiveInfoModal");
 		if (!modal) {
@@ -282,6 +364,9 @@ export class ModalManager {
 		}
 	}
 
+	/**
+	 * Updates the branch archive confirmation modal visibility and content.
+	 */
 	private updateBranchArchiveConfirmModal() {
 		const modal = document.getElementById("BranchArchiveModal");
 		if (!modal) {
@@ -326,6 +411,9 @@ export class ModalManager {
 		}
 	}
 
+	/**
+	 * Handles keyboard navigation and Escape behavior for open modals.
+	 */
 	private handleModalKeydown = (event: KeyboardEvent) => {
 		const activeModal = this.getActiveModal();
 		if (!activeModal) {
@@ -407,6 +495,9 @@ export class ModalManager {
 		}
 	}
 
+	/**
+	 * Returns the currently active modal element, if any.
+	 */
 	private getActiveModal() {
 		if (this.discardModalState) {
 			return document.getElementById("DiscardModal") as HTMLElement | null;
@@ -435,6 +526,12 @@ export class ModalManager {
 		return null;
 	}
 
+	/**
+	 * Focuses the initial interactive element when a modal becomes visible.
+	 *
+	 * @param modalId - The DOM id of the modal.
+	 * @param preferredSelector - Optional selector for the preferred initial focus target.
+	 */
 	private focusModalInitialTarget(modalId: string, preferredSelector?: string) {
 		requestAnimationFrame(() => {
 			const modal = document.getElementById(modalId);
@@ -457,6 +554,12 @@ export class ModalManager {
 		modalCard?.focus({ preventScroll: true });
 	}
 
+	/**
+	 * Returns focusable elements within a modal so keyboard focus can be managed.
+	 *
+	 * @param modal - The modal element to search.
+	 * @returns The focusable elements inside the modal.
+	 */
 	private getModalFocusableElements(modal: HTMLElement) {
 		return Array.from(modal.querySelectorAll<HTMLElement>([
 			"button:not([disabled])",
@@ -469,6 +572,12 @@ export class ModalManager {
 	}
 }
 
+/**
+ * Converts a remote branch ref into a local branch name.
+ *
+ * @param remoteBranchName - The branch name with optional remote prefix.
+ * @returns The local branch name without the remote prefix.
+ */
 function toLocalBranchName(remoteBranchName: string) {
 	const slashIndex = remoteBranchName.indexOf("/");
 	if (slashIndex < 0 || slashIndex === remoteBranchName.length - 1) {
@@ -478,6 +587,12 @@ function toLocalBranchName(remoteBranchName: string) {
 	return remoteBranchName.slice(slashIndex + 1);
 }
 
+/**
+ * Formats a discard confirmation description for one or multiple files.
+ *
+ * @param items - The items being discarded.
+ * @returns The formatted description text.
+ */
 function formatDiscardDescription(items: { filePath: string; description: string }[]): string {
 	if (items.length === 1) {
 		return items[0].description;

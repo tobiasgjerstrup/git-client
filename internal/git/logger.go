@@ -22,28 +22,34 @@ var (
 	logHandler   LogHandler
 )
 
+// SetLogger registers a handler to receive structured log messages.
 func SetLogger(handler LogHandler) {
 	logHandlerMu.Lock()
 	defer logHandlerMu.Unlock()
 	logHandler = handler
 }
 
+// Debugf logs a debug-level formatted message if a logger is configured.
 func Debugf(format string, args ...any) {
 	logf(LogLevelDebug, format, args...)
 }
 
+// Infof logs an info-level formatted message if a logger is configured.
 func Infof(format string, args ...any) {
 	logf(LogLevelInfo, format, args...)
 }
 
+// Warnf logs a warning-level formatted message if a logger is configured.
 func Warnf(format string, args ...any) {
 	logf(LogLevelWarn, format, args...)
 }
 
+// Errorf logs an error-level formatted message if a logger is configured.
 func Errorf(format string, args ...any) {
 	logf(LogLevelError, format, args...)
 }
 
+// logf formats the message and dispatches it to the configured logger.
 func logf(level LogLevel, format string, args ...any) {
 	logHandlerMu.RLock()
 	handler := logHandler

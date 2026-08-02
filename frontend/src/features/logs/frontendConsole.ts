@@ -39,6 +39,9 @@ let minimumVisibleLevel: FrontendLogLevel = "debug";
 const entries: FrontendLogEntry[] = [];
 const originalConsoleMethods: Partial<Record<ConsoleMethodName, (...args: unknown[]) => void>> = {};
 
+/**
+ * Initializes the frontend console log panel and event listeners.
+ */
 export function initializeFrontendConsole() {
 	if (initialized) {
 		renderFrontendLogConsole();
@@ -58,27 +61,42 @@ export function initializeFrontendConsole() {
 	renderFrontendLogConsole();
 }
 
+/**
+ * Returns the configured minimum visible frontend log level.
+ */
 export function getFrontendLogMinimumLevel(): FrontendLogLevel {
 	return minimumVisibleLevel;
 }
 
+/**
+ * Sets the minimum visible frontend log level and re-renders the console.
+ */
 export function setFrontendLogMinimumLevel(level: FrontendLogLevel) {
 	minimumVisibleLevel = level;
 	window.localStorage.setItem(LOG_MIN_LEVEL_STORAGE_KEY, level);
 	renderFrontendLogConsole();
 }
 
+/**
+ * Toggles the frontend log console collapsed state.
+ */
 export function toggleFrontendLogConsole() {
 	collapsed = !collapsed;
 	window.localStorage.setItem(LOG_PANEL_STORAGE_KEY, collapsed ? "1" : "0");
 	renderFrontendLogConsole();
 }
 
+/**
+ * Clears all entries from the frontend log console.
+ */
 export function clearFrontendLogConsole() {
 	entries.length = 0;
 	renderFrontendLogConsole();
 }
 
+/**
+ * Re-renders the frontend log console panel with the current entries.
+ */
 export function renderFrontendLogConsole() {
 	const body = document.getElementById("LogConsoleBody");
 	const count = document.getElementById("LogConsoleCount");
@@ -122,37 +140,56 @@ export function renderFrontendLogConsole() {
 	body.innerHTML = renderedEntries;
 }
 
+/**
+ * Determines whether a log entry should be visible based on the current minimum level.
+ *
+ * @param level - The entry severity level.
+ * @returns True when the level is visible in the current filter.
+ */
 function shouldShowEntry(level: FrontendLogLevel): boolean {
-	return levelPriority[level] >= levelPriority[minimumVisibleLevel];
+    return levelPriority[level] >= levelPriority[minimumVisibleLevel];
 }
 
+/**
+ * Reads the minimum frontend log level from local storage.
+ *
+ * @returns The configured minimum log level.
+ */
 function readMinimumLogLevel(): FrontendLogLevel {
-	const stored = window.localStorage.getItem(LOG_MIN_LEVEL_STORAGE_KEY);
-	if (stored === "debug" || stored === "info" || stored === "warn" || stored === "error") {
-		return stored;
-	}
+    const stored = window.localStorage.getItem(LOG_MIN_LEVEL_STORAGE_KEY);
+    if (stored === "debug" || stored === "info" || stored === "warn" || stored === "error") {
+        return stored;
+    }
 
-	return "debug";
+    return "debug";
 }
 
+/**
+ * Patches the browser console methods to forward logs into the frontend console.
+ */
 function patchConsole() {
-	const methods: ConsoleMethodName[] = ["log", "info", "debug", "warn", "error"];
+    const methods: ConsoleMethodName[] = ["log", "info", "debug", "warn", "error"];
 
-	for (const method of methods) {
-		const original = console[method].bind(console);
-		originalConsoleMethods[method] = original;
+    for (const method of methods) {
+        const original = console[method].bind(console);
+        originalConsoleMethods[method] = original;
 
-		console[method] = (...args: unknown[]) => {
-			appendEntry(levelByMethod[method], args);
-			original(...args);
-		};
-	}
+        console[method] = (...args: unknown[]) => {
+            appendEntry(levelByMethod[method], args);
+            original(...args);
+        };
+    }
 }
 
+/**
+ * Handles uncaught window errors and logs them to the frontend console.
+ *
+ * @param event - The browser error event.
+ */
 function handleWindowError(event: ErrorEvent) {
-	const location = [event.filename, event.lineno, event.colno]
-		.filter((value) => value !== undefined && value !== null && value !== "")
-		.join(":");
+    const location = [event.filename, event.lineno, event.colno]
+        .filter((value) => value !== undefined && value !== null && value !== "")
+        .join(":");
 
 	if (event.error instanceof Error) {
 		const stack = event.error.stack ? `\n${event.error.stack}` : "";
@@ -164,34 +201,53 @@ function handleWindowError(event: ErrorEvent) {
 	appendEntry("error", [`${prefix}${event.message}`]);
 }
 
+/**
+ * Handles unhandled promise rejections and logs them to the frontend console.
+ *
+ * @param event - The promise rejection event.
+ */
 function handleUnhandledRejection(event: PromiseRejectionEvent) {
-	appendEntry("error", [`Unhandled promise rejection: ${formatValue(event.reason)}`]);
+    appendEntry("error", [`Unhandled promise rejection: ${formatValue(event.reason)}`]);
 }
 
+/**
+ * Binds to backend log events emitted from the Wails runtime.
+ */
 function bindBackendLogListener() {
-	if (backendLogListenerBound) {
-		return;
-	}
+    if (backendLogListenerBound) {
+        return;
+    }
 
-	EventsOn(BACKEND_LOG_EVENT_NAME, (payload: unknown) => {
-		handleBackendLogPayload(payload);
-	});
+    EventsOn(BACKEND_LOG_EVENT_NAME, (payload: unknown) => {
+        handleBackendLogPayload(payload);
+    });
 
-	backendLogListenerBound = true;
+    backendLogListenerBound = true;
 }
 
+/**
+ * Processes backend log payloads and converts them into frontend entries.
+ *
+ * @param payload - The raw event payload from the backend.
+ */
 function handleBackendLogPayload(payload: unknown) {
-	const entry = normalizeBackendLogPayload(payload);
-	appendEntry(entry.level, [entry.message], entry.timestamp);
+    const entry = normalizeBackendLogPayload(payload);
+    appendEntry(entry.level, [entry.message], entry.timestamp);
 }
 
+/**
+ * Normalizes backend log payload structures into frontend log entry values.
+ *
+ * @param payload - The raw payload that may contain level, message, timestamp, and source.
+ * @returns The normalized log entry data.
+ */
 function normalizeBackendLogPayload(payload: unknown): { level: FrontendLogLevel; message: string; timestamp?: string } {
-	if (!payload || typeof payload !== "object") {
-		return {
-			level: "info",
-			message: `[backend] ${formatValue(payload)}`,
-		};
-	}
+    if (!payload || typeof payload !== "object") {
+        return {
+            level: "info",
+            message: `[backend] ${formatValue(payload)}`,
+        };
+    }
 
 	const data = payload as {
 		level?: unknown;
@@ -212,63 +268,88 @@ function normalizeBackendLogPayload(payload: unknown): { level: FrontendLogLevel
 	};
 }
 
+/**
+ * Normalizes a backend severity value into a frontend log level.
+ *
+ * @param level - The raw severity value from the backend.
+ * @returns The normalized frontend log level.
+ */
 function normalizeLevel(level: unknown): FrontendLogLevel {
-	if (typeof level !== "string") {
-		return "info";
-	}
+    if (typeof level !== "string") {
+        return "info";
+    }
 
-	const normalized = level.toLowerCase();
-	if (normalized === "debug") {
-		return "debug";
-	}
-	if (normalized === "warn" || normalized === "warning") {
-		return "warn";
-	}
-	if (normalized === "error" || normalized === "fatal") {
-		return "error";
-	}
+    const normalized = level.toLowerCase();
+    if (normalized === "debug") {
+        return "debug";
+    }
+    if (normalized === "warn" || normalized === "warning") {
+        return "warn";
+    }
+    if (normalized === "error" || normalized === "fatal") {
+        return "error";
+    }
 
-	return "info";
+    return "info";
 }
 
+/**
+ * Appends a new log entry to the frontend log buffer.
+ *
+ * @param level - The log level of the new entry.
+ * @param args - The logged values.
+ * @param timestampIso - Optional ISO timestamp string.
+ */
 function appendEntry(level: FrontendLogLevel, args: unknown[], timestampIso?: string) {
-	const message = args.map((arg) => formatValue(arg)).join(" ").trim();
-	const entry: FrontendLogEntry = {
-		id: nextLogId++,
-		level,
-		timestamp: resolveTimestampLabel(timestampIso),
-		message: message || "(empty message)",
-	};
+    const message = args.map((arg) => formatValue(arg)).join(" ").trim();
+    const entry: FrontendLogEntry = {
+        id: nextLogId++,
+        level,
+        timestamp: resolveTimestampLabel(timestampIso),
+        message: message || "(empty message)",
+    };
 
-	entries.push(entry);
-	if (entries.length > MAX_LOG_ENTRIES) {
-		entries.splice(0, entries.length - MAX_LOG_ENTRIES);
-	}
+    entries.push(entry);
+    if (entries.length > MAX_LOG_ENTRIES) {
+        entries.splice(0, entries.length - MAX_LOG_ENTRIES);
+    }
 
-	renderFrontendLogConsole();
+    renderFrontendLogConsole();
 }
 
+/**
+ * Resolves a timestamp label for display from an optional ISO timestamp.
+ *
+ * @param timestampIso - Optional ISO timestamp string.
+ * @returns The formatted local time label.
+ */
 function resolveTimestampLabel(timestampIso?: string): string {
-	if (!timestampIso) {
-		return new Date().toLocaleTimeString();
-	}
+    if (!timestampIso) {
+        return new Date().toLocaleTimeString();
+    }
 
-	const parsed = new Date(timestampIso);
-	if (Number.isNaN(parsed.getTime())) {
-		return new Date().toLocaleTimeString();
-	}
+    const parsed = new Date(timestampIso);
+    if (Number.isNaN(parsed.getTime())) {
+        return new Date().toLocaleTimeString();
+    }
 
-	return parsed.toLocaleTimeString();
+    return parsed.toLocaleTimeString();
 }
 
+/**
+ * Converts a value into a readable string for logging.
+ *
+ * @param value - The value to format.
+ * @returns The formatted string representation.
+ */
 function formatValue(value: unknown): string {
-	if (value instanceof Error) {
-		return value.stack || `${value.name}: ${value.message}`;
-	}
+    if (value instanceof Error) {
+        return value.stack || `${value.name}: ${value.message}`;
+    }
 
-	if (typeof value === "string") {
-		return value;
-	}
+    if (typeof value === "string") {
+        return value;
+    }
 
 	if (typeof value === "undefined") {
 		return "undefined";
@@ -285,6 +366,12 @@ function formatValue(value: unknown): string {
 	}
 }
 
+/**
+ * Escapes HTML special characters in a string.
+ *
+ * @param value - The string to escape.
+ * @returns The escaped string.
+ */
 function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, "&amp;")

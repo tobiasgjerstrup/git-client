@@ -187,6 +187,9 @@ export function renderSettingsContent(context: ViewRenderContext): string {
 	</div>`;
 }
 
+/**
+ * Renders the recent repository list HTML for the settings or welcome view.
+ */
 export function renderRecentRepositoriesHtml(context: Pick<ViewRenderContext, "recentRepositories" | "openedFolder">): string {
 	const recentRepositoriesHtml = context.recentRepositories.length > 0
 		? context.recentRepositories.map((repository) => `
@@ -201,6 +204,12 @@ export function renderRecentRepositoriesHtml(context: Pick<ViewRenderContext, "r
 	return recentRepositoriesHtml;
 }
 
+/**
+ * Escapes HTML special characters in a string.
+ *
+ * @param value - The value to escape.
+ * @returns The escaped string.
+ */
 function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, "&amp;")

@@ -15,10 +15,10 @@ import (
 )
 
 var (
-	ErrBatchClosed      = errors.New("batch process is closed")
-	ErrObjectNotFound   = errors.New("object not found")
-	ErrBatchUnhealthy   = errors.New("batch process is unhealthy")
-	ErrObjectTooLarge   = errors.New("object exceeds maximum size")
+	ErrBatchClosed    = errors.New("batch process is closed")
+	ErrObjectNotFound = errors.New("object not found")
+	ErrBatchUnhealthy = errors.New("batch process is unhealthy")
+	ErrObjectTooLarge = errors.New("object exceeds maximum size")
 )
 
 const (
@@ -45,16 +45,17 @@ type BatchProcess struct {
 	pendingMu sync.Mutex
 	pending   []*pendingReq
 
-	ctx      context.Context
-	cancel   context.CancelFunc
-	wg       sync.WaitGroup
-	closed   atomic.Bool
+	ctx       context.Context
+	cancel    context.CancelFunc
+	wg        sync.WaitGroup
+	closed    atomic.Bool
 	unhealthy atomic.Bool
 
 	maxObjectSize int64
 	repoPath      string
 }
 
+// NewBatchProcess constructs a batch process controller for reading git objects.
 func NewBatchProcess(maxObjectSize int64) *BatchProcess {
 	if maxObjectSize <= 0 {
 		maxObjectSize = defaultMaxObjectSize
@@ -64,6 +65,7 @@ func NewBatchProcess(maxObjectSize int64) *BatchProcess {
 	}
 }
 
+// Start launches the git cat-file --batch process for the repository.
 func (bp *BatchProcess) Start(ctx context.Context, repoPath string) error {
 	bp.repoPath = repoPath
 
@@ -106,6 +108,7 @@ func (bp *BatchProcess) Start(ctx context.Context, repoPath string) error {
 	return nil
 }
 
+// Request sends an object spec to the batch process and waits for the resulting object.
 func (bp *BatchProcess) Request(ctx context.Context, spec string) (*Object, error) {
 	if bp.closed.Load() {
 		return nil, ErrBatchClosed
@@ -145,14 +148,17 @@ func (bp *BatchProcess) Request(ctx context.Context, spec string) (*Object, erro
 	}
 }
 
+// IsHealthy reports whether the batch process is ready to service requests.
 func (bp *BatchProcess) IsHealthy() bool {
 	return !bp.closed.Load() && !bp.unhealthy.Load()
 }
 
+// RepoPath returns the repository path currently attached to this batch process.
 func (bp *BatchProcess) RepoPath() string {
 	return bp.repoPath
 }
 
+// Close gracefully shuts down the batch process and cancels pending requests.
 func (bp *BatchProcess) Close() error {
 	if bp.closed.Swap(true) {
 		return nil
@@ -195,6 +201,7 @@ func (bp *BatchProcess) Close() error {
 	return nil
 }
 
+// readStdout processes stdout lines from the git cat-file batch process and routes object responses.
 func (bp *BatchProcess) readStdout() {
 	defer bp.wg.Done()
 
@@ -268,6 +275,7 @@ func (bp *BatchProcess) readStdout() {
 	}
 }
 
+// readStderr consumes stderr from the batch process to avoid blocking and detect failures.
 func (bp *BatchProcess) readStderr() {
 	defer bp.wg.Done()
 
@@ -279,6 +287,7 @@ func (bp *BatchProcess) readStderr() {
 	}
 }
 
+// deliverResponse dispatches a batch response to the next pending request.
 func (bp *BatchProcess) deliverResponse(obj *Object, err error) {
 	bp.pendingMu.Lock()
 	if len(bp.pending) == 0 {
@@ -299,6 +308,7 @@ func (bp *BatchProcess) deliverResponse(obj *Object, err error) {
 	}
 }
 
+// Ping verifies that the batch process can accept requests within a given timeout.
 func (bp *BatchProcess) Ping(timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(bp.ctx, timeout)
 	defer cancel()
