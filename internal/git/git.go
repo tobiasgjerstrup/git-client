@@ -557,7 +557,7 @@ func CommitGitChanges(repoPath string, message string) error {
 // SwitchGitBranch checks out the given branch and creates a local tracking branch from origin if needed.
 func SwitchGitBranch(repoPath string, branchName string) error {
 	// Attempt to switch to branch
-	_, err := runGitForRepo(repoPath, "switch", branchName)
+	_, err := runGitForRepoQuiet(repoPath, "switch", branchName)
 	if err == nil {
 		return nil
 	}
@@ -571,7 +571,7 @@ func SwitchGitBranch(repoPath string, branchName string) error {
 	}
 
 	// If a matching remote branch exists, create a local tracking branch.
-	if _, remoteBranchErr := runGitForRepo(repoPath, "show-ref", "--verify", "--quiet", "refs/remotes/origin/"+branchName); remoteBranchErr == nil {
+	if _, remoteBranchErr := runGitForRepoQuiet(repoPath, "show-ref", "--verify", "--quiet", "refs/remotes/origin/"+branchName); remoteBranchErr == nil {
 		_, err = runGitForRepo(repoPath, "switch", "-c", branchName, "--track", "origin/"+branchName)
 	} else {
 		_, err = runGitForRepo(repoPath, "switch", "-c", branchName)
@@ -680,7 +680,7 @@ func ArchiveRemoteGitBranch(repoPath string, remoteBranchName string, deleteRemo
 // PushGitChanges pushes the repository's changes to its configured remote.
 // If the current branch has no upstream, it sets the branch to track origin and retries the push.
 func PushGitChanges(repoPath string) error {
-	_, err := runGitRemoteForRepo(repoPath, "push")
+	_, err := runGitRemoteForRepoQuiet(repoPath, "push")
 	if err == nil {
 		return nil
 	}
@@ -951,6 +951,24 @@ func runCommand(name string, args ...string) (string, error) {
 	return string(out), nil
 }
 
+// runCommandQuiet is like runCommand but logs failures at debug level instead of error.
+// Use this when non-zero exits are expected and handled by the caller.
+func runCommandQuiet(name string, args ...string) (string, error) {
+	start := time.Now()
+
+	cmd := exec.Command(name, args...)
+	cmd.SysProcAttr = newSysProcAttr()
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		exitErr := fmt.Errorf("Ran command in %v, but it failed: %s %s %w: %s", time.Since(start), name, strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+		Debugf("%v", exitErr)
+		return "", exitErr
+	}
+	Debugf("Ran command in %v: %s %s", time.Since(start), name, strings.Join(args, " "))
+	return string(out), nil
+}
+
 // runGitForRepo executes git with the configured local command against the specified repository.
 func runGitForRepo(repoPath string, args ...string) (string, error) {
 	if repoPath == "" {
@@ -973,6 +991,27 @@ func runGitForRepo(repoPath string, args ...string) (string, error) {
 	return out, nil
 }
 
+// runGitForRepoQuiet is like runGitForRepo but uses runCommandQuiet so failures are logged at debug level.
+func runGitForRepoQuiet(repoPath string, args ...string) (string, error) {
+	if repoPath == "" {
+		return "", fmt.Errorf("no repository selected")
+	}
+
+	gitCommandMu.RLock()
+	cmd := gitCommand
+	cmdArgs := gitCommandArgs
+	gitCommandMu.RUnlock()
+
+	commandArgs := append(cmdArgs, "-C", repoPath)
+	commandArgs = append(commandArgs, args...)
+	out, err := runCommandQuiet(cmd, commandArgs...)
+	if err != nil {
+		return "", err
+	}
+
+	return out, nil
+}
+
 // runGitRemoteForRepo executes git with the configured remote command against the specified repository.
 func runGitRemoteForRepo(repoPath string, args ...string) (string, error) {
 	if repoPath == "" {
@@ -988,6 +1027,27 @@ func runGitRemoteForRepo(repoPath string, args ...string) (string, error) {
 	commandArgs = append(commandArgs, args...)
 	// Debugf("Running remote git [%s]: %s %s", original, cmd, strings.Join(commandArgs, " "))
 	out, err := runCommand(cmd, commandArgs...)
+	if err != nil {
+		return "", err
+	}
+
+	return out, nil
+}
+
+// runGitRemoteForRepoQuiet is like runGitRemoteForRepo but uses runCommandQuiet so failures are logged at debug level.
+func runGitRemoteForRepoQuiet(repoPath string, args ...string) (string, error) {
+	if repoPath == "" {
+		return "", fmt.Errorf("no repository selected")
+	}
+
+	gitCommandMu.RLock()
+	cmd := gitRemoteCommand
+	cmdArgs := gitRemoteCommandArgs
+	gitCommandMu.RUnlock()
+
+	commandArgs := append(cmdArgs, "-C", repoPath)
+	commandArgs = append(commandArgs, args...)
+	out, err := runCommandQuiet(cmd, commandArgs...)
 	if err != nil {
 		return "", err
 	}
