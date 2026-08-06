@@ -33,8 +33,9 @@ var (
 	maxStageFileSize atomic.Int64
 )
 
-// resolveGitCommand maps a configured command name to an executable path and startup args.
-// On Windows this may create a PowerShell launcher wrapper if the requested command is a script.
+// resolveGitCommand resolves a Git command to an executable and arguments, using
+// Windows-specific script fallbacks or a temporary PowerShell launcher when needed.
+// It returns the launcher's path when a temporary launcher is created.
 func resolveGitCommand(command string) (exe string, args []string, launcherPath string) {
 	exe = command
 	args = nil
@@ -97,7 +98,8 @@ func SetGitCommand(command string) {
 	gitLauncherPath = launcher
 }
 
-// SetGitRemoteCommand updates the git executable used for remote-only commands such as fetch and push.
+// SetGitRemoteCommand configures the Git command used for remote repository operations. 
+// An empty command leaves the current configuration unchanged.
 func SetGitRemoteCommand(command string) {
 	if command == "" {
 		return
@@ -117,7 +119,8 @@ func SetGitRemoteCommand(command string) {
 	gitRemoteLauncherPath = launcher
 }
 
-// SetMaxStageFileSize sets the maximum allowed size for files to stage.
+// SetMaxStageFileSize sets the maximum allowed size for a staged file. Negative
+// sizes are treated as zero.
 func SetMaxStageFileSize(size int64) {
 	if size < 0 {
 		size = 0
@@ -125,7 +128,7 @@ func SetMaxStageFileSize(size int64) {
 	maxStageFileSize.Store(size)
 }
 
-// CleanupGitCommand removes any temporary git launcher scripts that were created.
+// CleanupGitCommand removes temporary launchers created for configured Git commands.
 func CleanupGitCommand() {
 	gitCommandMu.Lock()
 	defer gitCommandMu.Unlock()
@@ -407,7 +410,7 @@ func DiscardGitFile(repoPath string, filePath string) (string, error) {
 	return "", nil
 }
 
-// StageGitFile stages the specified file paths in the repository index.
+// If size verification fails or a staged file exceeds the limit, all specified paths are unstaged.
 func StageGitFile(repoPath string, filePath string) (string, error) {
 	paths := splitGitActionPaths(filePath)
 	if len(paths) == 0 {
@@ -459,7 +462,8 @@ func StageGitFile(repoPath string, filePath string) (string, error) {
 	return "", nil
 }
 
-// getStagedBlobSize returns the size of the blob object for a staged file.
+// getStagedBlobSize returns the size in bytes of a file's staged Git blob.
+// It returns zero when the file has no staged entry.
 func getStagedBlobSize(repoPath, path string) (int64, error) {
 	out, err := runGitForRepo(repoPath, "ls-files", "--stage", "--", path)
 	if err != nil {
@@ -486,7 +490,7 @@ func getStagedBlobSize(repoPath, path string) (int64, error) {
 	return size, nil
 }
 
-// ResolveGitConflict resolves a merge conflict by checking out one side and staging the file.
+// ResolveGitConflict resolves merge conflicts for the specified paths using the selected strategy and stages the results.
 func ResolveGitConflict(repoPath string, filePath string, strategy string) error {
 	paths := splitGitActionPaths(filePath)
 	if len(paths) == 0 {
@@ -1081,24 +1085,7 @@ func getDefaultBranch(repoPath string) (string, error) {
 	return "", fmt.Errorf("default branch not found")
 }
 
-/*
-func getDefaultBranch(repoPath string) (string, error) {
-	out, err := runGitForRepo(repoPath, "remote", "show", "origin")
-	if err != nil {
-		return "", err
-	}
-
-	lines := strings.Split(out, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "HEAD branch:") {
-			return strings.TrimSpace(strings.TrimPrefix(line, "HEAD branch:")), nil
-		}
-	}
-
-	return "", fmt.Errorf("default branch not found")
-}
-*/
+// formatBytes formats a byte count using binary units with two decimal places for values of 1 KiB or larger.
 
 // formatBytes formats a size in bytes into a human-readable string.
 func formatBytes(bytes int64) string {

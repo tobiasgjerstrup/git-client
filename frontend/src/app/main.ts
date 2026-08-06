@@ -875,10 +875,10 @@ function initializeArchiveMethod() {
 }
 
 /**
- * Normalizes and validates the configured max stage file size in megabytes.
+ * Normalizes a maximum staging-file size value to a valid number of megabytes.
  *
- * @param value - The user-entered size value.
- * @returns A non-negative integer or zero.
+ * @param value - The configured maximum staging-file size in megabytes
+ * @returns The input value when it is a nonnegative safe integer, or `0` otherwise
  */
 function normalizeMaxStageFileSizeMb(value: number): number {
 	if (!Number.isSafeInteger(value) || value < 0) {
@@ -888,7 +888,9 @@ function normalizeMaxStageFileSizeMb(value: number): number {
 }
 
 /**
- * Loads persisted max stage file size and updates backend configuration.
+ * Initializes the maximum staging-file size from persisted settings.
+ *
+ * Invalid stored values are reset to zero, and the normalized limit is applied to the backend in bytes.
  */
 function initializeMaxStageFileSize() {
 	const stored = window.localStorage.getItem(maxStageFileSizeStorageKey);
@@ -945,7 +947,10 @@ function toErrorMessage(error: unknown): string {
 }
 
 /**
- * Detects non-fast-forward push errors for Git push failures.
+ * Identifies Git push errors caused by a non-fast-forward update.
+ *
+ * @param errorMessage - The error message to inspect
+ * @returns `true` if the message indicates a non-fast-forward push failure, `false` otherwise.
  */
 function isNonFastForwardPushError(errorMessage: string): boolean {
 	const message = errorMessage.toLowerCase();
@@ -953,7 +958,10 @@ function isNonFastForwardPushError(errorMessage: string): boolean {
 }
 
 /**
- * Detects GitHub large file push rejection errors.
+ * Determines whether an error message indicates that GitHub rejected a file for exceeding its size limit.
+ *
+ * @param errorMessage - The error message to inspect
+ * @returns `true` if the message indicates a GitHub large-file rejection, `false` otherwise.
  */
 function isLargeFilePushError(errorMessage: string): boolean {
 	const message = errorMessage.toLowerCase();
@@ -961,14 +969,20 @@ function isLargeFilePushError(errorMessage: string): boolean {
 }
 
 /**
- * Detects staging errors caused by file size limits.
+ * Identifies staging errors caused by the configured maximum file-size limit.
+ *
+ * @param errorMessage - The error message to inspect
+ * @returns `true` if the message indicates that a file exceeds the maximum staging size, `false` otherwise.
  */
 function isStageFileSizeError(errorMessage: string): boolean {
 	return errorMessage.toLowerCase().includes("exceeds max stage file size");
 }
 
 /**
- * Detects merge conflict errors from Git operations.
+ * Identifies whether an error message indicates a merge conflict.
+ *
+ * @param errorMessage - The error message to inspect
+ * @returns `true` if the message indicates a merge conflict, `false` otherwise.
  */
 function isMergeConflictError(errorMessage: string): boolean {
 	const message = errorMessage.toLowerCase();
@@ -993,7 +1007,12 @@ function getActionTargetsOrFallback(action: GitSelectionAction, filePath: string
 }
 
 /**
- * Runs a sequence of Git actions and refreshes the diff state afterward.
+ * Executes Git actions for the eligible targets and refreshes the Git diff afterward.
+ *
+ * @param targets - Git action targets to process
+ * @param runner - Operation to execute for each target path
+ * @throws The action error, unless it represents a staging-size limit violation
+ * @throws The error encountered while refreshing the Git diff
  */
 async function runGitAction(
 	targets: Array<{ actionPath: string; label?: string }>,
