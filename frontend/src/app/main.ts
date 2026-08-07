@@ -65,6 +65,9 @@ initializeArchiveMethod();
 initializeMaxStageFileSize();
 initializeFrontendConsole();
 
+/**
+ * Opens a folder picker, remembers the selected repository, and loads the UI for it.
+ */
 window.pickFolder = async function () {
 	const folder = await window.go.main.App.PickFolder();
 	if (!folder) {
@@ -79,6 +82,11 @@ window.pickFolder = async function () {
 	loadHtml();
 };
 
+/**
+ * Opens a repository from the recent list and reloads the workspace view.
+ *
+ * @param repoPath - The path of the repository to open.
+ */
 window.openRecentRepository = async function (repoPath: string) {
 	await window.go.main.App.SetRepositoryPath(repoPath);
 	openedFolder = repoPath;
@@ -87,40 +95,69 @@ window.openRecentRepository = async function (repoPath: string) {
 	loadHtml();
 };
 
+/**
+ * Opens the settings modal.
+ */
 window.openSettings = function () {
 	settingsModalOpen = true;
 	updateSettingsModal();
 }
 
+/**
+ * Closes the settings modal.
+ */
 window.closeSettings = function () {
 	settingsModalOpen = false;
 	updateSettingsModal();
 }
 
+/**
+ * Changes the application theme and refreshes dependent UI.
+ *
+ * @param themeName - The selected theme name.
+ */
 window.selectTheme = function (themeName: ThemeName) {
 	applyTheme(themeName);
 	syncRecentRepositoriesPanel();
 	updateSettingsModal();
 }
 
+/**
+ * Clears the list of recent repositories from storage and the UI.
+ */
 window.clearRecentRepositories = function () {
 	clearRecentRepositories();
 	syncRecentRepositoriesPanel();
 	updateSettingsModal();
 }
 
+/**
+ * Removes one repository from the recent list and updates the UI.
+ *
+ * @param repoPath - Path of the repository to remove.
+ */
 window.removeRecentRepository = function (repoPath: string) {
 	removeRecentRepository(repoPath);
 	syncRecentRepositoriesPanel();
 	updateSettingsModal();
 }
 
+/**
+ * Sets the maximum number of recent repositories to retain.
+ *
+ * @param value - The new maximum recent repository count.
+ */
 window.setMaxRecentRepositories = function (value: number) {
 	setMaxRecentRepositoriesLimit(value);
 	syncRecentRepositoriesPanel();
 	updateSettingsModal();
 }
 
+/**
+ * Toggles the frontend console visibility setting and updates storage.
+ *
+ * @param enabled - Whether the frontend console should be visible.
+ */
 window.setFrontendConsoleEnabled = function (enabled: boolean) {
 	isFrontendConsoleVisible = enabled;
 	window.localStorage.setItem(consoleVisibilityStorageKey, enabled ? "1" : "0");
@@ -128,29 +165,54 @@ window.setFrontendConsoleEnabled = function (enabled: boolean) {
 	updateSettingsModal();
 }
 
+/**
+ * Sets the minimum displayed log level for the frontend console.
+ *
+ * @param level - The selected log level.
+ */
 window.setFrontendLogMinimumLevel = function (level: FrontendLogLevel) {
 	setFrontendLogMinimumLevel(level);
 	updateSettingsModal();
 }
 
+/**
+ * Updates the Git executable command in settings and backend state.
+ *
+ * @param command - The Git command to use.
+ */
 window.setGitCommand = function (command: string) {
 	gitCommand = command || "git";
 	window.localStorage.setItem(gitCommandStorageKey, gitCommand);
 	window.go.main.App.SetGitCommand(gitCommand);
 }
 
+/**
+ * Updates the remote Git executable command in settings and backend state.
+ *
+ * @param command - The remote Git command to use.
+ */
 window.setGitRemoteCommand = function (command: string) {
 	gitRemoteCommand = command || "git";
 	window.localStorage.setItem(gitRemoteCommandStorageKey, gitRemoteCommand);
 	window.go.main.App.SetGitRemoteCommand(gitRemoteCommand);
 }
 
+/**
+ * Sets the preferred archive method for branch cleanup.
+ *
+ * @param method - The archive method to use.
+ */
 window.setArchiveMethod = function (method: ArchiveMethod) {
 	activeArchiveMethod = method;
 	window.localStorage.setItem(archiveMethodStorageKey, method);
 	updateSettingsModal();
 }
 
+/**
+ * Updates the maximum stage file size in settings and backend limits.
+ *
+ * @param mb - Maximum allowed file size in megabytes.
+ */
 window.setMaxStageFileSize = function (mb: number) {
 	maxStageFileSizeMb = normalizeMaxStageFileSizeMb(mb);
 	window.localStorage.setItem(maxStageFileSizeStorageKey, String(maxStageFileSizeMb));
@@ -158,14 +220,26 @@ window.setMaxStageFileSize = function (mb: number) {
 	updateSettingsModal();
 }
 
+/**
+ * Clears all frontend console logs.
+ */
 window.clearFrontendLogs = function () {
 	clearFrontendLogConsole();
 }
 
+/**
+ * Toggles the frontend log console display.
+ */
 window.toggleLogConsole = function () {
 	toggleFrontendLogConsole();
 }
 
+/**
+ * Stages a single file in the repository.
+ *
+ * @param filePath - The file to stage.
+ * @param changeKey - Optional selection key for Git action state.
+ */
 window.stageGitFile = async function (filePath: string, changeKey?: string) {
 	const targets = getActionTargetsOrFallback("stage", filePath, changeKey);
 	await runGitAction(targets, async (targetPath) => {
@@ -173,6 +247,9 @@ window.stageGitFile = async function (filePath: string, changeKey?: string) {
 	});
 }
 
+/**
+ * Stages the currently selected Git files.
+ */
 window.stageSelectedGitFiles = async function () {
 	const targets = getGitSelectionTargets("stage");
 	if (targets.length === 0) {
@@ -184,6 +261,12 @@ window.stageSelectedGitFiles = async function () {
 	});
 }
 
+/**
+ * Unstages a single file in the repository.
+ *
+ * @param filePath - The file to unstage.
+ * @param changeKey - Optional selection key for Git action state.
+ */
 window.unstageGitFile = async function (filePath: string, changeKey?: string) {
 	const targets = getActionTargetsOrFallback("unstage", filePath, changeKey);
 	await runGitAction(targets, async (targetPath) => {
@@ -191,6 +274,9 @@ window.unstageGitFile = async function (filePath: string, changeKey?: string) {
 	});
 }
 
+/**
+ * Unstages the currently selected Git files.
+ */
 window.unstageSelectedGitFiles = async function () {
 	const targets = getGitSelectionTargets("unstage");
 	if (targets.length === 0) {
@@ -202,6 +288,13 @@ window.unstageSelectedGitFiles = async function () {
 	});
 }
 
+/**
+ * Resolves a merge conflict for a file using the specified strategy.
+ *
+ * @param filePath - The conflicted file path.
+ * @param strategy - The conflict resolution strategy to apply.
+ * @param changeKey - Optional selection key for Git action state.
+ */
 window.resolveGitConflict = async function (filePath: string, strategy: "ours" | "theirs", changeKey?: string) {
 	const targets = getActionTargetsOrFallback("stage", filePath, changeKey);
 	await runGitAction(targets, async (targetPath) => {
@@ -209,16 +302,25 @@ window.resolveGitConflict = async function (filePath: string, strategy: "ours" |
 	});
 }
 
+/**
+ * Aborts an in-progress merge and refreshes the workspace.
+ */
 window.abortMerge = async function () {
 	await window.go.main.App.AbortMerge();
 	await window.refresh();
 }
 
+/**
+ * Continues an in-progress merge and refreshes the workspace.
+ */
 window.continueMerge = async function () {
 	await window.go.main.App.ContinueMerge();
 	await window.refresh();
 }
 
+/**
+ * Commits staged Git changes with the message entered by the user.
+ */
 window.commitGitChanges = async function () {
 	try {
 		document.getElementById("CommitChanges")!.setAttribute("disabled", "");
@@ -237,6 +339,9 @@ window.commitGitChanges = async function () {
 	}
 }
 
+/**
+ * Switches the current branch to the name entered by the user.
+ */
 window.switchGitBranch = async function () {
 	try {
 		document.getElementById("SwitchBranch")!.setAttribute("disabled", "");
@@ -255,10 +360,19 @@ window.switchGitBranch = async function () {
 	}
 }
 
+/**
+ * Prompts the user to confirm switching branches.
+ *
+ * @param branchName - The branch to switch to.
+ * @param isRemote - Whether the branch is remote.
+ */
 window.promptBranchSwitch = function (branchName: string, isRemote?: boolean) {
 	modalManager.openBranchSwitch(branchName, isRemote);
 }
 
+/**
+ * Confirms a branch switch from the branch switch modal.
+ */
 window.confirmBranchSwitch = async function () {
 	const branchSwitchModalState = modalManager.getBranchSwitchModalState();
 	if (!branchSwitchModalState) {
@@ -281,14 +395,26 @@ window.confirmBranchSwitch = async function () {
 	}
 }
 
+/**
+ * Cancels the branch switch confirmation modal.
+ */
 window.cancelBranchSwitch = function () {
 	modalManager.closeBranchSwitch();
 }
 
+/**
+ * Prompts the user to confirm deleting a Git branch.
+ *
+ * @param branchName - The branch to delete.
+ * @param forceDelete - If true, forces branch deletion.
+ */
 window.promptDeleteBranch = function (branchName: string, forceDelete?: boolean) {
 	modalManager.openBranchDelete(branchName, forceDelete);
 }
 
+/**
+ * Confirms and executes deletion of the selected Git branch.
+ */
 window.confirmDeleteBranch = async function () {
 	const branchDeleteModalState = modalManager.getBranchDeleteModalState();
 	if (!branchDeleteModalState) {
@@ -306,10 +432,19 @@ window.confirmDeleteBranch = async function () {
 	}
 	}
 
+/**
+ * Cancels the branch delete confirmation modal.
+ */
 window.cancelDeleteBranch = function () {
 	modalManager.closeBranchDelete();
 }
 
+/**
+ * Prompts the user to archive a branch, either showing info or confirmation depending on settings.
+ *
+ * @param branchName - The branch to archive.
+ * @param isRemote - Whether the branch is remote.
+ */
 window.promptArchiveBranch = function (branchName: string, isRemote?: boolean) {
 	if (activeArchiveMethod === "none") {
 		modalManager.openBranchArchiveInfo(branchName);
@@ -319,6 +454,9 @@ window.promptArchiveBranch = function (branchName: string, isRemote?: boolean) {
 	modalManager.openBranchArchiveConfirm(branchName, activeArchiveMethod === "folder", isRemote);
 }
 
+/**
+ * Confirms and executes branch archiving from the modal state.
+ */
 window.confirmArchiveBranch = async function () {
 	const state = modalManager.getBranchArchiveConfirmModalState();
 	if (!state) {
@@ -336,11 +474,19 @@ window.confirmArchiveBranch = async function () {
 	await window.refresh();
 }
 
+/**
+ * Cancels branch archive modal dialogs.
+ */
 window.cancelArchiveBranch = function () {
 	modalManager.closeBranchArchiveInfo();
 	modalManager.closeBranchArchiveConfirm();
 }
 
+/**
+ * Toggles the branch card context menu dropdown.
+ *
+ * @param cardEl - The branch card element containing the dropdown.
+ */
 window.toggleBranchContextMenu = function (cardEl: HTMLElement) {
 	const clickedDropdown = cardEl.querySelector('.branch-menu-dropdown') as HTMLDetailsElement | null;
 	const openDropdowns = document.querySelectorAll<HTMLDetailsElement>(".branch-menu-dropdown[open]");
@@ -354,6 +500,9 @@ window.toggleBranchContextMenu = function (cardEl: HTMLElement) {
 	}
 }
 
+/**
+ * Toggles the display of archived branches in the branch list.
+ */
 window.toggleArchivedBranches = toggleArchivedBranches;
 
 /*
@@ -370,8 +519,13 @@ window.refresh = async function () {
 		document.getElementById("Refresh")!.removeAttribute("disabled");
 	}
 }
-*/
 
+/**
+ * Measures and logs the execution time for an async operation.
+ *
+ * @param label - The label to use in the log output.
+ * @param fn - The async function to execute.
+ */
 async function timeIt(label: string, fn: () => Promise<any>) {
     const start = performance.now();
     try {
@@ -400,6 +554,13 @@ window.refresh = async function () {
 }
 
 
+/**
+ * Opens the discard confirmation modal for a single file.
+ *
+ * @param filePath - The path of the file to discard.
+ * @param description - Optional descriptive label for the file.
+ * @param changeKey - Optional selection key for Git action state.
+ */
 window.discardGitFile = async function (filePath: string, description?: string, changeKey?: string) {
 	const targets = getActionTargetsOrFallback("discard", filePath, changeKey, description);
 	modalManager.openDiscard(targets.map((target) => ({
@@ -408,6 +569,9 @@ window.discardGitFile = async function (filePath: string, description?: string, 
 	})), isAnyGitActionPending);
 }
 
+/**
+ * Opens the discard confirmation modal for selected files.
+ */
 window.discardSelectedGitFiles = async function () {
 	const targets = getGitSelectionTargets("discard");
 	if (targets.length === 0) {
@@ -420,6 +584,9 @@ window.discardSelectedGitFiles = async function () {
 	})), isAnyGitActionPending);
 }
 
+/**
+ * Confirms and discards the selected files from the modal state.
+ */
 window.confirmDiscardGitFile = async function () {
 	const discardModalState = modalManager.getDiscardModalState();
 	if (!discardModalState) {
@@ -433,14 +600,26 @@ window.confirmDiscardGitFile = async function () {
 	});
 }
 
+/**
+ * Handles file selection clicks in the Git changes view.
+ *
+ * @param event - The originating mouse event.
+ * @param key - The unique change selection key.
+ */
 window.selectGitChange = function (event: MouseEvent, key: string) {
 	handleGitSelectionClick(event, key);
 }
 
+/**
+ * Cancels the discard confirmation modal without discarding changes.
+ */
 window.cancelDiscardGitFile = function () {
 	modalManager.closeDiscard(isAnyGitActionPending);
 }
 
+/**
+ * Pushes committed changes and handles common push errors.
+ */
 window.pushGitChanges = async function () {
 	try {
 		document.getElementById("PushButton")!.setAttribute("disabled", "");
@@ -466,6 +645,9 @@ window.pushGitChanges = async function () {
 	}
 }
 
+/**
+ * Prunes remote-tracking branches and refreshes the repository state.
+ */
 window.pruneGitBranches = async function () {
 	try {
 		document.getElementById("PruneButton")!.setAttribute("disabled", "");
@@ -476,6 +658,11 @@ window.pruneGitBranches = async function () {
 	}
 }
 
+/**
+ * Toggles visibility of the diff content for a specific changed file.
+ *
+ * @param headerEl - The header element that was clicked.
+ */
 window.toggleDiff = function (headerEl: HTMLElement) {
 	const entry = headerEl.closest('.diff-file-entry') as HTMLElement;
 	const content = entry.querySelector('.diff-content') as HTMLElement;
@@ -486,6 +673,9 @@ window.toggleDiff = function (headerEl: HTMLElement) {
 	}
 }
 
+/**
+ * Pulls changes from the remote repository and handles merge conflict state.
+ */
 window.pullGitChanges = async function () {
 	let pullError: unknown;
 	try {
@@ -516,53 +706,62 @@ import branchPanelHtml from '../panels/branchPanel.html?raw';
 import commitPanelHtml from '../panels/commitPanel.html?raw';
 
 /**
- * Loads the application interface and synchronizes its initial workspace state.
+ * Loads the main application UI and initializes the workspace view.
  */
 function loadHtml() {
-	document.querySelector('#app')!.innerHTML = appHtml;
-	document.getElementById('BranchPanel')!.innerHTML = branchPanelHtml;
-	document.getElementById('CommitPanel')!.innerHTML = commitPanelHtml;
-	updateWorkspaceHeader();
-	syncRecentRepositoriesPanel();
-	ensureDropdownListeners();
-	modalManager.ensureKeyListener();
-	ensureGitSelectionKeyListener();
-	updateSettingsModal();
-	modalManager.refreshModals(isAnyGitActionPending);
-	syncFrontendConsoleVisibility();
-	renderFrontendLogConsole();
-	window.refresh();
+    document.querySelector('#app')!.innerHTML = appHtml;
+    document.getElementById('BranchPanel')!.innerHTML = branchPanelHtml;
+    document.getElementById('CommitPanel')!.innerHTML = commitPanelHtml;
+    updateWorkspaceHeader();
+    syncRecentRepositoriesPanel();
+    ensureDropdownListeners();
+    modalManager.ensureKeyListener();
+    ensureGitSelectionKeyListener();
+    updateSettingsModal();
+    modalManager.refreshModals(isAnyGitActionPending);
+    syncFrontendConsoleVisibility();
+    renderFrontendLogConsole();
+    window.refresh();
 }
 
+/**
+ * Renders the welcome screen and initializes console and modal event listeners.
+ */
 function showWelcomeView() {
-	document.querySelector('#app')!.innerHTML = renderWelcomeShell(getViewRenderContext());
-	modalManager.ensureKeyListener();
-	syncFrontendConsoleVisibility();
-	renderFrontendLogConsole();
+    document.querySelector('#app')!.innerHTML = renderWelcomeShell(getViewRenderContext());
+    modalManager.ensureKeyListener();
+    syncFrontendConsoleVisibility();
+    renderFrontendLogConsole();
 }
 
+/**
+ * Re-renders the recent repository list panel.
+ */
 function syncRecentRepositoriesPanel() {
-	const recentRepositoriesPanel = document.getElementById('RecentRepositoriesPanel');
-	if (recentRepositoriesPanel) {
-		recentRepositoriesPanel.innerHTML = renderRecentRepositoriesHtml(getViewRenderContext());
-	}
+    const recentRepositoriesPanel = document.getElementById('RecentRepositoriesPanel');
+    if (recentRepositoriesPanel) {
+        recentRepositoriesPanel.innerHTML = renderRecentRepositoriesHtml(getViewRenderContext());
+    }
 }
 
+/**
+ * Shows or hides the settings modal and updates its content.
+ */
 function updateSettingsModal() {
-	const modal = document.getElementById("SettingsModal");
-	const body = document.getElementById("SettingsModalBody");
-	if (!modal || !body) {
-		return;
-	}
+    const modal = document.getElementById("SettingsModal");
+    const body = document.getElementById("SettingsModalBody");
+    if (!modal || !body) {
+        return;
+    }
 
-	if (settingsModalOpen) {
-		modal.removeAttribute("hidden");
-		body.innerHTML = renderSettingsContent(getViewRenderContext());
-		focusModalInitialTarget("SettingsModal", "#SettingsCloseButton");
-	} else {
-		modal.setAttribute("hidden", "");
-		body.innerHTML = "";
-	}
+    if (settingsModalOpen) {
+        modal.removeAttribute("hidden");
+        body.innerHTML = renderSettingsContent(getViewRenderContext());
+        focusModalInitialTarget("SettingsModal", "#SettingsCloseButton");
+    } else {
+        modal.setAttribute("hidden", "");
+        body.innerHTML = "";
+    }
 }
 
 /**
@@ -589,6 +788,9 @@ function getViewRenderContext() {
 	};
 }
 
+/**
+ * Updates the workspace header display based on the currently opened repository.
+ */
 function updateWorkspaceHeader() {
 	const title = document.getElementById("WorkspaceTitle");
 	const workspacePath = document.getElementById("WorkspacePath");
@@ -610,12 +812,21 @@ function updateWorkspaceHeader() {
 	workspacePath.removeAttribute("hidden");
 }
 
+/**
+ * Returns the last path segment for a repository path.
+ *
+ * @param repoPath - The repository path to extract the name from.
+ * @returns The inferred repository folder name.
+ */
 function getRepositoryName(repoPath: string) {
 	const normalizedPath = repoPath.replace(/\\+$/g, "").replace(/\/+$/g, "");
 	const segments = normalizedPath.split(/[\\/]/).filter(Boolean);
 	return segments[segments.length - 1] ?? repoPath;
 }
 
+/**
+ * Initializes the UI theme using stored preferences or the default theme.
+ */
 function initializeTheme() {
 	const storedTheme = window.localStorage.getItem(themeStorageKey);
 	if (storedTheme === "midnight") {
@@ -629,6 +840,9 @@ function initializeTheme() {
 	applyTheme("aurora");
 }
 
+/**
+ * Initializes the frontend console visibility flag from local storage.
+ */
 function initializeConsoleVisibility() {
 	isFrontendConsoleVisible = window.localStorage.getItem(consoleVisibilityStorageKey) === "1";
 }
@@ -707,12 +921,23 @@ function syncFrontendConsoleVisibility() {
 	panel.setAttribute("hidden", "");
 }
 
+/**
+ * Applies a UI theme and persists the selection.
+ *
+ * @param themeName - The theme to apply.
+ */
 function applyTheme(themeName: ThemeName) {
 	activeTheme = themeName;
 	document.documentElement.dataset.theme = themeName;
 	window.localStorage.setItem(themeStorageKey, themeName);
 }
 
+/**
+ * Converts an arbitrary error to a string message.
+ *
+ * @param error - The error to convert.
+ * @returns The error message or string representation.
+ */
 function toErrorMessage(error: unknown): string {
 	if (error instanceof Error) {
 		return error.message;
@@ -764,6 +989,9 @@ function isMergeConflictError(errorMessage: string): boolean {
 	return message.includes("conflict") || message.includes("automatic merge failed") || message.includes("merge conflict");
 }
 
+/**
+ * Builds Git action targets from the current selection or fallback to a single file.
+ */
 function getActionTargetsOrFallback(action: GitSelectionAction, filePath: string, changeKey?: string, label?: string) {
 	const selectionTargets = getGitSelectionTargets(action, changeKey);
 	if (selectionTargets.length > 0) {
@@ -851,6 +1079,7 @@ function ensureGitSelectionKeyListener() {
 	document.addEventListener("keydown", handleGitSelectionKeydown);
 	gitSelectionKeyListenerBound = true;
 }
+
 /**
  * Installs the document listeners used to close open dropdowns when needed.
  */
@@ -867,7 +1096,7 @@ function ensureDropdownListeners() {
 /**
  * Closes open repository and branch dropdowns when a click occurs outside them.
  *
- * @param event - The mouse event used to identify the clicked element
+ * @param event - The mouse event used to identify the clicked element.
  */
 function handleDropdownClickOutside(event: MouseEvent) {
 	const target = event.target as Node | null;
@@ -916,12 +1145,18 @@ function handleDropdownKeydown(event: KeyboardEvent) {
 /**
  * Retrieves the recent repositories dropdown element.
  *
- * @returns The recent repositories dropdown, or `null` if it is not present.
+ * @returns The recent repositories dropdown element or null if absent.
  */
 function getRecentRepositoriesDropdown() {
 	return document.querySelector(".recent-repositories-dropdown") as HTMLDetailsElement | null;
 }
 
+/**
+ * Focuses the initial target element inside a modal after it is shown.
+ *
+ * @param modalId - The DOM id of the modal.
+ * @param preferredSelector - Optional selector for the preferred focus target.
+ */
 function focusModalInitialTarget(modalId: string, preferredSelector?: string) {
 	requestAnimationFrame(() => {
 		const modal = document.getElementById(modalId);
@@ -939,6 +1174,11 @@ function focusModalInitialTarget(modalId: string, preferredSelector?: string) {
 	});
 }
 
+/**
+ * Focuses the modal card container if no preferred target is available.
+ *
+ * @param modal - The modal element whose card should receive focus.
+ */
 function focusModalCard(modal: HTMLElement) {
 	const modalCard = modal.querySelector(".modal-card") as HTMLElement | null;
 	modalCard?.focus({ preventScroll: true });

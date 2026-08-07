@@ -11,6 +11,7 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// main initializes and runs the Wails application with the embedded frontend assets.
 func main() {
 	app := NewApp()
 

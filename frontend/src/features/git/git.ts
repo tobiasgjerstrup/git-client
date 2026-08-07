@@ -73,6 +73,12 @@ export function escapeHtml(value: string): string {
 		.replace(/'/g, "&#39;");
 }
 
+/**
+ * Parses a git status line into a structured status descriptor.
+ *
+ * @param line - The raw git status output line.
+ * @returns The parsed GitStatusLine or null when the line is not a file status.
+ */
 export function parseGitStatusLine(line: string): GitStatusLine | null {
 	if (line.startsWith("# ")) {
 		return null;
@@ -130,21 +136,46 @@ export function parseGitStatusLine(line: string): GitStatusLine | null {
 	return null;
 }
 
+/**
+ * Returns whether the provided XY status code represents an unmerged conflict.
+ *
+ * @param xy - The two-character git status code.
+ * @returns True when the code is one of the unmerged conflict codes.
+ */
 function isUnmergedStatusCode(xy: string): boolean {
-	return xy === "AA" || xy === "AU" || xy === "DD" || xy === "DU" || xy === "UD" || xy === "UA" || xy === "UU";
+    return xy === "AA" || xy === "AU" || xy === "DD" || xy === "DU" || xy === "UD" || xy === "UA" || xy === "UU";
 }
 
+/**
+ * Checks whether the staged side of a porcelain status line contains a change.
+ *
+ * @param xy - The XY status code from Git status output.
+ * @returns True when the first status character indicates a staged change.
+ */
 export function isStagedFromXYStatus(xy: string): boolean {
-	// In porcelain v2, "." means unchanged; in v1, " " means unchanged.
-	return xy[0] !== "." && xy[0] !== " " && xy[0] !== "?" && xy[0] !== "!";
+    // In porcelain v2, "." means unchanged; in v1, " " means unchanged.
+    return xy[0] !== "." && xy[0] !== " " && xy[0] !== "?" && xy[0] !== "!";
 }
 
+/**
+ * Checks whether the unstaged side of a porcelain status line contains a change.
+ *
+ * @param xy - The XY status code from Git status output.
+ * @returns True when the second status character indicates an unstaged change.
+ */
 export function hasUnstagedFromXYStatus(xy: string): boolean {
-	return xy[1] !== "." && xy[1] !== " ";
+    return xy[1] !== "." && xy[1] !== " ";
 }
 
+/**
+ * Converts a Git status code into a human-readable label.
+ *
+ * @param code - The short Git status code.
+ * @param side - Whether the status is staged or unstaged.
+ * @returns The descriptive label for the status code.
+ */
 function describeStatusCode(code: string, side: GitChangeSide): string {
-	switch (code) {
+    switch (code) {
 		case "M":
 			return side === "staged" ? "Modified in index" : "Modified in working tree";
 		case "A":
@@ -164,29 +195,55 @@ function describeStatusCode(code: string, side: GitChangeSide): string {
 	}
 }
 
+/**
+ * Builds a label describing a status line entry for display.
+ *
+ * @param parsedLine - The parsed Git status line.
+ * @param side - Which side the label describes (staged or unstaged).
+ * @param code - The relevant status code for the entry.
+ * @returns The display text for the change entry.
+ */
 function buildStatusLabel(parsedLine: GitStatusLine, side: GitChangeSide, code: string): string {
-	const prefix = describeStatusCode(code, side);
-	if (parsedLine.origPath) {
-		return `${prefix}: ${parsedLine.origPath} -> ${parsedLine.path}`;
-	}
-	return `${prefix}: ${parsedLine.path}`;
+    const prefix = describeStatusCode(code, side);
+    if (parsedLine.origPath) {
+        return `${prefix}: ${parsedLine.origPath} -> ${parsedLine.path}`;
+    }
+    return `${prefix}: ${parsedLine.path}`;
 }
 
+/**
+ * Builds the action path string used for Git operations on a worktree entry.
+ *
+ * @param parsedLine - The parsed Git status line.
+ * @returns The action path or rename pair required for the operation.
+ */
 function buildActionPath(parsedLine: GitStatusLine): string {
-	if (parsedLine.origPath) {
-		return `${parsedLine.origPath}\t${parsedLine.path}`;
-	}
-	return parsedLine.path;
+    if (parsedLine.origPath) {
+        return `${parsedLine.origPath}\t${parsedLine.path}`;
+    }
+    return parsedLine.path;
 }
 
+/**
+ * Renders the HTML snippet for a file's diff content.
+ *
+ * @param diffFile - The diff result for the file.
+ * @returns HTML markup for the diff panel.
+ */
 function renderDiffContent(diffFile?: GitDiffOutput["files"][0]): string {
-	if (!diffFile) {
-		return "";
-	}
+    if (!diffFile) {
+        return "";
+    }
 
-	return `<div class="diff-content" style="display:none"><pre class="changedLinesContainer">${diffFile.diff}</pre><div class="diff-stats"><span class="diff-stat diff-stat-added">+${diffFile.linesAdded}</span><span class="diff-stat diff-stat-removed">-${diffFile.linesRemoved}</span></div></div>`;
+    return `<div class="diff-content" style="display:none"><pre class="changedLinesContainer">${diffFile.diff}</pre><div class="diff-stats"><span class="diff-stat diff-stat-added">+${diffFile.linesAdded}</span><span class="diff-stat diff-stat-removed">-${diffFile.linesRemoved}</span></div></div>`;
 }
 
+/**
+ * Renders the HTML for a single Git change entry row.
+ *
+ * @param entry - The change entry metadata.
+ * @returns The rendered HTML string.
+ */
 function renderChangeEntry(entry: GitChangeEntry): string {
 	return `<div class="diff-file-entry" data-change-key="${escapeHtml(entry.key)}" onclick="selectGitChange(event, ${escapeHtml(JSON.stringify(entry.key))})">
 		<div class="diff-file-header-row">
@@ -227,6 +284,12 @@ import JsTestIcon from "../../assets/images/icons/file_type_testjs.svg"
 import TsTestIcon from "../../assets/images/icons/file_type_testts.svg"
 import FileIcon from "../../assets/images/icons/default_file.svg"
 
+/**
+ * Returns an inline SVG icon HTML snippet for a given file path.
+ *
+ * @param filePath - The path of the file.
+ * @returns The display icon HTML.
+ */
 export function renderSvg(filePath: string): string {
     const lower = filePath.toLowerCase();
 
@@ -304,22 +367,54 @@ export function renderSvg(filePath: string): string {
     return `<img height="20" src="${FileIcon}" class="file-icon">`;
 }
 
+/**
+ * Renders the stage button for a change entry.
+ *
+ * @param actionPath - The path used by the Git action.
+ * @param entryKey - The unique entry key.
+ * @returns The rendered button HTML.
+ */
 function renderStageButton(actionPath: string, entryKey: string): string {
-	return `<button ${getGitActionButtonAttrs(actionPath)} onclick='event.stopPropagation(); stageGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(entryKey))})'>Stage</button>`;
+    return `<button ${getGitActionButtonAttrs(actionPath)} onclick='event.stopPropagation(); stageGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(entryKey))})'>Stage</button>`;
 }
 
+/**
+ * Renders the unstage button for a staged change entry.
+ *
+ * @param actionPath - The path used by the Git action.
+ * @param entryKey - The unique entry key.
+ * @returns The rendered button HTML.
+ */
 function renderUnstageButton(actionPath: string, entryKey: string): string {
 	return `<button ${getGitActionButtonAttrs(actionPath)} onclick='event.stopPropagation(); unstageGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(entryKey))})'>Unstage</button>`;
 }
 
+/**
+ * Renders the discard button for a change entry.
+ *
+ * @param actionPath - The path used by the Git action.
+ * @param label - The display label for the entry.
+ * @param entryKey - The unique entry key.
+ * @returns The rendered button HTML.
+ */
 function renderDiscardButton(actionPath: string, label: string, entryKey: string): string {
-	return `<button ${getGitActionButtonAttrs(actionPath)} onclick='event.stopPropagation(); discardGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(label))}, ${escapeHtml(JSON.stringify(entryKey))})'>Discard</button>`;
+    return `<button ${getGitActionButtonAttrs(actionPath)} onclick='event.stopPropagation(); discardGitFile(${escapeHtml(JSON.stringify(actionPath))}, ${escapeHtml(JSON.stringify(label))}, ${escapeHtml(JSON.stringify(entryKey))})'>Discard</button>`;
 }
 
+/**
+ * Renders the conflict resolution buttons for a merge conflicted file.
+ *
+ * @param actionPath - The path used by the Git action.
+ * @param entryKey - The unique entry key.
+ * @returns The rendered button HTML.
+ */
 function renderConflictResolutionButtons(actionPath: string, entryKey: string): string {
 	return `<button ${getGitActionButtonAttrs(actionPath)} onclick='event.stopPropagation(); resolveGitConflict(${escapeHtml(JSON.stringify(actionPath))}, "ours", ${escapeHtml(JSON.stringify(entryKey))})'>Use ours</button><button ${getGitActionButtonAttrs(actionPath)} onclick='event.stopPropagation(); resolveGitConflict(${escapeHtml(JSON.stringify(actionPath))}, "theirs", ${escapeHtml(JSON.stringify(entryKey))})'>Use theirs</button>`;
 }
 
+/**
+ * Retrieves the current Git status and updates the branch label.
+ */
 export async function gitStatus() {
 	const output = await window.go.main.App.RunGitStatus() as GitStatusOutput;
 	currentBranchName = output.branchName;
@@ -327,7 +422,7 @@ export async function gitStatus() {
 }
 
 /**
- * Retrieves and displays the repository's commit history, or an empty-state message when no commits are available.
+ * Retrieves and renders the repository's recent commit history.
  */
 export async function getGitCommits() {
 	commits = await window.go.main.App.GetCommitHistory() as GitCommit[];
@@ -347,15 +442,15 @@ export async function getGitCommits() {
 }
 
 /**
- * Renders a branch card with its synchronization status and available actions.
+ * Renders an HTML card representing a Git branch in the branch list.
  *
- * @param branch - The branch to display.
- * @param allBranches - All branches used to determine local synchronization status.
- * @param isArchived - Whether the branch is displayed in the archived section.
- * @returns HTML markup for the branch card.
+ * @param branch - The branch metadata.
+ * @param allBranches - All branches used to determine sync state.
+ * @param isArchived - Whether the branch is rendered in the archived section.
+ * @returns The branch card HTML.
  */
 function renderBranchCard(branch: GitBranch, allBranches: GitBranch[], isArchived?: boolean) {
-	const branchKind = branch.remote ? "Remote" : "Local";
+    const branchKind = branch.remote ? "Remote" : "Local";
 	const kindClass = branch.remote ? "remote" : "local";
 	const isCurrentBranch = !branch.remote && branch.name === currentBranchName;
 	const matchingRemoteBranch = !branch.remote ? allBranches.find(candidate => candidate.remote && candidate.name === `origin/${branch.name}`) : undefined;
@@ -397,10 +492,10 @@ function renderBranchCard(branch: GitBranch, allBranches: GitBranch[], isArchive
 }
 
 /**
- * Determines whether a branch name identifies an archived branch.
+ * Determines whether a branch name represents an archived branch.
  *
- * @param name - The branch name to examine
- * @returns `true` if the name starts with `archive/` or `origin/archive/`, `false` otherwise.
+ * @param name - The branch name to inspect.
+ * @returns True if the branch is archived.
  */
 function isArchivedBranch(name: string): boolean {
 	return name.startsWith("archive/") || name.startsWith("origin/archive/");
@@ -482,6 +577,9 @@ export async function getGitBranches() {
 	}
 }
 
+/**
+ * Loads the unstaged and staged diffs, then renders the changes and branch state.
+ */
 export async function gitDiff() {
 	const [diffOutput, diffStagedOutput, statusOutput] = await Promise.all([
 		window.go.main.App.GitDiff() as Promise<GitDiffOutput>,
@@ -673,8 +771,14 @@ export async function gitDiff() {
 	document.getElementById("BranchName")!.innerText = currentBranchName || "No repository selected";
 }
 
+/**
+ * Updates merge conflict banner visibility and messaging.
+ *
+ * @param mergeInProgress - Whether a merge is currently in progress.
+ * @param conflictCount - The number of files with merge conflicts.
+ */
 function updateMergeConflictBanner(mergeInProgress: boolean, conflictCount: number) {
-	const banner = document.getElementById("MergeConflictBanner");
+    const banner = document.getElementById("MergeConflictBanner");
 	if (!banner) {
 		return;
 	}
@@ -713,8 +817,13 @@ function updateMergeConflictBanner(mergeInProgress: boolean, conflictCount: numb
 	}
 }
 
+/**
+ * Highlights the commit button when staged changes exist.
+ *
+ * @param files - The status file lines received from Git.
+ */
 function updateCommitButtonHighlight(files: string[]) {
-	const commitButton = document.getElementById("CommitChanges");
+    const commitButton = document.getElementById("CommitChanges");
 	if (!commitButton) {
 		return;
 	}
@@ -727,6 +836,9 @@ function updateCommitButtonHighlight(files: string[]) {
 	commitButton.classList.toggle("highlight", hasStagedChanges);
 }
 
+/**
+ * Performs a Git fetch operation to refresh remote-tracking references.
+ */
 export async function gitFetch() {
 	await window.go.main.App.GitFetch();
 }

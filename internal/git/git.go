@@ -18,14 +18,14 @@ const gitPathPairSeparator = "\t"
 const maxUntrackedFileSize = 512 * 1024
 
 var (
-	gitCommand            = "git"
-	gitCommandArgs        []string
-	gitLauncherPath       string
-	gitCommandOriginal    = "git"
+	gitCommand         = "git"
+	gitCommandArgs     []string
+	gitLauncherPath    string
+	gitCommandOriginal = "git"
 
-	gitRemoteCommand      = "git"
-	gitRemoteCommandArgs  []string
-	gitRemoteLauncherPath string
+	gitRemoteCommand         = "git"
+	gitRemoteCommandArgs     []string
+	gitRemoteLauncherPath    string
 	gitRemoteCommandOriginal = "git"
 
 	gitCommandMu sync.RWMutex
@@ -78,6 +78,7 @@ func resolveGitCommand(command string) (exe string, args []string, launcherPath 
 	return
 }
 
+// SetGitCommand updates the local git executable used for normal repository operations.
 func SetGitCommand(command string) {
 	if command == "" {
 		return
@@ -175,6 +176,7 @@ type GitBranch struct {
 
 var defaultBranchCache = make(map[string]string)
 
+// GitStatus returns the current working tree status and branch metadata for the repository.
 func GitStatus(repoPath string) (*GitStatusResult, error) {
 	out, err := runGitForRepo(repoPath, "status", "--porcelain=v2", "--branch")
 	if err != nil {
@@ -210,6 +212,7 @@ func GitStatus(repoPath string) (*GitStatusResult, error) {
 	}, nil
 }
 
+// GitDiff returns the unstaged diff for the repository, including untracked file contents when available.
 func GitDiff(repoPath string) (*GitDiffResult, error) {
 	out, err := runGitForRepo(repoPath, "--no-pager", "diff")
 	if err != nil {
@@ -278,6 +281,7 @@ func GitDiff(repoPath string) (*GitDiffResult, error) {
 	return result, nil
 }
 
+// GitDiffStaged returns the staged diff for the repository.
 func GitDiffStaged(repoPath string) (*GitDiffResult, error) {
 	out, err := runGitForRepo(repoPath, "--no-pager", "diff", "--cached")
 	if err != nil {
@@ -287,6 +291,7 @@ func GitDiffStaged(repoPath string) (*GitDiffResult, error) {
 	return parseDiffOutput(out)
 }
 
+// parseDiffOutput converts raw git diff output into a structured GitDiffResult.
 func parseDiffOutput(out string) (*GitDiffResult, error) {
 	lines := strings.Split(out, "\n")
 	files := []GitDiffFile{}
@@ -342,6 +347,7 @@ func parseDiffOutput(out string) (*GitDiffResult, error) {
 	}, nil
 }
 
+// GetCommitHistory returns the list of recent commits for the repository.
 func GetCommitHistory(repoPath string) (*[]Commit, error) {
 	out, err := runGitForRepo(repoPath, "log", "--max-count=100", "--pretty=format:%H|%an|%ad|%s", "--date=iso")
 	if err != nil {
@@ -367,6 +373,8 @@ func GetCommitHistory(repoPath string) (*[]Commit, error) {
 	return &commits, nil
 }
 
+// DiscardGitFile restores a file to the current HEAD state or removes untracked files.
+// DiscardGitFile restores a file to HEAD or removes an untracked file from the working tree.
 func DiscardGitFile(repoPath string, filePath string) (string, error) {
 	paths := splitGitActionPaths(filePath)
 	if isRenameDiscardPayload(repoPath, paths) {
@@ -511,6 +519,7 @@ func ResolveGitConflict(repoPath string, filePath string, strategy string) error
 	return nil
 }
 
+// AbortGitMerge aborts an active merge and resets repository state.
 func AbortGitMerge(repoPath string) error {
 	if !isMergeInProgress(repoPath) {
 		return fmt.Errorf("no merge in progress")
@@ -524,6 +533,7 @@ func AbortGitMerge(repoPath string) error {
 	return err
 }
 
+// ContinueGitMerge completes the merge by committing when conflicts are resolved.
 func ContinueGitMerge(repoPath string) error {
 	if !isMergeInProgress(repoPath) {
 		return fmt.Errorf("no merge in progress")
@@ -533,11 +543,13 @@ func ContinueGitMerge(repoPath string) error {
 	return err
 }
 
+// isMergeInProgress returns true when a merge is currently in progress in the repository.
 func isMergeInProgress(repoPath string) bool {
 	_, err := os.Stat(filepath.Join(repoPath, ".git", "MERGE_HEAD"))
 	return err == nil
 }
 
+// CommitGitChanges creates a commit in the repository with the specified message.
 func CommitGitChanges(repoPath string, message string) error {
 	_, err := runGitForRepo(repoPath, "commit", "-m", message)
 	if err != nil {
@@ -546,9 +558,10 @@ func CommitGitChanges(repoPath string, message string) error {
 	return nil
 }
 
+// SwitchGitBranch checks out the given branch and creates a local tracking branch from origin if needed.
 func SwitchGitBranch(repoPath string, branchName string) error {
 	// Attempt to switch to branch
-	_, err := runGitForRepo(repoPath, "switch", branchName)
+	_, err := runGitForRepoQuiet(repoPath, "switch", branchName)
 	if err == nil {
 		return nil
 	}
@@ -562,7 +575,7 @@ func SwitchGitBranch(repoPath string, branchName string) error {
 	}
 
 	// If a matching remote branch exists, create a local tracking branch.
-	if _, remoteBranchErr := runGitForRepo(repoPath, "show-ref", "--verify", "--quiet", "refs/remotes/origin/"+branchName); remoteBranchErr == nil {
+	if _, remoteBranchErr := runGitForRepoQuiet(repoPath, "show-ref", "--verify", "--quiet", "refs/remotes/origin/"+branchName); remoteBranchErr == nil {
 		_, err = runGitForRepo(repoPath, "switch", "-c", branchName, "--track", "origin/"+branchName)
 	} else {
 		_, err = runGitForRepo(repoPath, "switch", "-c", branchName)
@@ -575,6 +588,7 @@ func SwitchGitBranch(repoPath string, branchName string) error {
 	return nil
 }
 
+// isMissingBranchSwitchError detects whether a branch switch failed because the requested branch does not exist.
 func isMissingBranchSwitchError(err error) bool {
 	if err == nil {
 		return false
@@ -670,7 +684,7 @@ func ArchiveRemoteGitBranch(repoPath string, remoteBranchName string, deleteRemo
 // PushGitChanges pushes the repository's changes to its configured remote.
 // If the current branch has no upstream, it sets the branch to track origin and retries the push.
 func PushGitChanges(repoPath string) error {
-	_, err := runGitRemoteForRepo(repoPath, "push")
+	_, err := runGitRemoteForRepoQuiet(repoPath, "push")
 	if err == nil {
 		return nil
 	}
@@ -687,6 +701,7 @@ func PushGitChanges(repoPath string) error {
 	return err
 }
 
+// PullGitChanges fetches and merges remote updates into the current branch.
 func PullGitChanges(repoPath string) error {
 	_, err := runGitRemoteForRepo(repoPath, "pull")
 	if err != nil {
@@ -695,12 +710,14 @@ func PullGitChanges(repoPath string) error {
 	return nil
 }
 
+// UnstageGitFile removes the specified path from the staging index.
 func UnstageGitFile(repoPath string, filePath string) (string, error) {
 	paths := splitGitActionPaths(filePath)
 	args := append([]string{"restore", "--staged", "--"}, paths...)
 	return runGitForRepo(repoPath, args...)
 }
 
+// splitGitActionPaths parses an action path string into one or more Git paths.
 func splitGitActionPaths(filePath string) []string {
 	parts := strings.Split(filePath, gitPathPairSeparator)
 	paths := make([]string, 0, len(parts))
@@ -717,6 +734,7 @@ func splitGitActionPaths(filePath string) []string {
 	return paths
 }
 
+// isRenameDiscardPayload detects whether a discard operation targets a renamed file pair.
 func isRenameDiscardPayload(repoPath string, paths []string) bool {
 	if len(paths) != 2 {
 		return false
@@ -741,6 +759,7 @@ func isRenameDiscardPayload(repoPath string, paths []string) bool {
 	return lines == 1 && strings.HasPrefix(strings.TrimSpace(out), "2 ")
 }
 
+// GetGitBranches returns local and remote branch metadata for the repository.
 func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 	var wg sync.WaitGroup
 	wg.Add(3)
@@ -871,14 +890,18 @@ func GetGitBranches(repoPath string) (*[]GitBranch, error) {
 	return &orderedBranches, nil
 }
 
+// GitFetch executes a git fetch against the repository's configured remote.
 func GitFetch(repoPath string) (string, error) {
 	return runGitRemoteForRepo(repoPath, "fetch")
 }
 
+// GitPrune executes git fetch --prune to remove stale remote-tracking references.
 func GitPrune(repoPath string) (string, error) {
 	return runGitRemoteForRepo(repoPath, "fetch", "--prune")
 }
 
+// parsePorcelainV2FileLine parses a porcelain v2 status line and returns
+// the file path plus a success flag.
 func parsePorcelainV2FileLine(line string) (string, bool) {
 	switch {
 	case strings.HasPrefix(line, "1 "):
@@ -915,6 +938,7 @@ func parsePorcelainV2FileLine(line string) (string, bool) {
 	}
 }
 
+// runCommand executes a system command and returns its combined standard output and error.
 func runCommand(name string, args ...string) (string, error) {
 	start := time.Now()
 
@@ -931,6 +955,25 @@ func runCommand(name string, args ...string) (string, error) {
 	return string(out), nil
 }
 
+// runCommandQuiet is like runCommand but logs failures at debug level instead of error.
+// Use this when non-zero exits are expected and handled by the caller.
+func runCommandQuiet(name string, args ...string) (string, error) {
+	start := time.Now()
+
+	cmd := exec.Command(name, args...)
+	cmd.SysProcAttr = newSysProcAttr()
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		exitErr := fmt.Errorf("Ran command in %v, but it failed: %s %s %w: %s", time.Since(start), name, strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+		Debugf("%v", exitErr)
+		return "", exitErr
+	}
+	Debugf("Ran command in %v: %s %s", time.Since(start), name, strings.Join(args, " "))
+	return string(out), nil
+}
+
+// runGitForRepo executes git with the configured local command against the specified repository.
 func runGitForRepo(repoPath string, args ...string) (string, error) {
 	if repoPath == "" {
 		return "", fmt.Errorf("no repository selected")
@@ -952,6 +995,28 @@ func runGitForRepo(repoPath string, args ...string) (string, error) {
 	return out, nil
 }
 
+// runGitForRepoQuiet is like runGitForRepo but uses runCommandQuiet so failures are logged at debug level.
+func runGitForRepoQuiet(repoPath string, args ...string) (string, error) {
+	if repoPath == "" {
+		return "", fmt.Errorf("no repository selected")
+	}
+
+	gitCommandMu.RLock()
+	cmd := gitCommand
+	cmdArgs := gitCommandArgs
+	gitCommandMu.RUnlock()
+
+	commandArgs := append(cmdArgs, "-C", repoPath)
+	commandArgs = append(commandArgs, args...)
+	out, err := runCommandQuiet(cmd, commandArgs...)
+	if err != nil {
+		return "", err
+	}
+
+	return out, nil
+}
+
+// runGitRemoteForRepo executes git with the configured remote command against the specified repository.
 func runGitRemoteForRepo(repoPath string, args ...string) (string, error) {
 	if repoPath == "" {
 		return "", fmt.Errorf("no repository selected")
@@ -973,6 +1038,28 @@ func runGitRemoteForRepo(repoPath string, args ...string) (string, error) {
 	return out, nil
 }
 
+// runGitRemoteForRepoQuiet is like runGitRemoteForRepo but uses runCommandQuiet so failures are logged at debug level.
+func runGitRemoteForRepoQuiet(repoPath string, args ...string) (string, error) {
+	if repoPath == "" {
+		return "", fmt.Errorf("no repository selected")
+	}
+
+	gitCommandMu.RLock()
+	cmd := gitRemoteCommand
+	cmdArgs := gitRemoteCommandArgs
+	gitCommandMu.RUnlock()
+
+	commandArgs := append(cmdArgs, "-C", repoPath)
+	commandArgs = append(commandArgs, args...)
+	out, err := runCommandQuiet(cmd, commandArgs...)
+	if err != nil {
+		return "", err
+	}
+
+	return out, nil
+}
+
+// getDefaultBranch resolves the repository's default branch name from origin HEAD.
 func getDefaultBranch(repoPath string) (string, error) {
 	if branch, ok := defaultBranchCache[repoPath]; ok {
 		return branch, nil
@@ -1000,6 +1087,7 @@ func getDefaultBranch(repoPath string) (string, error) {
 
 // formatBytes formats a byte count using binary units with two decimal places for values of 1 KiB or larger.
 
+// formatBytes formats a size in bytes into a human-readable string.
 func formatBytes(bytes int64) string {
 	const unit = 1024
 	if bytes < unit {

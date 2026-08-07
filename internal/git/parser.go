@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// ParseCommit parses a raw git commit object into a CommitObject.
 func ParseCommit(raw []byte) (*CommitObject, error) {
 	s := string(raw)
 	lines := strings.Split(s, "\n")
@@ -59,6 +60,7 @@ func ParseCommit(raw []byte) (*CommitObject, error) {
 	return c, nil
 }
 
+// parseSignature extracts the name, email, and timestamp from a git signature line.
 func parseSignature(s string) (Signature, error) {
 	lt := strings.LastIndexByte(s, '>')
 	if lt < 0 {
@@ -104,6 +106,7 @@ func parseSignature(s string) (Signature, error) {
 	}, nil
 }
 
+// ParseTree converts a raw git tree object into a list of TreeEntry values.
 func ParseTree(raw []byte) ([]TreeEntry, error) {
 	var entries []TreeEntry
 
