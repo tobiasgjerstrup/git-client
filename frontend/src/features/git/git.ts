@@ -286,11 +286,14 @@ function toGitTreeLeaf(entry: GitChangeEntry, selection: GitSelectionEntry): Git
  * @param nested - Whether the nodes sit inside a folder (affects display path).
  * @returns The rendered HTML string.
  */
-function renderGitChangeTree(nodes: GitTreeNode[], nested = false): string {
+function renderGitChangeTree(nodes: GitTreeNode[], parentPath = ""): string {
 	let html = "";
 	for (const node of nodes) {
 		if (node.type === "file") {
-			html += node.leaf.renderFile(nested ? node.name : node.path);
+			const displayPath = parentPath && node.path.startsWith(`${parentPath}/`)
+				? node.path.slice(parentPath.length + 1)
+				: node.path;
+			html += node.leaf.renderFile(displayPath);
 		} else {
 			html += renderFolderNode(node);
 		}
