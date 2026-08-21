@@ -283,7 +283,7 @@ function toGitTreeLeaf(entry: GitChangeEntry, selection: GitSelectionEntry): Git
  * Renders a Git change tree into HTML.
  *
  * @param nodes - The root tree nodes to render.
- * @param nested - Whether the nodes sit inside a folder (affects display path).
+ * @param parentPath - The enclosing folder path used to compute relative display paths.
  * @returns The rendered HTML string.
  */
 function renderGitChangeTree(nodes: GitTreeNode[], parentPath = ""): string {
@@ -311,7 +311,7 @@ function renderFolderNode(node: GitTreeFolderNode): string {
 	const pathJson = escapeHtml(JSON.stringify(node.path));
 	const expanded = isGitFolderExpanded(node.path);
 	const chevron = expanded ? "▾" : "▸";
-	const childrenHtml = renderGitChangeTree(node.children, true);
+	const childrenHtml = renderGitChangeTree(node.children, node.path);
 
 	const stageButton = folderSupportsAction(node, "stage")
 		? `<button type="button" class="git-folder-action" onclick='event.stopPropagation(); stageGitFolder(${pathJson})'>Stage</button>`
