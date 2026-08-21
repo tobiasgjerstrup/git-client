@@ -3,6 +3,7 @@ import './styles/app.css';
 import './styles/defaults.css';
 
 import { getGitBranches, getGitCommits, gitDiff, gitFetch, toggleArchivedBranches } from '../features/git/git';
+import { getFolderActionTargets, toggleGitFolder, expandAllGitFolders, collapseAllGitFolders, setFolderGroupingThresholds } from '../features/git/gitTree';
 import { beginGitAction, endGitAction, isAnyGitActionPending } from '../features/git/gitActionState';
 import { getGitSelectionTargets, handleGitSelectionClick, handleGitSelectionKeydown, type GitSelectionAction } from '../features/git/gitSelectionState';
 import {
@@ -42,12 +43,16 @@ const gitCommandStorageKey = "git-client-git-command";
 const gitRemoteCommandStorageKey = "git-client-git-remote-command";
 const archiveMethodStorageKey = "git-client-archive-method";
 const maxStageFileSizeStorageKey = "git-client-max-stage-file-size";
+const folderGroupingDirectThresholdStorageKey = "git-client-folder-group-direct-threshold";
+const folderGroupingSubtreeThresholdStorageKey = "git-client-folder-group-subtree-threshold";
 let activeTheme: ThemeName = "aurora";
 let isFrontendConsoleVisible = false;
 let gitCommand = "git";
 let gitRemoteCommand = "git";
 let activeArchiveMethod: ArchiveMethod = "none";
 let maxStageFileSizeMb = 0;
+let folderGroupingDirectThreshold = 5;
+let folderGroupingSubtreeThreshold = 5;
 
 let settingsModalOpen = false;
 let gitSelectionKeyListenerBound = false;
@@ -63,6 +68,7 @@ initializeConsoleVisibility();
 initializeGitCommand();
 initializeArchiveMethod();
 initializeMaxStageFileSize();
+initializeFolderGroupingThresholds();
 initializeFrontendConsole();
 
 /**
@@ -221,6 +227,39 @@ window.setMaxStageFileSize = function (mb: number) {
 }
 
 /**
+ * Updates the minimum direct-files folder grouping threshold.
+ *
+ * @param value - Minimum number of files directly inside a directory (0 = never group).
+ */
+window.setFolderGroupingDirectThreshold = function (value: number) {
+	folderGroupingDirectThreshold = normalizeFolderGroupingThreshold(value);
+	window.localStorage.setItem(folderGroupingDirectThresholdStorageKey, String(folderGroupingDirectThreshold));
+	applyFolderGroupingThresholds();
+}
+
+/**
+ * Updates the minimum subtree-files folder grouping threshold.
+ *
+ * @param value - Minimum number of files anywhere inside a directory (0 = never group).
+ */
+window.setFolderGroupingSubtreeThreshold = function (value: number) {
+	folderGroupingSubtreeThreshold = normalizeFolderGroupingThreshold(value);
+	window.localStorage.setItem(folderGroupingSubtreeThresholdStorageKey, String(folderGroupingSubtreeThreshold));
+	applyFolderGroupingThresholds();
+}
+
+/**
+ * Applies the current folder grouping thresholds and refreshes the view.
+ */
+function applyFolderGroupingThresholds() {
+	setFolderGroupingThresholds(folderGroupingDirectThreshold, folderGroupingSubtreeThreshold);
+	updateSettingsModal();
+	if (openedFolder) {
+		gitDiff();
+	}
+}
+
+/**
  * Clears all frontend console logs.
  */
 window.clearFrontendLogs = function () {
@@ -300,6 +339,61 @@ window.resolveGitConflict = async function (filePath: string, strategy: "ours" |
 	await runGitAction(targets, async (targetPath) => {
 		await window.go.main.App.ResolveGitConflict(targetPath, strategy);
 	});
+}
+
+/**
+ * Stages every change inside the given folder.
+ *
+ * @param folderPath - The full directory path to stage.
+ */
+window.stageGitFolder = async function (folderPath: string) {
+	const targets = getFolderActionTargets(folderPath, "stage");
+	if (targets.length === 0) {
+		return;
+	}
+
+	await runGitAction(targets, async (targetPath) => {
+		await window.go.main.App.StageGitFile(targetPath);
+	});
+}
+
+/**
+ * Unstages every staged change inside the given folder.
+ *
+ * @param folderPath - The full directory path to unstage.
+ */
+window.unstageGitFolder = async function (folderPath: string) {
+	const targets = getFolderActionTargets(folderPath, "unstage");
+	if (targets.length === 0) {
+		return;
+	}
+
+	await runGitAction(targets, async (targetPath) => {
+		await window.go.main.App.UnstageGitFile(targetPath);
+	});
+}
+
+/**
+ * Toggles the expanded/collapsed state of a folder in the changes tree.
+ *
+ * @param folderPath - The full directory path to toggle.
+ */
+window.toggleGitFolder = function (folderPath: string) {
+	toggleGitFolder(folderPath);
+}
+
+/**
+ * Expands all folders in the changes tree.
+ */
+window.expandAllGitFolders = function () {
+	expandAllGitFolders();
+}
+
+/**
+ * Collapses all folders in the changes tree.
+ */
+window.collapseAllGitFolders = function () {
+	collapseAllGitFolders();
 }
 
 /**
@@ -585,6 +679,23 @@ window.discardSelectedGitFiles = async function () {
 }
 
 /**
+ * Opens the discard confirmation modal for every change inside a folder.
+ *
+ * @param folderPath - The full directory path to discard.
+ */
+window.discardGitFolder = async function (folderPath: string) {
+	const targets = getFolderActionTargets(folderPath, "discard");
+	if (targets.length === 0) {
+		return;
+	}
+
+	modalManager.openDiscard(targets.map((target) => ({
+		filePath: target.actionPath,
+		description: target.label,
+	})), isAnyGitActionPending);
+}
+
+/**
  * Confirms and discards the selected files from the modal state.
  */
 window.confirmDiscardGitFile = async function () {
@@ -785,6 +896,8 @@ function getViewRenderContext() {
 		gitRemoteCommand,
 		archiveMethod: activeArchiveMethod,
 		maxStageFileSizeMb,
+		folderGroupingDirectThreshold,
+		folderGroupingSubtreeThreshold,
 	};
 }
 
@@ -902,6 +1015,46 @@ function initializeMaxStageFileSize() {
 		}
 		window.go.main.App.SetMaxStageFileSize(Math.round(maxStageFileSizeMb * 1024 * 1024));
 	}
+}
+
+/**
+ * Normalizes a folder grouping threshold to a nonnegative safe integer.
+ *
+ * @param value - The configured threshold value.
+ * @returns The value when it is a nonnegative safe integer, or `0` otherwise.
+ */
+function normalizeFolderGroupingThreshold(value: number): number {
+	if (!Number.isSafeInteger(value) || value < 0) {
+		return 0;
+	}
+	return value;
+}
+
+/**
+ * Initializes the folder grouping thresholds from persisted settings and applies them.
+ */
+function initializeFolderGroupingThresholds() {
+	const storedDirect = window.localStorage.getItem(folderGroupingDirectThresholdStorageKey);
+	if (storedDirect !== null) {
+		const parsed = Number(storedDirect);
+		folderGroupingDirectThreshold = normalizeFolderGroupingThreshold(Number.isSafeInteger(parsed) ? parsed : NaN);
+		if (!Number.isSafeInteger(parsed) || parsed < 0) {
+			window.localStorage.setItem(folderGroupingDirectThresholdStorageKey, "5");
+			folderGroupingDirectThreshold = 5;
+		}
+	}
+
+	const storedSubtree = window.localStorage.getItem(folderGroupingSubtreeThresholdStorageKey);
+	if (storedSubtree !== null) {
+		const parsed = Number(storedSubtree);
+		folderGroupingSubtreeThreshold = normalizeFolderGroupingThreshold(Number.isSafeInteger(parsed) ? parsed : NaN);
+		if (!Number.isSafeInteger(parsed) || parsed < 0) {
+			window.localStorage.setItem(folderGroupingSubtreeThresholdStorageKey, "5");
+			folderGroupingSubtreeThreshold = 5;
+		}
+	}
+
+	setFolderGroupingThresholds(folderGroupingDirectThreshold, folderGroupingSubtreeThreshold);
 }
 
 /**
@@ -1214,6 +1367,14 @@ declare global {
 		stageSelectedGitFiles: () => Promise<void>;
 		unstageSelectedGitFiles: () => Promise<void>;
 		discardSelectedGitFiles: () => Promise<void>;
+		stageGitFolder: (folderPath: string) => Promise<void>;
+		unstageGitFolder: (folderPath: string) => Promise<void>;
+		discardGitFolder: (folderPath: string) => Promise<void>;
+		toggleGitFolder: (folderPath: string) => void;
+		expandAllGitFolders: () => void;
+		collapseAllGitFolders: () => void;
+		setFolderGroupingDirectThreshold: (value: number) => void;
+		setFolderGroupingSubtreeThreshold: (value: number) => void;
 		resolveGitConflict: (filePath: string, strategy: "ours" | "theirs", changeKey?: string) => Promise<void>;
 		abortMerge: () => Promise<void>;
 		openRecentRepository: (repoPath: string) => Promise<void>;

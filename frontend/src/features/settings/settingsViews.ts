@@ -17,6 +17,8 @@ type ViewRenderContext = {
 	gitRemoteCommand: string;
 	archiveMethod: ArchiveMethod;
 	maxStageFileSizeMb: number;
+	folderGroupingDirectThreshold: number;
+	folderGroupingSubtreeThreshold: number;
 };
 
 /**
@@ -139,6 +141,33 @@ export function renderSettingsContent(context: ViewRenderContext): string {
 				onchange="setMaxStageFileSize(Number(this.value))"
 			>
 		</div>
+	</div>
+
+	<div class="settings-card">
+		<div class="settings-label">Folder Grouping</div>
+		<div class="settings-row">
+			<label for="FolderGroupingDirectThresholdInput">Files directly in a folder (0 = don't group)</label>
+			<input
+				id="FolderGroupingDirectThresholdInput"
+				type="number"
+				min="0"
+				step="1"
+				value="${context.folderGroupingDirectThreshold}"
+				onchange="setFolderGroupingDirectThreshold(Number(this.value))"
+			>
+		</div>
+		<div class="settings-row">
+			<label for="FolderGroupingSubtreeThresholdInput">Files anywhere in a folder (0 = don't group)</label>
+			<input
+				id="FolderGroupingSubtreeThresholdInput"
+				type="number"
+				min="0"
+				step="1"
+				value="${context.folderGroupingSubtreeThreshold}"
+				onchange="setFolderGroupingSubtreeThreshold(Number(this.value))"
+			>
+		</div>
+		<p class="settings-hint">Folders appear when a directory meets either threshold.</p>
 	</div>
 
 	<div class="settings-card">

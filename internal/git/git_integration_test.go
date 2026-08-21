@@ -114,6 +114,41 @@ func TestGitStatus_untracked_file(t *testing.T) {
 	}
 }
 
+func TestGitStatus_untracked_directory_expands_files(t *testing.T) {
+	repo, cleanup := setupTestRepo(t)
+	defer cleanup()
+
+	dir := filepath.Join(repo, "newdir")
+	if err := os.Mkdir(dir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("a\n"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "b.txt"), []byte("b\n"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	status, err := GitStatus(repo)
+	if err != nil {
+		t.Fatalf("GitStatus: %v", err)
+	}
+
+	foundA := false
+	foundB := false
+	for _, f := range status.Files {
+		if strings.HasPrefix(f, "??") && strings.Contains(f, "newdir/a.txt") {
+			foundA = true
+		}
+		if strings.HasPrefix(f, "??") && strings.Contains(f, "newdir/b.txt") {
+			foundB = true
+		}
+	}
+	if !foundA || !foundB {
+		t.Errorf("expected untracked dir to expand to individual files, got %v", status.Files)
+	}
+}
+
 func TestGitStatus_modified_tracked_file(t *testing.T) {
 	repo, cleanup := setupTestRepo(t)
 	defer cleanup()
@@ -401,6 +436,27 @@ func TestDiscardGitFile_untracked_file(t *testing.T) {
 
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatal("untracked.txt should have been deleted")
+	}
+}
+
+func TestDiscardGitFile_untracked_directory(t *testing.T) {
+	repo, cleanup := setupTestRepo(t)
+	defer cleanup()
+
+	dir := filepath.Join(repo, "untracked-dir")
+	if err := os.Mkdir(dir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "nested.txt"), []byte("temp\n"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	if _, err := DiscardGitFile(repo, "untracked-dir"); err != nil {
+		t.Fatalf("DiscardGitFile for directory: %v", err)
+	}
+
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatal("untracked directory should have been deleted")
 	}
 }
 
@@ -741,7 +797,7 @@ func TestStageGitFile_exactlyAtLimit_stagesNormally(t *testing.T) {
 	}
 }
 
-func TestStageGitFile_nonRegularFile_rejected(t *testing.T) {
+func TestStageGitFile_directory_stagesContents(t *testing.T) {
 	SetMaxStageFileSize(0)
 	repo, cleanup := setupTestRepo(t)
 	defer cleanup()
@@ -750,13 +806,20 @@ func TestStageGitFile_nonRegularFile_rejected(t *testing.T) {
 	if err := os.Mkdir(dir, 0755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-
-	_, err := StageGitFile(repo, "subdir")
-	if err == nil {
-		t.Fatal("expected error for directory")
+	if err := os.WriteFile(filepath.Join(dir, "nested.txt"), []byte("nested\n"), 0644); err != nil {
+		t.Fatalf("write file: %v", err)
 	}
-	if !strings.Contains(err.Error(), "non-regular file") {
-		t.Errorf("error should mention non-regular file, got: %v", err)
+
+	if _, err := StageGitFile(repo, "subdir"); err != nil {
+		t.Fatalf("StageGitFile for directory: %v", err)
+	}
+
+	status, err := GitStatus(repo)
+	if err != nil {
+		t.Fatalf("GitStatus: %v", err)
+	}
+	if !containsStaged(status, "subdir/nested.txt") {
+		t.Fatal("subdir/nested.txt should be staged when staging a directory")
 	}
 }
 
