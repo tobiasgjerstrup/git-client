@@ -455,7 +455,7 @@ func StageGitFile(repoPath string, filePath string) (string, error) {
 				for _, p := range paths {
 					runGitForRepo(repoPath, "reset", "HEAD", "--", p)
 				}
-				return "", fmt.Errorf("File %s is %s; exceeds max stage file size of %s",
+				return "", fmt.Errorf("file %s is %s; exceeds max stage file size of %s",
 					entry.path, formatBytes(entry.size), formatBytes(limit))
 			}
 		}
