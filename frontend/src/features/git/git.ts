@@ -35,6 +35,9 @@ export interface GitCommit {
 	author: string;
 	message: string;
 	date: string;
+	linesAdded: number;
+	linesRemoved: number;
+	isMerge: boolean;
 }
 
 export interface GitDiffOutput {
@@ -524,10 +527,15 @@ export async function getGitCommits() {
 
 	let commitsHtml = "";
 	for (const commit of commits) {
+		const statsHtml = commit.isMerge
+			? `<span class="diff-stat commit-merge">merge</span>`
+			: commit.linesAdded > 0 || commit.linesRemoved > 0
+				? `<div class="diff-stats"><span class="diff-stat diff-stat-added">+${commit.linesAdded}</span><span class="diff-stat diff-stat-removed">-${commit.linesRemoved}</span></div>`
+				: "";
 		commitsHtml += `<article class="commit-card">`;
 		commitsHtml += `<div class="commit-meta"><span class="commit-author">${escapeHtml(commit.author)}</span><span class="commit-date">${escapeHtml(commit.date.substring(0, 16))}</span></div>`;
 		commitsHtml += `<p class="commit-message">${escapeHtml(commit.message)}</p>`;
-		commitsHtml += `<code class="commit-hash">${escapeHtml(commit.hash.substring(0, 8))}</code></article>`;
+		commitsHtml += `<div class="commit-footer"><code class="commit-hash">${escapeHtml(commit.hash.substring(0, 8))}</code>${statsHtml}</div></article>`;
 	}
 	document.getElementById("GitCommits")!.innerHTML = commitsHtml;
 }
