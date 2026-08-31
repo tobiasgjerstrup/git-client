@@ -178,7 +178,7 @@ var defaultBranchCache = make(map[string]string)
 
 // GitStatus returns the current working tree status and branch metadata for the repository.
 func GitStatus(repoPath string) (*GitStatusResult, error) {
-	out, err := runGitForRepo(repoPath, "status", "--porcelain=v2", "--branch")
+	out, err := runGitForRepo(repoPath, "status", "--porcelain=v2", "--branch", "--untracked-files=all")
 	if err != nil {
 		return nil, err
 	}
@@ -396,7 +396,7 @@ func DiscardGitFile(repoPath string, filePath string) (string, error) {
 		}
 
 		if strings.HasPrefix(fileStatus, "??") {
-			if err := os.Remove(filepath.Join(repoPath, targetPath)); err != nil && !os.IsNotExist(err) {
+			if err := os.RemoveAll(filepath.Join(repoPath, targetPath)); err != nil && !os.IsNotExist(err) {
 				return "", err
 			}
 			continue
@@ -426,7 +426,7 @@ func StageGitFile(repoPath string, filePath string) (string, error) {
 			}
 			return "", fmt.Errorf("cannot access %s: %w", path, err)
 		}
-		if !info.Mode().IsRegular() {
+		if !info.Mode().IsRegular() && !info.IsDir() {
 			return "", fmt.Errorf("cannot stage non-regular file: %s", path)
 		}
 	}
@@ -443,51 +443,71 @@ func StageGitFile(repoPath string, filePath string) (string, error) {
 	}
 
 	for _, path := range paths {
-		size, err := getStagedBlobSize(repoPath, path)
+		sizes, err := getStagedBlobSizes(repoPath, path)
 		if err != nil {
 			for _, p := range paths {
 				runGitForRepo(repoPath, "reset", "HEAD", "--", p)
 			}
 			return "", fmt.Errorf("could not verify staged file size for %s: %w", path, err)
 		}
-		if size > limit {
-			for _, p := range paths {
-				runGitForRepo(repoPath, "reset", "HEAD", "--", p)
+		for _, entry := range sizes {
+			if entry.size > limit {
+				for _, p := range paths {
+					runGitForRepo(repoPath, "reset", "HEAD", "--", p)
+				}
+				return "", fmt.Errorf("file %s is %s; exceeds max stage file size of %s",
+					entry.path, formatBytes(entry.size), formatBytes(limit))
 			}
-			return "", fmt.Errorf("File %s is %s; exceeds max stage file size of %s",
-				path, formatBytes(size), formatBytes(limit))
 		}
 	}
 
 	return "", nil
 }
 
-// getStagedBlobSize returns the size in bytes of a file's staged Git blob.
-// It returns zero when the file has no staged entry.
-func getStagedBlobSize(repoPath, path string) (int64, error) {
+// stagedFileSize holds the repository path and byte size of a single staged blob.
+type stagedFileSize struct {
+	path string
+	size int64
+}
+
+// getStagedBlobSizes returns the size in bytes of every staged blob under path.
+// For a regular file this is a single entry; for a directory it includes all
+// staged files beneath it. It returns an empty slice when there are no staged
+// entries (for example, a staged deletion).
+func getStagedBlobSizes(repoPath, path string) ([]stagedFileSize, error) {
 	out, err := runGitForRepo(repoPath, "ls-files", "--stage", "--", path)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	out = strings.TrimSpace(out)
-	if out == "" {
-		return 0, nil
-	}
-	fields := strings.Fields(out)
-	if len(fields) < 2 {
-		return 0, fmt.Errorf("unexpected ls-files output: %s", out)
-	}
-	hash := fields[1]
 
-	out, err = runGitForRepo(repoPath, "cat-file", "-s", hash)
-	if err != nil {
-		return 0, err
+	var sizes []stagedFileSize
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return nil, fmt.Errorf("unexpected ls-files output: %s", out)
+		}
+		hash := fields[1]
+
+		entryPath := path
+		if len(fields) >= 4 {
+			entryPath = strings.Join(fields[3:], " ")
+		}
+
+		sizeOut, err := runGitForRepo(repoPath, "cat-file", "-s", hash)
+		if err != nil {
+			return nil, err
+		}
+		size, err := strconv.ParseInt(strings.TrimSpace(sizeOut), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid cat-file -s output: %s", sizeOut)
+		}
+		sizes = append(sizes, stagedFileSize{path: entryPath, size: size})
 	}
-	size, err := strconv.ParseInt(strings.TrimSpace(out), 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("invalid cat-file -s output: %s", out)
-	}
-	return size, nil
+	return sizes, nil
 }
 
 // ResolveGitConflict resolves merge conflicts for the specified paths using the selected strategy and stages the results.

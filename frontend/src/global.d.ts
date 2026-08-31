@@ -40,5 +40,7 @@ declare global {
 		toggleDiff: (el: HTMLElement) => void;
 		clearFrontendLogs: () => void;
 		toggleLogConsole: () => void;
+		setFolderGroupingDirectThreshold: (value: number) => void;
+		setFolderGroupingSubtreeThreshold: (value: number) => void;
 	}
 }

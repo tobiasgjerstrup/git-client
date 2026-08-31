@@ -1,5 +1,6 @@
 import { getGitActionButtonAttrs } from './gitActionState';
-import { setRenderedGitEntries, type GitSelectionEntry } from './gitSelectionState';
+import { setRenderedGitEntries, type GitSelectionEntry, type GitSelectionAction } from './gitSelectionState';
+import { buildGitChangeTree, setRenderedGitTree, isGitFolderExpanded, getFolderGroupingDirectThreshold, getFolderGroupingSubtreeThreshold, type GitTreeLeaf, type GitTreeNode, type GitTreeFolderNode } from './gitTree';
 
 type GitPorcelainV2Key = "1" | "2" | "u" | "?" | "!";
 
@@ -244,14 +245,14 @@ function renderDiffContent(diffFile?: GitDiffOutput["files"][0]): string {
  * @param entry - The change entry metadata.
  * @returns The rendered HTML string.
  */
-function renderChangeEntry(entry: GitChangeEntry): string {
+function renderChangeEntry(entry: GitChangeEntry, displayPath = entry.path): string {
 	return `<div class="diff-file-entry" data-change-key="${escapeHtml(entry.key)}" onclick="selectGitChange(event, ${escapeHtml(JSON.stringify(entry.key))})">
 		<div class="diff-file-header-row">
 			<div class="diff-file-copy">
 				<span class="diff-file-status ${entry.statusClass}">${escapeHtml(entry.label)}</span>
 				<h3 class="diff-file-header">
 					<button type="button" class="diff-file-toggle" onclick="event.stopPropagation(); toggleDiff(this.closest('.diff-file-entry').querySelector('.diff-file-header'))">
-						${escapeHtml(entry.path)} ${renderSvg(entry.path)}
+						${escapeHtml(displayPath)} ${renderSvg(entry.path)}
 					</button>
 				</h3>
 			</div>
@@ -259,6 +260,96 @@ function renderChangeEntry(entry: GitChangeEntry): string {
 		</div>
 		${renderDiffContent(entry.diffFile)}
 	</div>`;
+}
+
+/**
+ * Converts a rendered change entry and its selection metadata into a tree leaf.
+ *
+ * @param entry - The rendered change entry.
+ * @param selection - The selection metadata for the entry.
+ * @returns The tree leaf used for grouping and folder actions.
+ */
+function toGitTreeLeaf(entry: GitChangeEntry, selection: GitSelectionEntry): GitTreeLeaf {
+	return {
+		path: entry.path,
+		actionPath: selection.actionPath,
+		label: selection.label,
+		supportedActions: selection.supportedActions,
+		renderFile: (displayPath) => renderChangeEntry(entry, displayPath),
+	};
+}
+
+/**
+ * Renders a Git change tree into HTML.
+ *
+ * @param nodes - The root tree nodes to render.
+ * @param parentPath - The enclosing folder path used to compute relative display paths.
+ * @returns The rendered HTML string.
+ */
+function renderGitChangeTree(nodes: GitTreeNode[], parentPath = ""): string {
+	let html = "";
+	for (const node of nodes) {
+		if (node.type === "file") {
+			const displayPath = parentPath && node.path.startsWith(`${parentPath}/`)
+				? node.path.slice(parentPath.length + 1)
+				: node.path;
+			html += node.leaf.renderFile(displayPath);
+		} else {
+			html += renderFolderNode(node);
+		}
+	}
+	return html;
+}
+
+/**
+ * Renders a single folder node and its children.
+ *
+ * @param node - The folder node to render.
+ * @returns The rendered folder HTML.
+ */
+function renderFolderNode(node: GitTreeFolderNode): string {
+	const pathJson = escapeHtml(JSON.stringify(node.path));
+	const expanded = isGitFolderExpanded(node.path);
+	const chevron = expanded ? "▾" : "▸";
+	const childrenHtml = renderGitChangeTree(node.children, node.path);
+
+	const stageButton = folderSupportsAction(node, "stage")
+		? `<button type="button" class="git-folder-action" onclick='event.stopPropagation(); stageGitFolder(${pathJson})'>Stage</button>`
+		: "";
+	const unstageButton = folderSupportsAction(node, "unstage")
+		? `<button type="button" class="git-folder-action" onclick='event.stopPropagation(); unstageGitFolder(${pathJson})'>Unstage</button>`
+		: "";
+	const discardButton = folderSupportsAction(node, "discard")
+		? `<button type="button" class="git-folder-action git-folder-action-danger" onclick='event.stopPropagation(); discardGitFolder(${pathJson})'>Discard</button>`
+		: "";
+
+	return `<div class="git-folder" data-folder-path="${escapeHtml(node.path)}">
+		<div class="git-folder-header">
+			<button type="button" class="git-folder-toggle" onclick="toggleGitFolder(${pathJson})">
+				<span class="git-folder-chevron">${chevron}</span>
+				<span class="git-folder-icon">${renderSvg(node.path + "/")}</span>
+				<span class="git-folder-name">${escapeHtml(node.name)}</span>
+			</button>
+			<div class="git-folder-actions">${stageButton}${unstageButton}${discardButton}</div>
+		</div>
+		<div class="git-folder-children"${expanded ? "" : ' style="display:none"'}>${childrenHtml}</div>
+	</div>`;
+}
+
+/**
+ * Returns whether any descendant of a folder supports the given action.
+ *
+ * @param node - The folder node to inspect.
+ * @param action - The action to check for.
+ * @returns True when at least one descendant supports the action.
+ */
+function folderSupportsAction(node: GitTreeFolderNode, action: GitSelectionAction): boolean {
+	return node.children.some((child) => {
+		if (child.type === "file") {
+			return child.leaf.supportedActions.includes(action);
+		}
+		return folderSupportsAction(child, action);
+	});
 }
 
 import GoIcon from "../../assets/images/icons/file_type_go.svg";
@@ -617,7 +708,7 @@ export async function gitDiff() {
 		}
 	}
 
-	let changesHtml = "";
+	const leaves: GitTreeLeaf[] = [];
 	const renderedEntries: GitSelectionEntry[] = [];
 	let currentMergeConflictCount = 0;
 
@@ -629,18 +720,20 @@ export async function gitDiff() {
 
 		const stagedCode = parsedLine.xy[0];
 		const unstagedCode = parsedLine.xy[1];
-		const entries: GitChangeEntry[] = [];
 		const actionPath = buildActionPath(parsedLine);
+		let hasEntry = false;
 
 		if (parsedLine.key === "u") {
 			currentMergeConflictCount++;
-			renderedEntries.push({
+			hasEntry = true;
+			const selection: GitSelectionEntry = {
 				key: `${parsedLine.path}:conflict`,
 				actionPath,
 				label: parsedLine.path,
 				supportedActions: ["stage"],
-			});
-			entries.push({
+			};
+			renderedEntries.push(selection);
+			leaves.push(toGitTreeLeaf({
 				key: `${parsedLine.path}:conflict`,
 				path: parsedLine.path,
 				label: `Merge conflict: ${parsedLine.path}`,
@@ -648,22 +741,20 @@ export async function gitDiff() {
 				diffFile: unstagedDiffMap.get(parsedLine.path) ?? stagedDiffMap.get(parsedLine.path),
 				buttonsHtml: renderConflictResolutionButtons(actionPath, `${parsedLine.path}:conflict`),
 				statusClass: "unstaged",
-			});
-
-			for (const entry of entries) {
-				changesHtml += renderChangeEntry(entry);
-			}
+			}, selection));
 			continue;
 		}
 
 		if (isStagedFromXYStatus(parsedLine.xy)) {
-			renderedEntries.push({
+			hasEntry = true;
+			const selection: GitSelectionEntry = {
 				key: `${parsedLine.path}:staged`,
 				actionPath,
 				label: buildStatusLabel(parsedLine, "staged", stagedCode),
 				supportedActions: ["unstage"],
-			});
-			entries.push({
+			};
+			renderedEntries.push(selection);
+			leaves.push(toGitTreeLeaf({
 				key: `${parsedLine.path}:staged`,
 				path: parsedLine.path,
 				label: buildStatusLabel(parsedLine, "staged", stagedCode),
@@ -671,20 +762,22 @@ export async function gitDiff() {
 				diffFile: stagedDiffMap.get(parsedLine.path),
 				buttonsHtml: renderUnstageButton(actionPath, `${parsedLine.path}:staged`),
 				statusClass: "staged",
-			});
+			}, selection));
 		}
 
 		if (hasUnstagedFromXYStatus(parsedLine.xy) || parsedLine.key === "?" || parsedLine.key === "!") {
+			hasEntry = true;
 			const discardLabel = parsedLine.origPath
 				? `${parsedLine.origPath} -> ${parsedLine.path}`
 				: parsedLine.path;
-			renderedEntries.push({
+			const selection: GitSelectionEntry = {
 				key: `${parsedLine.path}:unstaged`,
 				actionPath,
 				label: discardLabel,
 				supportedActions: ["stage", "discard"],
-			});
-			entries.push({
+			};
+			renderedEntries.push(selection);
+			leaves.push(toGitTreeLeaf({
 				key: `${parsedLine.path}:unstaged`,
 				path: parsedLine.path,
 				label: buildStatusLabel(parsedLine, "unstaged", parsedLine.key === "?" ? "A" : unstagedCode),
@@ -692,17 +785,18 @@ export async function gitDiff() {
 				diffFile: unstagedDiffMap.get(parsedLine.path),
 				buttonsHtml: `${renderStageButton(actionPath, `${parsedLine.path}:unstaged`)}${renderDiscardButton(actionPath, discardLabel, `${parsedLine.path}:unstaged`)}`,
 				statusClass: "unstaged",
-			});
+			}, selection));
 		}
 
-		if (entries.length === 0) {
-			renderedEntries.push({
+		if (!hasEntry) {
+			const selection: GitSelectionEntry = {
 				key: `${parsedLine.path}:fallback`,
 				actionPath,
 				label: parsedLine.path,
 				supportedActions: ["stage", "discard"],
-			});
-			entries.push({
+			};
+			renderedEntries.push(selection);
+			leaves.push(toGitTreeLeaf({
 				key: `${parsedLine.path}:fallback`,
 				path: parsedLine.path,
 				label: parsedLine.text,
@@ -710,11 +804,7 @@ export async function gitDiff() {
 				diffFile: unstagedDiffMap.get(parsedLine.path),
 				buttonsHtml: `${renderStageButton(actionPath, `${parsedLine.path}:fallback`)}${renderDiscardButton(actionPath, parsedLine.path, `${parsedLine.path}:fallback`)}`,
 				statusClass: "unstaged",
-			});
-		}
-
-		for (const entry of entries) {
-			changesHtml += renderChangeEntry(entry);
+			}, selection));
 		}
 	}
 
@@ -723,16 +813,17 @@ export async function gitDiff() {
 		if (seenPaths.has(path)) continue;
 		seenPaths.add(path);
 
-		renderedEntries.push({
+		const selection: GitSelectionEntry = {
 			key: `${path}:unstaged-fallback`,
 			actionPath: path,
 			label: path,
 			supportedActions: ["stage", "discard"],
-		});
+		};
+		renderedEntries.push(selection);
 
 		const buttonsHtml = `${renderStageButton(path, `${path}:unstaged-fallback`)}${renderDiscardButton(path, path, `${path}:unstaged-fallback`)}`;
 
-		changesHtml += renderChangeEntry({
+		leaves.push(toGitTreeLeaf({
 			key: `${path}:unstaged-fallback`,
 			path,
 			label: `Unstaged change: ${path}`,
@@ -740,20 +831,21 @@ export async function gitDiff() {
 			diffFile,
 			buttonsHtml,
 			statusClass: "unstaged",
-		});
+		}, selection));
 	}
 
 	for (const [path, diffFile] of stagedDiffMap) {
 		if (seenPaths.has(path)) continue;
 
-		renderedEntries.push({
+		const selection: GitSelectionEntry = {
 			key: `${path}:staged-fallback`,
 			actionPath: path,
 			label: path,
 			supportedActions: ["unstage"],
-		});
+		};
+		renderedEntries.push(selection);
 
-		changesHtml += renderChangeEntry({
+		leaves.push(toGitTreeLeaf({
 			key: `${path}:staged-fallback`,
 			path,
 			label: `Staged change: ${path}`,
@@ -761,10 +853,12 @@ export async function gitDiff() {
 			diffFile,
 			buttonsHtml: renderUnstageButton(path, `${path}:staged-fallback`),
 			statusClass: "staged",
-		});
+		}, selection));
 	}
 
-	document.getElementById("Changes")!.innerHTML = changesHtml;
+	const tree = buildGitChangeTree(leaves, getFolderGroupingDirectThreshold(), getFolderGroupingSubtreeThreshold());
+	setRenderedGitTree(tree);
+	document.getElementById("Changes")!.innerHTML = renderGitChangeTree(tree);
 	setRenderedGitEntries(renderedEntries);
 	updateMergeConflictBanner(statusOutput.mergeInProgress, currentMergeConflictCount);
 	currentBranchName = statusOutput.branchName;

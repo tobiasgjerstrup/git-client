@@ -561,6 +561,131 @@
 	flex-wrap: wrap;
 }
 
+.git-tree-controls {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin-top: 4px;
+}
+
+.git-tree-control {
+	padding: 4px 10px;
+	font-size: 0.72rem;
+	font-weight: 700;
+	border-radius: 999px;
+	background: var(--theme-button-secondary-bg);
+	border: 1px solid var(--theme-border-button);
+	color: var(--theme-text-info);
+}
+
+.git-tree-control:hover {
+	transform: none;
+	background: var(--theme-button-hover-bg);
+	border-color: var(--theme-border-button-hover);
+	color: var(--theme-text);
+}
+
+.git-folder {
+	display: flex;
+	flex-direction: column;
+}
+
+.git-folder-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 8px 10px;
+	border-radius: 14px;
+	border: 1px solid var(--theme-border-soft);
+	background: var(--theme-surface-muted-weak);
+}
+
+.git-folder-header:hover {
+	background: var(--theme-surface-muted);
+}
+
+.git-folder-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 0;
+	border: none;
+	border-radius: 0;
+	background: none;
+	box-shadow: none;
+	color: var(--theme-text);
+	font-weight: 800;
+	letter-spacing: 0.01em;
+	text-align: left;
+	cursor: pointer;
+	min-width: 0;
+	flex: 1;
+}
+
+.git-folder-toggle:hover {
+	transform: none;
+	background: none;
+	border: none;
+	box-shadow: none;
+}
+
+.git-folder-chevron {
+	display: inline-block;
+	width: 12px;
+	font-size: 0.85rem;
+	line-height: 1;
+	color: var(--theme-text-subtle);
+	flex-shrink: 0;
+}
+
+.git-folder-icon {
+	display: inline-flex;
+	flex-shrink: 0;
+}
+
+.git-folder-name {
+	overflow-wrap: anywhere;
+	min-width: 0;
+}
+
+.git-folder-actions {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
+.git-folder-action {
+	padding: 4px 10px;
+	font-size: 0.72rem;
+	border-radius: 999px;
+}
+
+.git-folder-action:hover {
+	transform: none;
+}
+
+.git-folder-action-danger {
+	background: var(--theme-surface-danger);
+	border-color: var(--theme-border-danger-soft);
+	color: var(--theme-text-danger);
+}
+
+.git-folder-action-danger:hover {
+	background: var(--theme-surface-danger-hover);
+}
+
+.git-folder-children {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-left: 16px;
+	margin-top: 8px;
+	padding-left: 12px;
+	border-left: 1px solid var(--theme-border-soft);
+}
+
 .diff-content {
 	margin-top: 14px;
 	display: flex;
@@ -694,6 +819,12 @@
 	gap: 8px;
 	flex-wrap: wrap;
 	align-items: center;
+}
+
+.settings-hint {
+	margin: 0;
+	font-size: 0.78rem;
+	color: var(--theme-text-faint);
 }
 
 .settings-recent-list {
