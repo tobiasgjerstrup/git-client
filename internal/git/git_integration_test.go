@@ -485,6 +485,12 @@ func TestGetCommitHistory_returns_commits(t *testing.T) {
 	if first.Author == "" {
 		t.Error("expected non-empty author")
 	}
+	if first.LinesAdded == 0 {
+		t.Error("expected non-zero LinesAdded for the initial commit")
+	}
+	if first.IsMerge {
+		t.Error("initial commit should not be a merge")
+	}
 }
 
 // --------------------------------------------------------------------------

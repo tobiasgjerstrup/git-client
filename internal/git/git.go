@@ -149,10 +149,13 @@ type GitStatusResult struct {
 }
 
 type Commit struct {
-	Hash    string `json:"hash"`
-	Author  string `json:"author"`
-	Date    string `json:"date"`
-	Message string `json:"message"`
+	Hash         string `json:"hash"`
+	Author       string `json:"author"`
+	Date         string `json:"date"`
+	Message      string `json:"message"`
+	LinesAdded   int    `json:"linesAdded"`
+	LinesRemoved int    `json:"linesRemoved"`
+	IsMerge      bool   `json:"isMerge"`
 }
 
 type GitDiffFile struct {
@@ -349,28 +352,112 @@ func parseDiffOutput(out string) (*GitDiffResult, error) {
 
 // GetCommitHistory returns the list of recent commits for the repository.
 func GetCommitHistory(repoPath string) (*[]Commit, error) {
-	out, err := runGitForRepo(repoPath, "log", "--max-count=100", "--pretty=format:%H|%an|%ad|%s", "--date=iso")
+	out, err := runGitForRepo(repoPath, "log", "--max-count=100", "--pretty=format:%H|%an|%ad|%s|%P", "--date=iso", "--numstat")
 	if err != nil {
 		Errorf("Error getting git log: %v", err)
 		return nil, err
 	}
 
-	commitLines := strings.Split(string(out), "\n")
-	commits := []Commit{}
-	for _, commit := range commitLines {
-		parts := strings.SplitN(commit, "|", 4)
-		if len(parts) < 4 {
-			continue
-		}
-		commits = append(commits, Commit{
-			Hash:    parts[0],
-			Author:  parts[1],
-			Date:    parts[2],
-			Message: parts[3],
-		})
+	return parseCommitHistory(string(out)), nil
+}
+
+// GetCommitHistoryStats returns per-hash line change statistics for the recent commits.
+func GetCommitHistoryStats(repoPath string) (map[string][2]int, error) {
+	out, err := runGitForRepo(repoPath, "log", "--max-count=100", "--pretty=format:%H", "--numstat")
+	if err != nil {
+		return nil, err
 	}
 
-	return &commits, nil
+	return parseNumstatByHash(string(out)), nil
+}
+
+// parseCommitHistory converts raw "git log --pretty=format:%H|%an|%ad|%s|%P --numstat" output
+// into a list of commits with summed line-change statistics and merge detection.
+func parseCommitHistory(out string) *[]Commit {
+	commits := []Commit{}
+	var current *Commit
+
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSuffix(line, "\r")
+		if line == "" {
+			continue
+		}
+
+		if parts := strings.SplitN(line, "|", 5); len(parts) == 5 {
+			parents := strings.Fields(parts[4])
+			commits = append(commits, Commit{
+				Hash:    parts[0],
+				Author:  parts[1],
+				Date:    parts[2],
+				Message: parts[3],
+				IsMerge: len(parents) > 1,
+			})
+			current = &commits[len(commits)-1]
+			continue
+		}
+
+		if current == nil {
+			continue
+		}
+
+		added, removed, ok := parseNumstatLine(line)
+		if !ok {
+			continue
+		}
+		current.LinesAdded += added
+		current.LinesRemoved += removed
+	}
+
+	return &commits
+}
+
+// parseNumstatByHash converts raw "git log --pretty=format:%H --numstat" output into
+// a map of commit hash to [added, removed] line counts.
+func parseNumstatByHash(out string) map[string][2]int {
+	stats := map[string][2]int{}
+	var currentHash string
+
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSuffix(line, "\r")
+		if line == "" {
+			continue
+		}
+
+		if !strings.Contains(line, "\t") {
+			currentHash = strings.TrimSpace(line)
+			continue
+		}
+
+		if currentHash == "" {
+			continue
+		}
+
+		added, removed, ok := parseNumstatLine(line)
+		if !ok {
+			continue
+		}
+		stats[currentHash] = [2]int{stats[currentHash][0] + added, stats[currentHash][1] + removed}
+	}
+
+	return stats
+}
+
+// parseNumstatLine parses a git --numstat line ("added\tremoved\tpath") into counts.
+// Binary files are represented by "-" and are skipped.
+func parseNumstatLine(line string) (added int, removed int, ok bool) {
+	fields := strings.Split(line, "\t")
+	if len(fields) < 2 {
+		return 0, 0, false
+	}
+	if fields[0] == "-" || fields[1] == "-" {
+		return 0, 0, false
+	}
+	a, errA := strconv.Atoi(fields[0])
+	r, errR := strconv.Atoi(fields[1])
+	if errA != nil || errR != nil {
+		return 0, 0, false
+	}
+	return a, r, true
 }
 
 // DiscardGitFile restores a file to the current HEAD state or removes untracked files.
