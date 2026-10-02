@@ -463,11 +463,21 @@
 }
 
 .commit-hash {
-	align-self: flex-start;
 	padding: 4px 8px;
 	border-radius: 999px;
 	background: var(--theme-surface-muted);
 	font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.commit-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.commit-merge {
+	color: var(--theme-text-info);
 }
 
 .diff-file-entry {

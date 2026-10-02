@@ -294,3 +294,143 @@ func TestIsMissingBranchSwitchError_nil_error(t *testing.T) {
 		t.Fatal("expected false for nil error")
 	}
 }
+
+// --------------------------------------------------------------------------
+// parseCommitHistory / parseNumstatByHash / parseNumstatLine
+// --------------------------------------------------------------------------
+
+func TestParseCommitHistory_sums_numstat_per_commit(t *testing.T) {
+	out := "hash1\x00Alice\x002026-01-01 10:00:00 +0000\x00Initial commit\x00\n" +
+		"1\t1\tREADME.md\n3\t0\tmain.go\n\n" +
+		"hash2\x00Bob\x002026-01-02 10:00:00 +0000\x00Fix things\x00\n" +
+		"2\t4\tsrc/app.ts\n0\t1\tsrc/util.ts\n"
+	commits := parseCommitHistory(out)
+	if len(*commits) != 2 {
+		t.Fatalf("expected 2 commits, got %d", len(*commits))
+	}
+
+	c1 := (*commits)[0]
+	if c1.Hash != "hash1" || c1.Author != "Alice" || c1.Message != "Initial commit" {
+		t.Errorf("commit 1 metadata = %+v", c1)
+	}
+	if c1.LinesAdded != 4 || c1.LinesRemoved != 1 {
+		t.Errorf("commit 1 stats = +%d -%d, want +4 -1", c1.LinesAdded, c1.LinesRemoved)
+	}
+	if c1.IsMerge {
+		t.Error("commit 1 should not be a merge")
+	}
+
+	c2 := (*commits)[1]
+	if c2.LinesAdded != 2 || c2.LinesRemoved != 5 {
+		t.Errorf("commit 2 stats = +%d -%d, want +2 -5", c2.LinesAdded, c2.LinesRemoved)
+	}
+}
+
+func TestParseCommitHistory_detects_merge_commit(t *testing.T) {
+	out := "mergehash\x00Carol\x002026-01-03 10:00:00 +0000\x00Merge branch 'feature'\x00parent1 parent2\n\n" +
+		"afterhash\x00Dave\x002026-01-04 10:00:00 +0000\x00Small change\x00parent3\n" +
+		"1\t1\tapp.ts\n"
+	commits := parseCommitHistory(out)
+	if len(*commits) != 2 {
+		t.Fatalf("expected 2 commits, got %d", len(*commits))
+	}
+
+	if !(*commits)[0].IsMerge {
+		t.Error("commit with 2 parents should be a merge")
+	}
+	if (*commits)[0].LinesAdded != 0 || (*commits)[0].LinesRemoved != 0 {
+		t.Errorf("merge commit stats should stay 0, got +%d -%d", (*commits)[0].LinesAdded, (*commits)[0].LinesRemoved)
+	}
+	if (*commits)[1].IsMerge {
+		t.Error("commit with a single parent should not be a merge")
+	}
+}
+
+func TestParseCommitHistory_skips_binary_numstat(t *testing.T) {
+	out := "hash1\x00Alice\x002026-01-01 10:00:00 +0000\x00Add logo\x00\n" +
+		"-\t-\tlogo.png\n5\t0\tapp.go\n"
+	commits := parseCommitHistory(out)
+	if len(*commits) != 1 {
+		t.Fatalf("expected 1 commit, got %d", len(*commits))
+	}
+	if (*commits)[0].LinesAdded != 5 || (*commits)[0].LinesRemoved != 0 {
+		t.Errorf("stats = +%d -%d, want +5 -0", (*commits)[0].LinesAdded, (*commits)[0].LinesRemoved)
+	}
+}
+
+func TestParseCommitHistory_preserves_pipes(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		author  string
+		subject string
+		path    string
+	}{
+		{"author", "Alice | Bob", "Fix things", "file.txt"},
+		{"subject", "Alice", "Fix | pipes | in | subject", "file.txt"},
+		{"path", "Alice", "Fix things", "src/a|b|c|d|e.txt"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			out := "hash1\x00" + tt.author + "\x002026-01-01 10:00:00 +0000\x00" + tt.subject + "\x00parent1\n" +
+				"2\t1\t" + tt.path + "\n5\t2\tother.txt\n\n" +
+				"hash2\x00Bob\x002026-01-02 10:00:00 +0000\x00Initial commit\x00\n1\t0\tREADME.md\n"
+
+			commits := *parseCommitHistory(out)
+			if len(commits) != 2 {
+				t.Fatalf("expected 2 commits, got %d: %+v", len(commits), commits)
+			}
+			want := Commit{
+				Hash:         "hash1",
+				Author:       tt.author,
+				Date:         "2026-01-01 10:00:00 +0000",
+				Message:      tt.subject,
+				LinesAdded:   7,
+				LinesRemoved: 3,
+			}
+			if commits[0] != want {
+				t.Errorf("commit = %+v, want %+v", commits[0], want)
+			}
+			if commits[1].Hash != "hash2" || commits[1].LinesAdded != 1 || commits[1].LinesRemoved != 0 {
+				t.Errorf("following commit = %+v", commits[1])
+			}
+		})
+	}
+}
+
+func TestParseCommitHistory_empty_output(t *testing.T) {
+	commits := parseCommitHistory("")
+	if len(*commits) != 0 {
+		t.Fatalf("expected 0 commits, got %d", len(*commits))
+	}
+}
+
+func TestParseNumstatByHash_groups_by_hash(t *testing.T) {
+	out := `hash1
+2	2	frontend/src/features/git/git.ts
+
+hash2
+1	1	internal/git/git.go
+3	0	internal/git/types.go
+`
+	stats := parseNumstatByHash(out)
+	if len(stats) != 2 {
+		t.Fatalf("expected 2 hashes, got %d", len(stats))
+	}
+	if s := stats["hash1"]; s != [2]int{2, 2} {
+		t.Errorf("hash1 stats = %v, want [2 2]", s)
+	}
+	if s := stats["hash2"]; s != [2]int{4, 1} {
+		t.Errorf("hash2 stats = %v, want [4 1]", s)
+	}
+}
+
+func TestParseNumstatLine_binary_returns_false(t *testing.T) {
+	if _, _, ok := parseNumstatLine("-\t-\tlogo.png"); ok {
+		t.Fatal("expected ok=false for binary line")
+	}
+}
+
+func TestParseNumstatLine_malformed_returns_false(t *testing.T) {
+	if _, _, ok := parseNumstatLine("not-a-number\t1\tfile.ts"); ok {
+		t.Fatal("expected ok=false for malformed line")
+	}
+}

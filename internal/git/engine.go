@@ -131,7 +131,20 @@ func (e *GitEngine) GetCommitHistory(repoPath string) (*[]Commit, error) {
 			Author:  co.Author.Name,
 			Date:    co.Author.Time.Format("Mon Jan 2 15:04:05 2006 -0700"),
 			Message: msg,
+			IsMerge: len(co.ParentHashes) > 1,
 		})
+	}
+
+	stats, err := GetCommitHistoryStats(repoPath)
+	if err != nil {
+		Warnf("Error getting commit stats: %v", err)
+	} else {
+		for i := range commits {
+			if s, ok := stats[commits[i].Hash]; ok {
+				commits[i].LinesAdded = s[0]
+				commits[i].LinesRemoved = s[1]
+			}
+		}
 	}
 
 	return &commits, nil
