@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -490,6 +491,57 @@ func TestGetCommitHistory_returns_commits(t *testing.T) {
 	}
 	if first.IsMerge {
 		t.Error("initial commit should not be a merge")
+	}
+}
+
+func TestGetCommitHistory_preserves_pipes(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		author  string
+		subject string
+		path    string
+	}{
+		{"author", "Alice | Bob", "Add file", "file.txt"},
+		{"subject", "Alice", "Add | pipes | in | subject", "file.txt"},
+		{"path", "Alice", "Add file", "a|b|c|d|e.txt"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.name == "path" && runtime.GOOS == "windows" {
+				t.Skip("Windows filenames cannot contain pipes")
+			}
+			repo, cleanup := setupTestRepo(t)
+			defer cleanup()
+
+			runGit(t, repo, "config", "user.name", tt.author)
+			if err := os.WriteFile(filepath.Join(repo, tt.path), []byte("first\nsecond\n"), 0644); err != nil {
+				t.Fatalf("write file: %v", err)
+			}
+			runGit(t, repo, "add", "--", tt.path)
+			runGit(t, repo, "commit", "--author", tt.author+" <test@git-client.local>", "-m", tt.subject)
+			hash := strings.TrimSpace(runGit(t, repo, "rev-parse", "HEAD"))
+			date := strings.TrimSpace(runGit(t, repo, "show", "-s", "--format=%ad", "--date=iso", "HEAD"))
+
+			history, err := GetCommitHistory(repo)
+			if err != nil {
+				t.Fatalf("GetCommitHistory: %v", err)
+			}
+			if len(*history) != 2 {
+				t.Fatalf("expected 2 commits, got %d: %+v", len(*history), *history)
+			}
+			want := Commit{
+				Hash:       hash,
+				Author:     tt.author,
+				Date:       date,
+				Message:    tt.subject,
+				LinesAdded: 2,
+			}
+			if got := (*history)[0]; got != want {
+				t.Errorf("commit = %+v, want %+v", got, want)
+			}
+			if initial := (*history)[1]; initial.Message != "initial commit" || initial.LinesAdded != 1 || initial.LinesRemoved != 0 {
+				t.Errorf("initial commit = %+v", initial)
+			}
+		})
 	}
 }
 

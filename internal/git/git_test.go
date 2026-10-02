@@ -300,14 +300,10 @@ func TestIsMissingBranchSwitchError_nil_error(t *testing.T) {
 // --------------------------------------------------------------------------
 
 func TestParseCommitHistory_sums_numstat_per_commit(t *testing.T) {
-	out := `hash1|Alice|2026-01-01 10:00:00 +0000|Initial commit|
-1	1	README.md
-3	0	main.go
-
-hash2|Bob|2026-01-02 10:00:00 +0000|Fix things|
-2	4	src/app.ts
-0	1	src/util.ts
-`
+	out := "hash1\x00Alice\x002026-01-01 10:00:00 +0000\x00Initial commit\x00\n" +
+		"1\t1\tREADME.md\n3\t0\tmain.go\n\n" +
+		"hash2\x00Bob\x002026-01-02 10:00:00 +0000\x00Fix things\x00\n" +
+		"2\t4\tsrc/app.ts\n0\t1\tsrc/util.ts\n"
 	commits := parseCommitHistory(out)
 	if len(*commits) != 2 {
 		t.Fatalf("expected 2 commits, got %d", len(*commits))
@@ -331,11 +327,9 @@ hash2|Bob|2026-01-02 10:00:00 +0000|Fix things|
 }
 
 func TestParseCommitHistory_detects_merge_commit(t *testing.T) {
-	out := `mergehash|Carol|2026-01-03 10:00:00 +0000|Merge branch 'feature'|parent1 parent2
-
-afterhash|Dave|2026-01-04 10:00:00 +0000|Small change|parent3
-1	1	app.ts
-`
+	out := "mergehash\x00Carol\x002026-01-03 10:00:00 +0000\x00Merge branch 'feature'\x00parent1 parent2\n\n" +
+		"afterhash\x00Dave\x002026-01-04 10:00:00 +0000\x00Small change\x00parent3\n" +
+		"1\t1\tapp.ts\n"
 	commits := parseCommitHistory(out)
 	if len(*commits) != 2 {
 		t.Fatalf("expected 2 commits, got %d", len(*commits))
@@ -353,16 +347,52 @@ afterhash|Dave|2026-01-04 10:00:00 +0000|Small change|parent3
 }
 
 func TestParseCommitHistory_skips_binary_numstat(t *testing.T) {
-	out := `hash1|Alice|2026-01-01 10:00:00 +0000|Add logo|
--	-	logo.png
-5	0	app.go
-`
+	out := "hash1\x00Alice\x002026-01-01 10:00:00 +0000\x00Add logo\x00\n" +
+		"-\t-\tlogo.png\n5\t0\tapp.go\n"
 	commits := parseCommitHistory(out)
 	if len(*commits) != 1 {
 		t.Fatalf("expected 1 commit, got %d", len(*commits))
 	}
 	if (*commits)[0].LinesAdded != 5 || (*commits)[0].LinesRemoved != 0 {
 		t.Errorf("stats = +%d -%d, want +5 -0", (*commits)[0].LinesAdded, (*commits)[0].LinesRemoved)
+	}
+}
+
+func TestParseCommitHistory_preserves_pipes(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		author  string
+		subject string
+		path    string
+	}{
+		{"author", "Alice | Bob", "Fix things", "file.txt"},
+		{"subject", "Alice", "Fix | pipes | in | subject", "file.txt"},
+		{"path", "Alice", "Fix things", "src/a|b|c|d|e.txt"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			out := "hash1\x00" + tt.author + "\x002026-01-01 10:00:00 +0000\x00" + tt.subject + "\x00parent1\n" +
+				"2\t1\t" + tt.path + "\n5\t2\tother.txt\n\n" +
+				"hash2\x00Bob\x002026-01-02 10:00:00 +0000\x00Initial commit\x00\n1\t0\tREADME.md\n"
+
+			commits := *parseCommitHistory(out)
+			if len(commits) != 2 {
+				t.Fatalf("expected 2 commits, got %d: %+v", len(commits), commits)
+			}
+			want := Commit{
+				Hash:         "hash1",
+				Author:       tt.author,
+				Date:         "2026-01-01 10:00:00 +0000",
+				Message:      tt.subject,
+				LinesAdded:   7,
+				LinesRemoved: 3,
+			}
+			if commits[0] != want {
+				t.Errorf("commit = %+v, want %+v", commits[0], want)
+			}
+			if commits[1].Hash != "hash2" || commits[1].LinesAdded != 1 || commits[1].LinesRemoved != 0 {
+				t.Errorf("following commit = %+v", commits[1])
+			}
+		})
 	}
 }
 

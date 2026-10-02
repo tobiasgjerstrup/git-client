@@ -352,7 +352,7 @@ func parseDiffOutput(out string) (*GitDiffResult, error) {
 
 // GetCommitHistory returns the list of recent commits for the repository.
 func GetCommitHistory(repoPath string) (*[]Commit, error) {
-	out, err := runGitForRepo(repoPath, "log", "--max-count=100", "--pretty=format:%H|%an|%ad|%s|%P", "--date=iso", "--numstat")
+	out, err := runGitForRepo(repoPath, "log", "--max-count=100", "--pretty=format:%H%x00%an%x00%ad%x00%s%x00%P", "--date=iso", "--numstat")
 	if err != nil {
 		Errorf("Error getting git log: %v", err)
 		return nil, err
@@ -371,7 +371,7 @@ func GetCommitHistoryStats(repoPath string) (map[string][2]int, error) {
 	return parseNumstatByHash(string(out)), nil
 }
 
-// parseCommitHistory converts raw "git log --pretty=format:%H|%an|%ad|%s|%P --numstat" output
+// parseCommitHistory converts raw "git log --pretty=format:%H%x00%an%x00%ad%x00%s%x00%P --numstat" output
 // into a list of commits with summed line-change statistics and merge detection.
 func parseCommitHistory(out string) *[]Commit {
 	commits := []Commit{}
@@ -383,7 +383,7 @@ func parseCommitHistory(out string) *[]Commit {
 			continue
 		}
 
-		if parts := strings.SplitN(line, "|", 5); len(parts) == 5 {
+		if parts := strings.SplitN(line, "\x00", 5); len(parts) == 5 {
 			parents := strings.Fields(parts[4])
 			commits = append(commits, Commit{
 				Hash:    parts[0],
